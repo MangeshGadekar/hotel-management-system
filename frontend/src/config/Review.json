@@ -1,0 +1,303 @@
+{
+  "hotel": {
+    "id": "h123",
+    "name": "Grand Plaza Hotel",
+    "location": "New York, NY, USA",
+    "overallRating": 4.7,
+    "totalReviews": 342,
+    "ratingBreakdown": {
+      "5": 210,
+      "4": 85,
+      "3": 30,
+      "2": 12,
+      "1": 5
+    },
+    "recommendationPercentage": 92
+  },
+  "reviews": [
+    {
+      "id": "r101",
+      "user": {
+        "id": "u1001",
+        "name": "Sarah Johnson",
+        "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+        "location": "Los Angeles, CA",
+        "isVerified": true,
+        "memberSince": "2020-03-15",
+        "totalReviews": 24
+      },
+      "bookingDetails": {
+        "roomType": "Ocean View Suite",
+        "stayDates": {
+          "checkIn": "2026-03-10",
+          "checkOut": "2026-03-15"
+        },
+        "nightsStayed": 5,
+        "partySize": 2
+      },
+      "rating": 5,
+      "date": "2026-03-15T14:30:00Z",
+      "title": "Absolutely Amazing Experience!",
+      "content": "Absolutely loved my stay at this hotel. The room was spacious, clean, and had an amazing ocean view. The staff was incredibly helpful and made our anniversary celebration truly special. The breakfast buffet was exceptional with so many options. Highly recommend this place!",
+      "images": [
+        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b",
+        "https://images.unsplash.com/photo-1566073771259-6a8506099945",
+        "https://images.unsplash.com/photo-1584132967334-10e028bd69f7"
+      ],
+      "tags": ["Romantic", "Family", "Luxury"],
+      "helpful": 45,
+      "notHelpful": 3,
+      "isRecommended": true,
+      "likes": 67,
+      "replies": [
+        {
+          "id": "rep1",
+          "user": {
+            "name": "Hotel Management",
+            "isVerified": true,
+            "role": "Manager"
+          },
+          "date": "2026-03-16T10:00:00Z",
+          "content": "Thank you Sarah for your wonderful review! We're thrilled to hear you enjoyed your anniversary celebration with us. We look forward to welcoming you back soon!",
+          "likes": 12
+        }
+      ],
+      "reported": false
+    },
+    {
+      "id": "r102",
+      "user": {
+        "id": "u1002",
+        "name": "Michael Chen",
+        "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+        "location": "San Francisco, CA",
+        "isVerified": true,
+        "memberSince": "2021-07-20",
+        "totalReviews": 15
+      },
+      "bookingDetails": {
+        "roomType": "Deluxe King Room",
+        "stayDates": {
+          "checkIn": "2026-03-01",
+          "checkOut": "2026-03-03"
+        },
+        "nightsStayed": 2,
+        "partySize": 1
+      },
+      "rating": 4.5,
+      "date": "2026-03-05T09:15:00Z",
+      "title": "Great Business Stay",
+      "content": "Perfect hotel for business travelers. The workspace in the room was comfortable and the WiFi was fast. Location is convenient with easy access to downtown. The only minor issue was the air conditioning was a bit noisy.",
+      "images": [
+        "https://images.unsplash.com/photo-1584132967334-10e028bd69f7"
+      ],
+      "tags": ["Business", "Solo"],
+      "helpful": 23,
+      "notHelpful": 2,
+      "isRecommended": true,
+      "likes": 34,
+      "replies": [],
+      "reported": false
+    },
+    {
+      "id": "r103",
+      "user": {
+        "id": "u1003",
+        "name": "Emily Rodriguez",
+        "avatar": null,
+        "location": "Miami, FL",
+        "isVerified": false,
+        "memberSince": "2025-12-01",
+        "totalReviews": 3
+      },
+      "bookingDetails": {
+        "roomType": "Family Suite",
+        "stayDates": {
+          "checkIn": "2026-02-20",
+          "checkOut": "2026-02-25"
+        },
+        "nightsStayed": 5,
+        "partySize": 4
+      },
+      "rating": 3,
+      "date": "2026-02-28T16:45:00Z",
+      "title": "Mixed Experience",
+      "content": "The location and amenities were great, but the room we received wasn't exactly what we booked. The staff tried to help but it took 2 days to resolve the issue. The pool area was wonderful for kids though.",
+      "images": [],
+      "tags": ["Family"],
+      "helpful": 8,
+      "notHelpful": 4,
+      "isRecommended": false,
+      "likes": 12,
+      "replies": [
+        {
+          "id": "rep2",
+          "user": {
+            "name": "Hotel Management",
+            "isVerified": true,
+            "role": "Manager"
+          },
+          "date": "2026-03-01T11:30:00Z",
+          "content": "Dear Emily, we apologize for the inconvenience you experienced. We take your feedback seriously and have addressed the issue with our team. We'd love to welcome you back for a better experience.",
+          "likes": 8
+        }
+      ],
+      "reported": false
+    },
+    {
+      "id": "r104",
+      "user": {
+        "id": "u1004",
+        "name": "David Thompson",
+        "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
+        "location": "Chicago, IL",
+        "isVerified": true,
+        "memberSince": "2019-11-05",
+        "totalReviews": 52
+      },
+      "bookingDetails": {
+        "roomType": "Presidential Suite",
+        "stayDates": {
+          "checkIn": "2026-02-14",
+          "checkOut": "2026-02-17"
+        },
+        "nightsStayed": 3,
+        "partySize": 2
+      },
+      "rating": 5,
+      "date": "2026-02-20T08:30:00Z",
+      "title": "Unforgettable Luxury Experience",
+      "content": "From the moment we arrived until we left, everything was perfection. The Presidential Suite was stunning, the concierge service was exceptional, and the dining experience was world-class. Worth every penny!",
+      "images": [
+        "https://images.unsplash.com/photo-1566073771259-6a8506099945",
+        "https://images.unsplash.com/photo-1578683010236-d716f9a3f461"
+      ],
+      "tags": ["Romantic", "Luxury"],
+      "helpful": 67,
+      "notHelpful": 1,
+      "isRecommended": true,
+      "likes": 89,
+      "replies": [
+        {
+          "id": "rep3",
+          "user": {
+            "name": "Hotel Management",
+            "isVerified": true,
+            "role": "Manager"
+          },
+          "date": "2026-02-21T14:00:00Z",
+          "content": "David, thank you for your amazing review! We're honored you chose us for your special stay. We look forward to serving you again.",
+          "likes": 15
+        }
+      ],
+      "reported": false
+    },
+    {
+      "id": "r105",
+      "user": {
+        "id": "u1005",
+        "name": "Jessica Martinez",
+        "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
+        "location": "Austin, TX",
+        "isVerified": false,
+        "memberSince": "2026-01-10",
+        "totalReviews": 2
+      },
+      "bookingDetails": {
+        "roomType": "Standard Double Room",
+        "stayDates": {
+          "checkIn": "2026-02-10",
+          "checkOut": "2026-02-12"
+        },
+        "nightsStayed": 2,
+        "partySize": 2
+      },
+      "rating": 4,
+      "date": "2026-02-15T19:20:00Z",
+      "title": "Good Value for Money",
+      "content": "Clean room, comfortable bed, and friendly staff. The breakfast could have had more variety, but overall it was a pleasant stay. Will consider coming back.",
+      "images": [],
+      "tags": ["Budget"],
+      "helpful": 15,
+      "notHelpful": 0,
+      "isRecommended": true,
+      "likes": 21,
+      "replies": [],
+      "reported": false
+    },
+    {
+      "id": "r106",
+      "user": {
+        "id": "u1006",
+        "name": "Robert Kim",
+        "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
+        "location": "Seattle, WA",
+        "isVerified": true,
+        "memberSince": "2021-04-22",
+        "totalReviews": 31
+      },
+      "bookingDetails": {
+        "roomType": "Ocean View Suite",
+        "stayDates": {
+          "checkIn": "2026-02-01",
+          "checkOut": "2026-02-08"
+        },
+        "nightsStayed": 7,
+        "partySize": 3
+      },
+      "rating": 4.5,
+      "date": "2026-02-10T12:10:00Z",
+      "title": "Perfect Family Vacation Spot",
+      "content": "We booked the Ocean View Suite for a week and it was the perfect family vacation. The kids loved the pool, and my wife and I enjoyed the spa facilities. The only downside was the gym equipment was outdated.",
+      "images": [
+        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b",
+        "https://images.unsplash.com/photo-1578683010236-d716f9a3f461",
+        "https://images.unsplash.com/photo-1566073771259-6a8506099945"
+      ],
+      "tags": ["Family", "Holiday"],
+      "helpful": 38,
+      "notHelpful": 2,
+      "isRecommended": true,
+      "likes": 45,
+      "replies": [
+        {
+          "id": "rep4",
+          "user": {
+            "name": "Hotel Management",
+            "isVerified": true,
+            "role": "Manager"
+          },
+          "date": "2026-02-12T16:00:00Z",
+          "content": "Robert, thank you for your feedback! We're currently upgrading our gym equipment and hope to have it ready by next month. We appreciate your kind words and hope to see you again soon!",
+          "likes": 10
+        }
+      ],
+      "reported": false
+    }
+  ],
+  "statistics": {
+    "averageRating": 4.7,
+    "totalReviews": 342,
+    "totalPhotos": 156,
+    "totalHelpfulVotes": 2870,
+    "reviewsByRating": {
+      "5": 210,
+      "4": 85,
+      "3": 30,
+      "2": 12,
+      "1": 5
+    },
+    "monthlyTrend": {
+      "January": 45,
+      "February": 52,
+      "March": 38
+    },
+    "topTags": {
+      "Luxury": 45,
+      "Family": 38,
+      "Romantic": 32,
+      "Business": 28,
+      "Solo": 15
+    }
+  }
+}

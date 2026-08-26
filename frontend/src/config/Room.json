@@ -1,0 +1,581 @@
+[
+  {
+    "id": 1,
+    "name": "Deluxe Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800",
+      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800",
+      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800"
+    ],
+    "price": 299,
+    "rating": 4.8,
+    "reviews": 124,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "45 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Coffee"],
+    "description": "Spacious room with stunning city views, comfortable king-size bed, and modern amenities.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 2,
+    "name": "Executive Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800"
+    ],
+    "price": 349,
+    "rating": 4.9,
+    "reviews": 156,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "52 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Coffee"],
+    "description": "Elegant executive suite featuring premium furnishings and breathtaking city views.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 3,
+    "name": "Premium King Room",
+    "images": [
+      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800",
+      "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800",
+      "https://images.unsplash.com/photo-1564078516393-cf04bd966897?w=800"
+    ],
+    "price": 249,
+    "rating": 4.7,
+    "reviews": 98,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "38 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Coffee"],
+    "description": "Modern king room designed for comfort with elegant interiors and premium facilities.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 4,
+    "name": "Luxury Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800",
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800"
+    ],
+    "price": 399,
+    "rating": 4.9,
+    "reviews": 203,
+    "capacity": 3,
+    "bedType": "King Size",
+    "size": "60 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Bathtub"],
+    "description": "A luxurious suite with spacious interiors, premium amenities, and a relaxing private lounge.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 5,
+    "name": "Classic Queen Room",
+    "images": [
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800",
+      "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800",
+      "https://images.unsplash.com/photo-1560185008-b033106af5c3?w=800"
+    ],
+    "price": 179,
+    "rating": 4.5,
+    "reviews": 87,
+    "capacity": 2,
+    "bedType": "Queen Size",
+    "size": "30 sqm",
+    "amenities": ["WiFi", "TV", "AC"],
+    "description": "Comfortable and stylish queen room perfect for couples and short stays.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 6,
+    "name": "Presidential Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1591088398332-8a7791972843?w=800",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800"
+    ],
+    "price": 799,
+    "rating": 5.0,
+    "reviews": 312,
+    "capacity": 4,
+    "bedType": "King Size",
+    "size": "120 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Jacuzzi", "Living Room"],
+    "description": "Our most exclusive suite featuring a private living area, luxurious bathroom, and panoramic views.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 7,
+    "name": "Garden View Room",
+    "images": [
+      "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800",
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800",
+      "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800"
+    ],
+    "price": 199,
+    "rating": 4.6,
+    "reviews": 76,
+    "capacity": 2,
+    "bedType": "Queen Size",
+    "size": "32 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Balcony"],
+    "description": "Peaceful room overlooking beautifully landscaped gardens with a private balcony.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 8,
+    "name": "Ocean View Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
+      "https://images.unsplash.com/photo-1590490359683-658d3d23f972?w=800",
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800"
+    ],
+    "price": 459,
+    "rating": 4.9,
+    "reviews": 189,
+    "capacity": 3,
+    "bedType": "King Size",
+    "size": "58 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Balcony"],
+    "description": "Beautiful ocean-facing suite with a private balcony and luxurious amenities.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 9,
+    "name": "Family Room",
+    "images": [
+      "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=800",
+      "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800",
+      "https://images.unsplash.com/photo-1587985064135-0366536eab42?w=800"
+    ],
+    "price": 279,
+    "rating": 4.6,
+    "reviews": 112,
+    "capacity": 4,
+    "bedType": "Two Queen Beds",
+    "size": "48 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Fridge"],
+    "description": "Spacious family accommodation with two comfortable beds and plenty of living space.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 10,
+    "name": "Honeymoon Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1590490359683-658d3d23f972?w=800",
+      "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800"
+    ],
+    "price": 499,
+    "rating": 4.9,
+    "reviews": 145,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "55 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Jacuzzi", "Champagne", "Balcony"],
+    "description": "Romantic suite specially designed for couples with a private jacuzzi and elegant décor.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 11,
+    "name": "Business Room",
+    "images": [
+      "https://images.unsplash.com/photo-1601918774946-25832a4be0d6?w=800",
+      "https://images.unsplash.com/photo-1564078516393-cf04bd966897?w=800",
+      "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800"
+    ],
+    "price": 219,
+    "rating": 4.5,
+    "reviews": 64,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "34 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Work Desk", "Coffee"],
+    "description": "Quiet and comfortable room with a dedicated workspace for business travelers.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 12,
+    "name": "Royal Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800",
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800"
+    ],
+    "price": 599,
+    "rating": 4.9,
+    "reviews": 221,
+    "capacity": 3,
+    "bedType": "King Size",
+    "size": "75 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Bathtub", "Living Room"],
+    "description": "Sophisticated royal suite combining timeless elegance with modern luxury.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 13,
+    "name": "Standard King Room",
+    "images": [
+      "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800",
+      "https://images.unsplash.com/photo-1564078516393-cf04bd966897?w=800",
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800"
+    ],
+    "price": 159,
+    "rating": 4.4,
+    "reviews": 91,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "28 sqm",
+    "amenities": ["WiFi", "TV", "AC"],
+    "description": "A clean and comfortable king room offering excellent value for your stay.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 14,
+    "name": "Corner Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800"
+    ],
+    "price": 379,
+    "rating": 4.8,
+    "reviews": 137,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "50 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "City View"],
+    "description": "Bright corner suite with large windows offering spectacular panoramic city views.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 15,
+    "name": "Penthouse Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800",
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800"
+    ],
+    "price": 899,
+    "rating": 5.0,
+    "reviews": 278,
+    "capacity": 4,
+    "bedType": "King Size",
+    "size": "140 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Jacuzzi", "Terrace", "Kitchen"],
+    "description": "Exclusive penthouse featuring expansive interiors, a private terrace, and premium facilities.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 16,
+    "name": "Twin Deluxe Room",
+    "images": [
+      "https://images.unsplash.com/photo-1587985064135-0366536eab42?w=800",
+      "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=800",
+      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800"
+    ],
+    "price": 229,
+    "rating": 4.6,
+    "reviews": 84,
+    "capacity": 2,
+    "bedType": "Twin Beds",
+    "size": "35 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Coffee"],
+    "description": "Spacious twin room ideal for friends or colleagues traveling together.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 17,
+    "name": "Executive King Room",
+    "images": [
+      "https://images.unsplash.com/photo-1564078516393-cf04bd966897?w=800",
+      "https://images.unsplash.com/photo-1601918774946-25832a4be0d6?w=800",
+      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800"
+    ],
+    "price": 269,
+    "rating": 4.7,
+    "reviews": 102,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "40 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Work Desk", "Mini Bar"],
+    "description": "Premium king room with an elegant workspace and upgraded amenities.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 18,
+    "name": "Classic Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1560185008-b033106af5c3?w=800",
+      "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800",
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800"
+    ],
+    "price": 319,
+    "rating": 4.7,
+    "reviews": 119,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "46 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Coffee", "Bathtub"],
+    "description": "Classic suite offering refined interiors, spacious accommodation, and modern comforts.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 19,
+    "name": "City View Deluxe",
+    "images": [
+      "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?w=800",
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800",
+      "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800"
+    ],
+    "price": 239,
+    "rating": 4.6,
+    "reviews": 88,
+    "capacity": 2,
+    "bedType": "Queen Size",
+    "size": "36 sqm",
+    "amenities": ["WiFi", "TV", "AC", "City View"],
+    "description": "Modern deluxe room with floor-to-ceiling windows and impressive city views.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 20,
+    "name": "Grand Deluxe Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800",
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800",
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800"
+    ],
+    "price": 429,
+    "rating": 4.9,
+    "reviews": 176,
+    "capacity": 3,
+    "bedType": "King Size",
+    "size": "65 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Bathtub", "Lounge"],
+    "description": "Grand suite with sophisticated décor, a private lounge, and premium amenities.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 21,
+    "name": "Cozy Queen Room",
+    "images": [
+      "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800",
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800",
+      "https://images.unsplash.com/photo-1560185008-b033106af5c3?w=800"
+    ],
+    "price": 149,
+    "rating": 4.3,
+    "reviews": 59,
+    "capacity": 2,
+    "bedType": "Queen Size",
+    "size": "26 sqm",
+    "amenities": ["WiFi", "TV", "AC"],
+    "description": "Cozy and affordable queen room with everything needed for a comfortable stay.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 22,
+    "name": "Garden Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800",
+      "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800",
+      "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800"
+    ],
+    "price": 339,
+    "rating": 4.8,
+    "reviews": 131,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "48 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Garden View", "Balcony"],
+    "description": "Elegant suite surrounded by peaceful garden views and lush greenery.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 23,
+    "name": "Family Deluxe Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800",
+      "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=800",
+      "https://images.unsplash.com/photo-1587985064135-0366536eab42?w=800"
+    ],
+    "price": 389,
+    "rating": 4.7,
+    "reviews": 143,
+    "capacity": 5,
+    "bedType": "King + Twin Beds",
+    "size": "70 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Fridge", "Living Area"],
+    "description": "Large family suite providing comfortable sleeping and living spaces for larger groups.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 24,
+    "name": "Skyline Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800",
+      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800"
+    ],
+    "price": 479,
+    "rating": 4.9,
+    "reviews": 194,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "62 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Balcony", "City View"],
+    "description": "High-floor suite with breathtaking skyline views and luxurious interiors.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 25,
+    "name": "Oceanfront Deluxe Room",
+    "images": [
+      "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
+      "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800",
+      "https://images.unsplash.com/photo-1590490359683-658d3d23f972?w=800"
+    ],
+    "price": 369,
+    "rating": 4.8,
+    "reviews": 167,
+    "capacity": 2,
+    "bedType": "King Size",
+    "size": "44 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Balcony", "Ocean View"],
+    "description": "Stylish oceanfront room offering beautiful views, modern comforts, and a private balcony.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 26,
+    "name": "Luxury Family Room",
+    "images": [
+      "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=800",
+      "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800"
+    ],
+    "price": 329,
+    "rating": 4.7,
+    "reviews": 121,
+    "capacity": 4,
+    "bedType": "King + Queen Bed",
+    "size": "55 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Fridge", "Living Area"],
+    "description": "Spacious family room with comfortable sleeping arrangements and a relaxing living area.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 27,
+    "name": "Modern Studio Room",
+    "images": [
+      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800",
+      "https://images.unsplash.com/photo-1601918774946-25832a4be0d6?w=800",
+      "https://images.unsplash.com/photo-1564078516393-cf04bd966897?w=800"
+    ],
+    "price": 189,
+    "rating": 4.5,
+    "reviews": 73,
+    "capacity": 2,
+    "bedType": "Queen Size",
+    "size": "31 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Work Desk", "Coffee"],
+    "description": "Contemporary studio room with smart design, comfortable furnishings, and essential amenities.",
+    "isAvailable": true,
+    "isFeatured": false
+  },
+  {
+    "id": 28,
+    "name": "Royal Garden Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800",
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800"
+    ],
+    "price": 449,
+    "rating": 4.9,
+    "reviews": 185,
+    "capacity": 3,
+    "bedType": "King Size",
+    "size": "68 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Garden View", "Balcony"],
+    "description": "Elegant garden-facing suite combining peaceful surroundings with luxurious interiors.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 29,
+    "name": "Premium Family Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800",
+      "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=800",
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800"
+    ],
+    "price": 529,
+    "rating": 4.9,
+    "reviews": 214,
+    "capacity": 5,
+    "bedType": "King + Twin Beds",
+    "size": "82 sqm",
+    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Living Room", "Bathtub"],
+    "description": "Premium family suite offering generous space, luxurious amenities, and comfortable accommodation.",
+    "isAvailable": true,
+    "isFeatured": true
+  },
+  {
+    "id": 30,
+    "name": "Royal Presidential Suite",
+    "images": [
+      "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?w=800",
+      "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800"
+    ],
+    "price": 999,
+    "rating": 5.0,
+    "reviews": 356,
+    "capacity": 4,
+    "bedType": "King Size",
+    "size": "150 sqm",
+    "amenities": [
+      "WiFi",
+      "TV",
+      "AC",
+      "Mini Bar",
+      "Jacuzzi",
+      "Living Room",
+      "Private Terrace",
+      "Kitchen"
+    ],
+    "description": "The ultimate luxury suite featuring expansive living spaces, premium facilities, a private terrace, and breathtaking views.",
+    "isAvailable": true,
+    "isFeatured": true
+  }
+]
