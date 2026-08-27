@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: hotel-management-system
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/Hotel_Managment
+    username: root
+    password: "root"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    database-platform: org.hibernate.dialect.MySQLDialect
