@@ -3,7 +3,6 @@ import { flower_Image } from '../../assets'
 import RoomCard from '../../component/common/RoomCard';
 import Rooms from '../../config/Room.json';
 import { useNavigate } from 'react-router-dom';
-import ReviewComponent from '../../component/common/ReviewComponent';
 import MovingBelt from '../../component/common/MovingBelt';
 
 const RoomsAndSuits = () => {
@@ -117,12 +116,7 @@ const RoomsAndSuits = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-100/20 to-transparent"></div>
         <MovingBelt/>
       </div>
-      
-      {/* ReviewComponent with enhanced styling wrapper */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-amber-50/30 to-transparent"></div>
-        <ReviewComponent/>
-      </div>
+          
     </>
   ) 
 }
