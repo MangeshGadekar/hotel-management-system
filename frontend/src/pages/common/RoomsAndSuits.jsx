@@ -1,9 +1,9 @@
-import RoomAndSuitHero from '../../component/common/RoomAndSuitHero'
+import RoomAndSuitHero from '../../components/common/RoomAndSuitHero'
 import { flower_Image } from '../../assets'
-import RoomCard from '../../component/common/RoomCard';
+import RoomCard from '../../components/common/RoomCard';
 import Rooms from '../../config/Room.json';
 import { useNavigate } from 'react-router-dom';
-import MovingBelt from '../../component/common/MovingBelt';
+import MovingBelt from '../../components/common/MovingBelt';
 
 const RoomsAndSuits = () => {
 
