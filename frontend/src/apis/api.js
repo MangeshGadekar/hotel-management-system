@@ -11,13 +11,10 @@ export const createRoom = async (payload) => {
 };
 
 /* update room */
-export const updateRoom = async (roomNumber, payload) => {
-  return await apiClient.patch(`/admin/room/update/${roomNumber}`, payload).json();
-};
-
-/* delete room */
-export const deleteRoom = async (roomNumber) => {
-  return await apiClient.delete(`/admin/room/delete/${roomNumber}`).json();
+export const patchRoom = async (roomNumber, payload) => {
+  return await apiClient
+    .patch(`/admin/room/update/${roomNumber}`, payload)
+    .json();
 };
 
 /* get room */
@@ -38,4 +35,9 @@ export const typeOfRooms = async (roomType) => {
 /* status of rooms */
 export const statusOfRooms = async (roomStatus) => {
   return await apiClient.get(`/admin/room/status/${roomStatus}`).json();
+};
+
+/* delete room */
+export const deleteRoom = async (roomNumber) => {
+  return await apiClient.delete(`/admin/room/delete/${roomNumber}`).json();
 };
