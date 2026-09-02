@@ -24,27 +24,39 @@ project-root/
 
 ### Backend
 
-* Java
-* Spring Boot
-* Spring Web
-* Spring Data JPA
-* REST APIs
-* Database integration
+- Java
+- Spring Boot
+- Spring Web
+- Spring Data JPA
+- REST APIs
+- Database integration
+
+#### RUN BACKEND USING THIS COMMAND
+
+```
+mvn spring-boot:run
+```
 
 ### Frontend
 
-* React
-* JavaScript / TypeScript
-* React Router
-* API integration with the Spring Boot backend
+- React
+- JavaScript / TypeScript
+- React Router
+- API integration with the Spring Boot backend
+
+#### RUN FRONTEND USING THIS COMMAND
+
+```
+npm run dev
+```
 
 ### Documentation
 
 The `docs` folder contains:
 
-* Backend API documentation
-* API endpoints
-* Request and response formats
-* Sample request data
-* Sample response data
-* API usage examples
+- Backend API documentation
+- API endpoints
+- Request and response formats
+- Sample request data
+- Sample response data
+- API usage examples
