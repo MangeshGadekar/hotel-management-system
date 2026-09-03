@@ -1,0 +1,14 @@
+services:
+  my-sql:
+    image: mysql:latest
+    container_name: hotel-managment-system
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_DATABASE: "Hotel_Managment"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

@@ -25,13 +25,12 @@ import {
 import { MdOutlineLocalHotel, MdRoomService, MdFamilyRestroom, MdKitchen, MdBathtub } from "react-icons/md";
 import { RiHotelBedLine } from "react-icons/ri";
 import { flower_Image } from "../../assets";
-import Rooms from "../../config/Room.json";
 import Feature from "../../config/RoomFeatures.json";
 import { GiPrivateFirstClass } from "react-icons/gi";
 import { AiOutlineFolderView } from "react-icons/ai";
-import ReviewComponent from "../../component/common/ReviewComponent";
-import MovingBelt from '../../component/common/MovingBelt';
-import HomeHero from "../../component/common/HomeHero";
+import ReviewComponent from "../../components/common/ReviewComponent";
+import MovingBelt from '../../components/common/MovingBelt';
+import HomeHero from "../../components/common/HomeHero";
 
 const Home = () => {
   const iconMap = {
