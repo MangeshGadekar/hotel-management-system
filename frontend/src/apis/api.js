@@ -62,7 +62,9 @@ export const createRoom = async (payload) => {
 
 /* update room */
 export const patchRoom = async (roomNumber, payload) => {
-  return await apiClient.patch(`/admin/room/update/${roomNumber}`, payload);
+  return await apiClient
+    .patch(`/admin/room/update/${roomNumber}`, payload)
+    .json();
 };
 
 /* get room */
