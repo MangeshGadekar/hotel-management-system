@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import { creteGuest, patchGuest } from "../apis/api";
+import { creteGuest, deleteGuest, fetchAllGuest, fetchGuest, patchGuest } from "../apis/api";
 
 const guestStore = (set) => ({
   guestList: [],
@@ -28,6 +28,45 @@ const guestStore = (set) => ({
         }),
       }));
       console.log("update guest", _guest)
+      return res
+    } catch (error) {
+        return error
+    }
+  },
+ getGuest: async (id) => {
+    try {
+      const res = await fetchGuest(id);
+      const _guest = res;
+      set({
+        guest : _guest
+      })
+      console.log("fetch guest", _guest)
+      return res
+    } catch (error) {
+        return error
+    }
+  },
+  getGuestList: async (id) => {
+    try {
+      const res = await fetchAllGuest(id);
+      const _guestList = res;
+      set({
+        guestList : _guestList
+      })
+      console.log("fetch guest", _guestList)
+      return res
+    } catch (error) {
+        return error
+    }
+  },
+  removeGuest: async (id) => {
+    try {
+      const res = await deleteGuest(id);
+     set((state) => ({
+        roomList: state.roomList.filter((guest) => {
+          guest.id !== id;
+        }),
+      }));
       return res
     } catch (error) {
         return error
