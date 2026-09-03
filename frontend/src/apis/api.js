@@ -18,7 +18,7 @@ export const fetchGuest = async (id) => {
   return await apiClient.get(`/guest/${id}`);
 };
 
-/* fetch users list */
+/* fetch guest list */
 export const fetchAllGuest = async () => {
   return await apiClient.get(`/guest`);
 };
