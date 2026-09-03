@@ -2,7 +2,57 @@ import { apiClient } from "./apiClient";
 
 /* AUTHENTICATION */
 
+/* GUEST */
+/* create guest */
+export const creteGuest = async (payload) => {
+  return await apiClient.post("/guest/create", payload).json();
+};
+
+/* update guest */
+export const patchGuest = async (id, payload) => {
+  return await apiClient.patch(`/guest/update/${id}`, payload).json();
+};
+
+/* fetch guest */
+export const fetchGuest = async (id) => {
+  return await apiClient.get(`/guest/${id}`).json();
+};
+
+/* fetch guest list */
+export const fetchAllGuest = async () => {
+  return await apiClient.get(`/guest`).json();
+};
+
+/* delete guest */
+export const deleteGuest = async (id) => {
+  return await apiClient.delete(`/guest/delete/${id}`).json();
+};
+
 /* BOOKINGS */
+/* Create booking */
+export const createBooking = async (payload) => {
+  return await apiClient.post(`/booking/create`, payload).json();
+};
+
+/* Update booking */
+export const patchBooking = async (id, payload) => {
+  return await apiClient.patch(`/booking/update/${id}`, payload).json();
+};
+
+/* get booking */
+export const fetchBooking = async (id) => {
+  return await apiClient.get(`/booking/${id}`).json();
+};
+
+/* get booking list */
+export const fetchAllBooking = async () => {
+  return await apiClient.get(`/booking`).json();
+};
+
+/* cancel booking */
+export const cancelBooking = async (id) => {
+  return await apiClient.patch(`/booking/cancel/${id}`).json();
+};
 
 /* ROOMS */
 /* create rooms */
