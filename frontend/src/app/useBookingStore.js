@@ -69,7 +69,7 @@ const bookingStore = (set) => ({
     try {
       const res = await cancelBooking(id);
       set((state) => ({
-        bookingList: state.bookingList.map((booking) => {
+        bookingList: state.bookingList.filter((booking) => {
           booking.id !== id;
         }),
       }));

@@ -69,7 +69,7 @@ const receptionistStore = (set) => ({
     try {
       const res = await removeReceptionist(id);
       set((state) => ({
-        receptionist: state.receptionistList.map((receptionist) => {
+        receptionist: state.receptionistList.filter((receptionist) => {
           receptionist.id !== id;
         }),
       }));
