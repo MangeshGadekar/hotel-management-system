@@ -2,6 +2,32 @@ import { apiClient } from "./apiClient";
 
 /* AUTHENTICATION */
 
+/* GUEST */
+/* create guest */
+export const creteGuest = async (payload) => {
+  return await apiClient.post("/guest/create", payload);
+};
+
+/* update guest */
+export const updateGuest = async (id, payload) => {
+  return await apiClient.patch(`/guest/update/${id}`, payload);
+};
+
+/* fetch guest */
+export const fetchGuest = async (id) => {
+  return await apiClient.get(`/guest/${id}`);
+};
+
+/* fetch users list */
+export const fetchAllGuest = async () => {
+  return await apiClient.get(`/guest`);
+};
+
+/* delete guest */
+export const deleteGuest = async (id) => {
+  return await apiClient.delete(`/guest/delete/${id}`);
+};
+
 /* BOOKINGS */
 
 /* ROOMS */
