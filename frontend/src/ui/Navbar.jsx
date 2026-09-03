@@ -124,20 +124,7 @@ const Navbar = () => {
                 </li>
               </ul>
 
-              <div className="flex items-center gap-4">
-                <button className="text-gray-600 hover:text-amber-600 transition-colors relative">
-                  <FaBell className="text-lg" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                    3
-                  </span>
-                </button>
-                <NavLink to="/login">
-                  <button className="bg-amber-600 text-white px-5 py-2 rounded-lg hover:bg-amber-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2 text-sm font-semibold">
-                    <FaUser />
-                    Sign In
-                  </button>
-                </NavLink>
-              </div>
+              
             </div>
 
             <button

@@ -1,51 +1,43 @@
-import apiClinet from './apiClient.js'
+import { apiClient } from "./apiClient";
 
-// Register
-export const register = (payload) => {
-    return apiClinet.post("", payload)
-}
-
-// Login
-export const login = (payload) => {
-    return apiClinet.post("", payload)
-}
+/* AUTHENTICATION */
 
 /* BOOKINGS */
-/* create booking */
-export const createBooking = async (payload) => {
-  return await apiClinet.post(`/booking/create`, payload).json();
-};
-
-/* GUESTS */
-/* create guest */
-export const createGuest = async (payload) => {
-  return await apiClinet.post(`/guest/create`, payload).json();
-};
-
-/* update guest */
-export const patchGuest = async (id, payload) => {
-  return await apiClinet
-    .patch(`/guest/update/${id}`, payload)
-    .json();
-};
-
-/* get guest */
-export const fetchGuest = async (id) => {
-  return await apiClinet.get(`/guest/${id}`).json();
-};
-
-/* delete guest */
-export const deleteGuest = async (id) => {
-  return await apiClinet.delete(`/guest/delete/${id}`).json();
-};
 
 /* ROOMS */
 /* create rooms */
 export const createRoom = async (payload) => {
-  return await apiClinet.post(`/admin/room/create`, payload).json();
+  return await apiClient.post(`/admin/room/create`, payload).json();
 };
 
-// Logout
-export const logout = () => {
-    return apiClinet.post("")
-}
+/* update room */
+export const patchRoom = async (roomNumber, payload) => {
+  return await apiClient
+    .patch(`/admin/room/update/${roomNumber}`, payload)
+    .json();
+};
+
+/* get room */
+export const fetchRoom = async (roomNumber) => {
+  return await apiClient.delete(`/admin/room/${roomNumber}`).json();
+};
+
+/* get all rooms */
+export const fetchAllRooms = async () => {
+  return await apiClient.get(`/admin/room`).json();
+};
+
+/* get type of rooms */
+export const typeOfRooms = async (roomType) => {
+  return await apiClient.get(`/admin/room/type/${roomType}`).json();
+};
+
+/* status of rooms */
+export const statusOfRooms = async (roomStatus) => {
+  return await apiClient.get(`/admin/room/status/${roomStatus}`).json();
+};
+
+/* delete room */
+export const deleteRoom = async (roomNumber) => {
+  return await apiClient.delete(`/admin/room/delete/${roomNumber}`).json();
+};
