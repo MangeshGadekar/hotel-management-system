@@ -13,6 +13,7 @@ import com.athenura.hotel_management_system.common.exception.BookingOverlapExcep
 import com.athenura.hotel_management_system.common.repository.UserRepo;
 import com.athenura.hotel_management_system.guest.entity.Guest;
 import com.athenura.hotel_management_system.guest.repository.GuestRepository;
+import com.athenura.hotel_management_system.notification.service.EmailService;
 import com.athenura.hotel_management_system.room.entity.Room;
 import com.athenura.hotel_management_system.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
+
+    private final EmailService emailService;
 
     private final BookingRepository bookingRepository;
     private final GuestRepository guestRepository;
@@ -87,6 +90,9 @@ public class BookingServiceImpl implements BookingService {
 
         // 7. Save
         Booking savedBooking = bookingRepository.save(booking);
+
+        // send confirmation email to guest
+        emailService.sendBookingConfirmation(savedBooking);
 
         // 8. Convert to response
         return bookingMapper.toResponse(savedBooking);
