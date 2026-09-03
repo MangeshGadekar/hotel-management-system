@@ -176,7 +176,7 @@ export default function Customers() {
       )}
       {showGuestForm && (
   <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
+    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
 
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-slate-800">
