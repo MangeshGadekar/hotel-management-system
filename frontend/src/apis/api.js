@@ -9,7 +9,7 @@ export const creteGuest = async (payload) => {
 };
 
 /* update guest */
-export const updateGuest = async (id, payload) => {
+export const patchGuest = async (id, payload) => {
   return await apiClient.patch(`/guest/update/${id}`, payload);
 };
 
@@ -29,6 +29,8 @@ export const deleteGuest = async (id) => {
 };
 
 /* BOOKINGS */
+
+
 
 /* ROOMS */
 /* create rooms */
