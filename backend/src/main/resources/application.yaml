@@ -16,3 +16,25 @@ spring:
       hibernate:
         format_sql: true
     database-platform: org.hibernate.dialect.MySQLDialect
+
+  data:
+    redis:
+      host: desirable-empirical-throne-30441.db.redis.io
+      port: 10818
+      username: default
+      password: ${REDIS_PASSWORD}
+#      ssl:
+#        enabled: true
+
+brevo:
+  api:
+    key: ${BREVO_API_KEY}
+
+  sender:
+    email:  dalalstavan7@gmail.com
+    name:  Hotel Aatithya
+
+twilio:
+  account-sid: AC758f931cd57c20ffd8412fcd24d0727c
+  auth-token: a12825b464e118d2b1409e11c6b46442
+  phone-number: +17372508034
