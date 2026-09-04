@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import GuestForm from '../../components/forms/GuestForm';
 
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showGuestForm, setShowGuestForm] = useState(false);
 
   const [customers] = useState([
     {
@@ -64,6 +66,12 @@ export default function Customers() {
         </div>
 
         {/* Search */}
+        <button
+          onClick={() => setShowGuestForm(true)}
+          className="px-4 py-2 bg-[#D96B43] text-white rounded-lg text-sm font-semibold"
+        >
+         Add Guest
+        </button>
         <input
           type="text"
           placeholder="Search by name, email, or phone..."
@@ -166,6 +174,28 @@ export default function Customers() {
           </div>
         </div>
       )}
+      {showGuestForm && (
+  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-slate-800">
+          Add Guest
+        </h3>
+
+        <button
+          onClick={() => setShowGuestForm(false)}
+          className="text-slate-500 hover:text-slate-800"
+        >
+          ✕
+        </button>
+      </div>
+
+      <GuestForm />
+
+    </div>
+  </div>
+)}
     </div>
   );
 }

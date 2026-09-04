@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BookingForm from '../../components/forms/BookingForm';
 
 const STATUS_BADGES = {
   Confirmed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -10,6 +11,7 @@ const STATUS_BADGES = {
 export default function Bookings() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showBookingForm, setShowBookingForm] = useState(false);
 
   const [bookings, setBookings] = useState([
     { id: 'HM10254', guestName: 'Rahul Sharma', room: 'D101 (Deluxe)', checkIn: '2026-05-12', checkOut: '2026-05-14', amount: '₹11,200', status: 'Confirmed' },
@@ -43,7 +45,14 @@ export default function Bookings() {
         </div>
 
         {/* Search & Filter Controls */}
+
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowBookingForm(true)}
+            className="px-4 py-2 bg-[#D96B43] text-white rounded-lg text-sm font-semibold"
+          >
+            Add Booking
+          </button>
           <input
             type="text"
             placeholder="Search by ID or Name..."
@@ -113,6 +122,28 @@ export default function Bookings() {
           </table>
         </div>
       </div>
+      {showBookingForm && (
+  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
+
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-slate-800">
+          Add Booking
+        </h3>
+
+        <button
+          onClick={() => setShowBookingForm(false)}
+          className="text-slate-500 hover:text-slate-800"
+        >
+          ✕
+        </button>
+      </div>
+
+      <BookingForm />
+
+    </div>
+  </div>
+)}
     </div>
   );
 }
