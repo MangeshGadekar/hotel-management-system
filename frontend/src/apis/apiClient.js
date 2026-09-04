@@ -10,11 +10,11 @@ export const apiClient = ky.create({
     const start = performance.now();
     const response = await fetch(request, init);
     const duration = performance.now() - start;
-   
+
     console.log(
-      `${request.method} ${request.url} - ${response.status} (${Math.round(duration)}ms)`,
+        `${request.method} ${request.url} - ${response.status} (${Math.round(duration)}ms)`,
     );
-    
+
     return response;
   },
 });

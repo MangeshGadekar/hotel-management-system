@@ -9,13 +9,13 @@ import { apiClient } from "./apiClient";
 /* =================================================== */
 /* create receptionist */
 export const createReceptionist = async (payload) => {
-  return await apiClient.post(`/admin/receptionist/create`, payload).json();
+  return await apiClient.post(`/admin/receptionist/create`, { json : payload}).json();
 };
 
 /* update receptionist */
 export const patchReceptionist = async (id, payload) => {
   return await apiClient
-    .patch(`/admin/receptionist/update/${id}`, payload)
+    .patch(`/admin/receptionist/update/${id}`, { json : payload })
     .json();
 };
 
@@ -38,13 +38,13 @@ export const removeReceptionist = async (id) => {
 /* GUEST */
 /* =================================================== */
 /* create guest */
-export const creteGuest = async (payload) => {
-  return await apiClient.post("/guest/create", payload).json();
+export const createGuest = async (payload) => {
+  return await apiClient.post("/guest/create", {json : payload}).json();
 };
 
 /* update guest */
 export const patchGuest = async (id, payload) => {
-  return await apiClient.patch(`/guest/update/${id}`, payload).json();
+  return await apiClient.patch(`/guest/update/${id}`, { json : payload}).json();
 };
 
 /* fetch guest */
@@ -67,12 +67,12 @@ export const deleteGuest = async (id) => {
 /* =================================================== */
 /* Create booking */
 export const createBooking = async (payload) => {
-  return await apiClient.post(`/booking/create`, payload).json();
+  return await apiClient.post(`/booking/create`, { json : payload}).json();
 };
 
 /* Update booking */
 export const patchBooking = async (id, payload) => {
-  return await apiClient.patch(`/booking/update/${id}`, payload).json();
+  return await apiClient.patch(`/booking/update/${id}`, {json : payload}).json();
 };
 
 /* get booking */
@@ -86,8 +86,8 @@ export const fetchAllBooking = async () => {
 };
 
 /* cancel booking */
-export const cancelBooking = async (id) => {
-  return await apiClient.patch(`/booking/cancel/${id}`).json();
+export const cancelBooking = async (id, payload) => {
+  return await apiClient.patch(`/booking/cancel/${id}`,{ json:  payload }).json();
 };
 
 /* =================================================== */
@@ -95,13 +95,13 @@ export const cancelBooking = async (id) => {
 /* =================================================== */
 /* create rooms */
 export const createRoom = async (payload) => {
-  return await apiClient.post(`/admin/room/create`, payload).json();
+  return await apiClient.post(`/admin/room/create`, {json : payload}).json();
 };
 
 /* update room */
 export const patchRoom = async (roomNumber, payload) => {
   return await apiClient
-    .patch(`/admin/room/update/${roomNumber}`, payload)
+    .patch(`/admin/room/update/${roomNumber}`, {json : payload})
     .json();
 };
 

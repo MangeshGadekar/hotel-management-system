@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import {
-  creteGuest,
+  createGuest,
   deleteGuest,
   fetchAllGuest,
   fetchGuest,
@@ -13,7 +13,7 @@ const guestStore = (set) => ({
   guest: {},
   addGuest: async (data) => {
     try {
-      const res = await creteGuest(data);
+      const res = await createGuest(data);
       const _guest = res;
       set((state) => ({
         guestList: [_guest, state.guestList],
