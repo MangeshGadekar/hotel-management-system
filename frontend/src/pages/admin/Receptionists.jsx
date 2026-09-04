@@ -1,46 +1,70 @@
 import { useState } from 'react';
 
+const INITIAL_STAFF = [
+  { id: 'REC-101', name: 'Ananya Roy', email: 'ananya@hotelparadise.com', phone: '+91 98765 43210', shift: 'Morning (06:00 - 14:00)', status: 'Active' },
+  { id: 'REC-102', name: 'Vikram Joshi', email: 'vikram@hotelparadise.com', phone: '+91 98765 43211', shift: 'Evening (14:00 - 22:00)', status: 'Active' },
+  { id: 'REC-103', name: 'Siddharth Rao', email: 'siddharth@hotelparadise.com', phone: '+91 98765 43212', shift: 'Night (22:00 - 06:00)', status: 'Inactive' },
+];
+
+const INITIAL_FORM_STATE = {
+  name: '',
+  email: '',
+  phone: '',
+  shift: 'Morning (06:00 - 14:00)',
+  password: '',
+};
+
 export default function Receptionists() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [staffList, setStaffList] = useState([
-    { id: 'REC-101', name: 'Ananya Roy', email: 'ananya@hotelparadise.com', phone: '+91 98765 43210', shift: 'Morning (06:00 - 14:00)', status: 'Active' },
-    { id: 'REC-102', name: 'Vikram Joshi', email: 'vikram@hotelparadise.com', phone: '+91 98765 43211', shift: 'Evening (14:00 - 22:00)', status: 'Active' },
-    { id: 'REC-103', name: 'Siddharth Rao', email: 'siddharth@hotelparadise.com', phone: '+91 98765 43212', shift: 'Night (22:00 - 06:00)', status: 'Inactive' },
-  ]);
-
-  const [newStaff, setNewStaff] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    shift: 'Morning (06:00 - 14:00)',
-    password: '',
-  });
+  const [staffList, setStaffList] = useState(INITIAL_STAFF);
+  const [newStaff, setNewStaff] = useState(INITIAL_FORM_STATE);
 
   const handleAddStaff = (e) => {
     e.preventDefault();
-    if (!newStaff.name || !newStaff.email) return;
+    if (!newStaff.name.trim() || !newStaff.email.trim()) return;
 
-    setStaffList([
-      ...staffList,
-      {
-        id: `REC-${101 + staffList.length}`,
-        ...newStaff,
+    setStaffList((prevStaff) => {
+      // Find maximum existing numeric ID to prevent duplicate keys after deletions
+      const lastIdNum = prevStaff.reduce((max, s) => {
+        const num = parseInt(s.id.replace('REC-', ''), 10);
+        return !isNaN(num) && num > max ? num : max;
+      }, 100);
+
+      const nextStaffMember = {
+        id: `REC-${lastIdNum + 1}`,
+        name: newStaff.name.trim(),
+        email: newStaff.email.trim(),
+        phone: newStaff.phone.trim() || 'N/A',
+        shift: newStaff.shift,
         status: 'Active',
-      },
-    ]);
+      };
 
-    setNewStaff({ name: '', email: '', phone: '', shift: 'Morning (06:00 - 14:00)', password: '' });
+      return [...prevStaff, nextStaffMember];
+    });
+
+    setNewStaff(INITIAL_FORM_STATE);
     setIsModalOpen(false);
   };
 
   const toggleStatus = (id) => {
-    setStaffList(
-      staffList.map((s) => (s.id === id ? { ...s, status: s.status === 'Active' ? 'Inactive' : 'Active' } : s))
+    setStaffList((prevStaff) =>
+      prevStaff.map((staff) =>
+        staff.id === id
+          ? { ...staff, status: staff.status === 'Active' ? 'Inactive' : 'Active' }
+          : staff
+      )
     );
   };
 
   const handleDelete = (id) => {
-    setStaffList(staffList.filter((s) => s.id !== id));
+    if (window.confirm('Are you sure you want to remove this receptionist account?')) {
+      setStaffList((prevStaff) => prevStaff.filter((staff) => staff.id !== id));
+    }
+  };
+
+  const handleModalClose = () => {
+    setNewStaff(INITIAL_FORM_STATE);
+    setIsModalOpen(false);
   };
 
   return (
@@ -74,44 +98,52 @@ export default function Receptionists() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {staffList.map((staff) => (
-                <tr key={staff.id} className="hover:bg-slate-50/60 transition">
-                  <td className="px-6 py-4 font-semibold text-slate-900">{staff.id}</td>
-                  <td className="px-6 py-4 font-medium text-slate-800">{staff.name}</td>
-                  <td className="px-6 py-4">
-                    <div className="text-xs space-y-0.5">
-                      <p className="text-slate-800">{staff.email}</p>
-                      <p className="text-slate-400">{staff.phone}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-xs font-medium text-slate-700">{staff.shift}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
-                        staff.status === 'Active'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
-                      }`}
-                    >
-                      {staff.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-3 text-xs">
-                    <button
-                      onClick={() => toggleStatus(staff.id)}
-                      className="text-slate-600 hover:text-slate-900 font-medium"
-                    >
-                      {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(staff.id)}
-                      className="text-rose-600 hover:text-rose-800 font-medium"
-                    >
-                      Remove
-                    </button>
+              {staffList.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-8 text-center text-slate-400 text-sm">
+                    No receptionist accounts found. Click "+ Add New Receptionist" to create one.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                staffList.map((staff) => (
+                  <tr key={staff.id} className="hover:bg-slate-50/60 transition">
+                    <td className="px-6 py-4 font-semibold text-slate-900">{staff.id}</td>
+                    <td className="px-6 py-4 font-medium text-slate-800">{staff.name}</td>
+                    <td className="px-6 py-4">
+                      <div className="text-xs space-y-0.5">
+                        <p className="text-slate-800 font-medium">{staff.email}</p>
+                        <p className="text-slate-400">{staff.phone}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-medium text-slate-700">{staff.shift}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
+                          staff.status === 'Active'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}
+                      >
+                        {staff.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-2 text-xs">
+                      <button
+                        onClick={() => toggleStatus(staff.id)}
+                        className="px-2.5 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium transition"
+                      >
+                        {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(staff.id)}
+                        className="px-2.5 py-1 rounded-md border border-rose-100 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium transition"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -178,15 +210,18 @@ export default function Receptionists() {
                   required
                 />
               </div>
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+                  onClick={handleModalClose}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium text-xs transition"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white rounded-lg font-semibold">
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white rounded-lg font-semibold text-xs shadow-xs transition"
+                >
                   Create Account
                 </button>
               </div>
