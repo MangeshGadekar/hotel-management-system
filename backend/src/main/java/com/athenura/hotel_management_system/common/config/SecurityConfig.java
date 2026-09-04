@@ -29,6 +29,7 @@ public class SecurityConfig {
                         .requestMatchers("/admin/**").permitAll()
                         .requestMatchers("/guest/**").permitAll()
                         .requestMatchers("/booking/**").permitAll()
+                        .requestMatchers("/receptionist/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

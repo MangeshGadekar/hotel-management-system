@@ -8,10 +8,72 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(BookingNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleBookingNotFound(
+            BookingNotFoundException ex) {
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of(
+                        "status", 404,
+                        "message", ex.getMessage(),
+                        "timestamp", LocalDateTime.now()
+                ));
+    }
+
+    @ExceptionHandler(InvalidBookingStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidBookingStatus(
+            InvalidBookingStatusException ex) {
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "status", 409,
+                        "message", ex.getMessage(),
+                        "timestamp", LocalDateTime.now()
+                ));
+    }
+
+    @ExceptionHandler(CheckInDateException.class)
+    public ResponseEntity<Map<String, Object>> handleCheckInDate(
+            CheckInDateException ex) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "status", 400,
+                        "message", ex.getMessage(),
+                        "timestamp", LocalDateTime.now()
+                ));
+    }
+
+    @ExceptionHandler(OtpExpiredException.class)
+    public ResponseEntity<Map<String, Object>> handleOtpExpired(
+            OtpExpiredException ex) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "status", 400,
+                        "message", ex.getMessage(),
+                        "timestamp", LocalDateTime.now()
+                ));
+    }
+
+    @ExceptionHandler(InvalidOtpException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidOtp(
+            InvalidOtpException ex) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "status", 400,
+                        "message", ex.getMessage(),
+                        "timestamp", LocalDateTime.now()
+                ));
+    }
+
 
     @ExceptionHandler(RoomNotFoundException.class)
     public ResponseEntity<ApiError> handleRoomNotFoundException(RoomNotFoundException ex, HttpServletRequest request)
