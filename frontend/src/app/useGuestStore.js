@@ -14,7 +14,7 @@ const guestStore = (set) => ({
   addGuest: async (data) => {
     try {
       const res = await createGuest(data);
-      const _guest = res;
+      const _guest = await res;
       set((state) => ({
         guestList: [_guest, state.guestList],
       }));
@@ -52,15 +52,15 @@ const guestStore = (set) => ({
       return error;
     }
   },
-  getGuestList: async (id) => {
+  getGuestList: async () => {
     try {
-      const res = await fetchAllGuest(id);
-      const _guestList = res;
+      const res = await fetchAllGuest();
+      const _guestList = await res;
       set({
         guestList: _guestList,
       });
       console.log("fetch guest", _guestList);
-      return res;
+      return _guestList;
     } catch (error) {
       return error;
     }
