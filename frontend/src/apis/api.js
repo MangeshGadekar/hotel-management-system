@@ -1,8 +1,42 @@
 import { apiClient } from "./apiClient";
 
+/* =================================================== */
 /* AUTHENTICATION */
+/* =================================================== */
 
+/* =================================================== */
+/* RECEPTIONIST */
+/* =================================================== */
+/* create receptionist */
+export const createReceptionist = async (payload) => {
+  return await apiClient.post(`/admin/receptionist/create`, payload).json();
+};
+
+/* update receptionist */
+export const patchReceptionist = async (id, payload) => {
+  return await apiClient
+    .patch(`/admin/receptionist/update/${id}`, payload)
+    .json();
+};
+
+/* fetch receptionist */
+export const fetchReceptionist = async (id) => {
+  return await apiClient.get(`/admin/receptionist/${id}`).json();
+};
+
+/* fetch all receptionist */
+export const fetchAllReceptionist = async () => {
+  return await apiClient.get(`/admin/receptionist`).json();
+};
+
+/* delete receptionist */
+export const removeReceptionist = async (id) => {
+  return await apiClient.delete(`/admin/receptionist/delete/${id}`).json();
+};
+
+/* =================================================== */
 /* GUEST */
+/* =================================================== */
 /* create guest */
 export const creteGuest = async (payload) => {
   return await apiClient.post("/guest/create", payload).json();
@@ -28,7 +62,9 @@ export const deleteGuest = async (id) => {
   return await apiClient.delete(`/guest/delete/${id}`).json();
 };
 
+/* =================================================== */
 /* BOOKINGS */
+/* =================================================== */
 /* Create booking */
 export const createBooking = async (payload) => {
   return await apiClient.post(`/booking/create`, payload).json();
@@ -54,7 +90,9 @@ export const cancelBooking = async (id) => {
   return await apiClient.patch(`/booking/cancel/${id}`).json();
 };
 
+/* =================================================== */
 /* ROOMS */
+/* =================================================== */
 /* create rooms */
 export const createRoom = async (payload) => {
   return await apiClient.post(`/admin/room/create`, payload).json();
