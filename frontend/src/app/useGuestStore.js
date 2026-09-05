@@ -16,7 +16,7 @@ const guestStore = (set) => ({
       const res = await createGuest(data);
       const _guest = await res;
       set((state) => ({
-        guestList: [_guest, state.guestList],
+        guestList: [_guest, ...state.guestList],
       }));
       console.log("guest create :", res);
       return res;

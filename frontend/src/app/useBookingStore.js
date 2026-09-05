@@ -15,7 +15,7 @@ const bookingStore = (set) => ({
       const res = await createBooking(data);
       const _booking = res;
       set((state) => ({
-        bookingList: [_booking, state.bookingList],
+        bookingList: [_booking, ...state.bookingList],
       }));
       console.log("_booking", _booking);
       return res;

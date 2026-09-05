@@ -16,7 +16,7 @@ const receptionistStore = (set) => ({
       const res = await createReceptionist(data);
       const _receptionist = res;
       set((state) => ({
-        receptionist: [_receptionist, state.receptionist],
+        receptionist: [_receptionist, ...state.receptionist],
       }));
       console.log("_receptionist", _receptionist);
       return res;
