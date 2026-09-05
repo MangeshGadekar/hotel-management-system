@@ -1,17 +1,19 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { lazy } from "react";
+
 import AdminLayout from "../components/layout/AdminLayout";
 import ReceptionistLayout from "../components/layout/ReceptionistLayout";
 
-import Dashboard from "../pages/admin/Dashboard";
-import AdminRoom from '../pages/admin/Rooms';
-import Receptionists from "../pages/admin/Receptionists";
-import Bookings from "../pages/admin/Bookings";
-import Customers from "../pages/admin/Customers";
-import Payments from "../pages/admin/Payments";
-import Coupons from "../pages/admin/Coupons";
-import Reports from "../pages/admin/Reports";
-import Settings from "../pages/admin/Settings";
-import { lazy } from "react";
+// admin
+const Customers = lazy(() => import("../pages/admin/Customers"));
+const Dashboard = lazy(() => import("../pages/admin/Dashboard"));
+const AdminRoom = lazy(() => import("../pages/admin/Rooms"));
+const Receptionists = lazy(() => import("../pages/admin/Receptionists"));
+const Bookings = lazy(() => import("../pages/admin/Bookings"));
+const Payments = lazy(() => import("../pages/admin/Payments"));
+const Coupons = lazy(() => import("../pages/admin/Coupons"));
+const Reports = lazy(() => import("../pages/admin/Reports"));
+const Settings = lazy(() => import("../pages/admin/Settings"));
 
 // Auth Pages
 const Register = lazy(() => import("../pages/auth/Register"));

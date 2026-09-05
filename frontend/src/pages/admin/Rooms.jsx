@@ -1,6 +1,6 @@
 import { useState } from "react";
 import roomsData from "../../config/Room.json";
-import RoomForm from "../../components/forms/RoomForm"; // Adjust path as needed
+import RoomForm from "../../components/forms/RoomForm";
 
 const STATUS_BADGES = {
   Available: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -11,7 +11,7 @@ const STATUS_BADGES = {
 
 // Helper function to format price
 const formatPrice = (price) => {
-  return `₹${(price * 15).toLocaleString()}`; // Converting USD to INR (approximate)
+  return `₹${(price * 15).toLocaleString()}`;
 };
 
 export default function Rooms() {
