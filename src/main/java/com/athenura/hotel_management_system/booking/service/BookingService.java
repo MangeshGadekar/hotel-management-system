@@ -16,7 +16,4 @@ public interface BookingService {
     List<BookingResponse> getAllBookings();
 
     String cancelBooking(Long id);
-
-    // Guest साठी स्वतःच्या बुकिंग्स मिळवण्याची पद्धत
-    List<BookingResponse> getBookingsByUserEmail(String email);
 }

@@ -15,20 +15,20 @@ public class BookingResponse {
 
     private Long id;
 
-    // Guest Details
+
     private Long guestId;
     private String guestName;
 
-    // Room Details
+
     private Long roomId;
     private String roomNumber;
     private String roomType;
 
-    // Receptionist Details (Null for customer bookings)
+
     private Long receptionistId;
     private String receptionistName;
 
-    // Booking Details
+
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
 

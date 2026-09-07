@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class RoomMapper {
 
-    // RoomRequest to Room entity
+
     public Room toEntity(RoomRequest roomRequest)
     {
         return Room.builder()
@@ -21,7 +21,7 @@ public class RoomMapper {
             .build();
     }
 
-    // Room entity to RoomResponse
+
     public RoomResponse toResponse(Room room)
     {
         return RoomResponse.builder()

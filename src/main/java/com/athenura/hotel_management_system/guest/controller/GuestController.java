@@ -19,13 +19,13 @@ public class GuestController {
 
     private final GuestService guestService;
 
-    // Guest Views Their Own Profile
+
     @GetMapping("/my-profile")
     public ResponseEntity<GuestResponse> getMyProfile(@AuthenticationPrincipal Users loggedInUser) {
         return ResponseEntity.ok(guestService.getGuestByEmail(loggedInUser.getEmail()));
     }
 
-    // Guest Updates Their Own Profile
+
     @PatchMapping("/update-profile")
     public ResponseEntity<GuestResponse> updateMyProfile(
             @AuthenticationPrincipal Users loggedInUser,
@@ -33,31 +33,30 @@ public class GuestController {
         return ResponseEntity.ok(guestService.updateGuestByEmail(loggedInUser.getEmail(), request));
     }
 
-    // Admin/Receptionist Register Guest
+
     @PostMapping("/create")
     public ResponseEntity<GuestResponse> createGuest(@RequestBody GuestRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(guestService.createGuest(request));
     }
 
-    // Admin/Receptionist View All Guests
     @GetMapping
     public ResponseEntity<List<GuestResponse>> getAllGuests() {
         return ResponseEntity.ok(guestService.getAllGuests());
     }
 
-    // Admin/Receptionist View Guest By ID
+
     @GetMapping("/{id}")
     public ResponseEntity<GuestResponse> getGuestById(@PathVariable Long id) {
         return ResponseEntity.ok(guestService.getGuestById(id));
     }
 
-    // Admin/Receptionist Update Guest
+
     @PatchMapping("/update/{id}")
     public ResponseEntity<GuestResponse> updateGuest(@PathVariable Long id, @RequestBody GuestRequest request) {
         return ResponseEntity.ok(guestService.updateGuest(id, request));
     }
 
-    // Admin Delete Guest
+
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deleteGuest(@PathVariable Long id) {
         return ResponseEntity.ok(guestService.deleteGuest(id));
