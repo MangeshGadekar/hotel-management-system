@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/Hotel_Managment
     username: root
-    password: "root"
+    password: Nitin@2004"
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -38,3 +38,8 @@ twilio:
   account-sid: AC758f931cd57c20ffd8412fcd24d0727c
   auth-token: a12825b464e118d2b1409e11c6b46442
   phone-number: +17372508034
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:Hotel-management}
+  api-key: ${CLOUDINARY_API_KEY:5fd6054c-ace0-42bc-81b5-78fd1a0055b1}
+  api-secret: ${CLOUDINARY_API_SECRET:3057718a471dc130d88611b105aa6152e8e61e03fb629d0604476a0e13d8b29c}

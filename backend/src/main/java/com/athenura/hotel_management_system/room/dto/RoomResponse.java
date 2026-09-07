@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,4 +17,6 @@ public class RoomResponse {
     private BigDecimal pricePerNight;
     private Integer capacity;
     private RoomStatus roomStatus;
+    private List<String> images;
 }
+
