@@ -22,26 +22,24 @@ export default function Rooms() {
 
     // Get the fetch function from store
     const getRoomsList = useRoomStore((state) => state.getRoomsList);
-    console.log("rooms",rooms);
     // Fetch rooms on component mount
     useEffect(() => {
         const fetchRooms = async () => {
             try {
                 setLoading(true);
                 const fetchedRooms = await getRoomsList();
+                console.log("fetchedRooms",fetchedRooms);
 
                 // Format the fetched rooms to match the expected structure
                 const formattedRooms = fetchedRooms.map((room) => ({
-                    number: room.number || `R${String(room.id).padStart(3, "0")}`,
-                    type: room.type || room.name,
-                    price: formatPrice(room.price),
+                    number: room.roomNumber || `R${String(room.id).padStart(3, "0")}`,
+                    type: room.roomType || room.name,
+                    price: formatPrice(room.pricePerNight),
                     capacity: `${room.capacity} Guests`,
-                    status: room.isAvailable ? "Available" : room.status || "Occupied",
+                    status: room.roomStatus ? "Available" : room.status || "Occupied",
                     amenities: room.amenities || ['Wi-Fi', 'AC', 'TV'],
-                    originalData: room,
                     id: room.id,
                 }));
-
                 setRooms(formattedRooms);
                 setError(null);
             } catch (err) {
