@@ -35,4 +35,14 @@ public class BookingResponse {
     private BigDecimal totalAmount;
 
     private BookingStatus bookingStatus;
+
+    //payment
+
+    private String receiptNumber;
+    private BigDecimal amountPaid;
+    private BigDecimal remainingBalance;
+    private String paymentType;
+    private String paymentMethod;
+    private String receiptType;
+    private PaymentDTO.RazorpayOrderResponse razorpayOrder;
 }
