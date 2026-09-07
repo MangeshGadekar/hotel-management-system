@@ -72,7 +72,7 @@ const RoomForm = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMessage('');
     
@@ -93,7 +93,7 @@ const RoomForm = () => {
 
     try {
       // Add room using zustand store
-      addRoom(roomData);
+      await addRoom(roomData);
       
       setSuccessMessage(`Room ${formData.roomNumber} added successfully!`);
       

@@ -15,7 +15,7 @@ import {
 
 import useGuestStore from "../../app/useGuestStore";
 
-const GuestForm = () => {
+const GuestForm = ({ onSuccess }) => {
   const addGuest = useGuestStore((state) => state.addGuest);
 
   const [formData, setFormData] = useState({
@@ -50,6 +50,25 @@ const GuestForm = () => {
     try {
       const result = await addGuest(formData);
       console.log("Guest created:", result);
+
+      // Reset form fields after successful submission
+      setFormData({
+        firstName: "",
+        lastName: "",
+        phone: "",
+        email: "",
+        idProofType: "",
+        idProofNumber: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+      });
+
+      // Notify parent (e.g. modal) that submission succeeded, so it can close
+      if (onSuccess) {
+        onSuccess(result);
+      }
     } catch (error) {
       console.error("Failed to create guest:", error);
     } finally {
