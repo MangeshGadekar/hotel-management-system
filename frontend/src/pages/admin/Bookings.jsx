@@ -33,7 +33,7 @@ export default function Bookings() {
   const [error, setError] = useState(null);
 
   const getBookingList = useBookingStore((state) => state.getAllBooking);
-  const updateBookingStatus = useBookingStore((state) => state.updateBookingStatus);
+  const updateBookingStatus = useBookingStore((state) => state.updateBooking);
 
   console.log("allBookings", allBookings);
 
@@ -69,6 +69,17 @@ export default function Bookings() {
     } catch (err) {
       console.error("Error updating status:", err);
       setError("Failed to update booking status. Please try again.");
+    }
+  };
+
+  const refreshBookings = async () => {
+    try {
+      const bookings = await getBookingList();
+      setAllBookings(bookings);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching bookings:", err);
+      setError("Failed to load bookings. Please try again.");
     }
   };
 
@@ -195,22 +206,30 @@ export default function Bookings() {
         </div>
       </div>
 
-      {/* Booking Form Modal */}
+      {/* Full Screen Booking Form Modal with Scroll */}
       {showBookingForm && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-800">
-                Add Booking
-              </h3>
-              <button
-                onClick={() => setShowBookingForm(false)}
-                className="text-slate-500 hover:text-slate-800"
-              >
-                ✕
-              </button>
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowBookingForm(false);
+            }
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            {/* Modal Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <BookingForm 
+                isFullScreen={true}
+                onSuccess={() => {
+                  refreshBookings();
+                  setShowBookingForm(false);
+                }}
+                onCancel={() => setShowBookingForm(false)}
+                showSummary={true}
+                submitButtonText="Create Booking"
+              />
             </div>
-            <BookingForm />
           </div>
         </div>
       )}

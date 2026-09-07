@@ -22,6 +22,7 @@ export default function Rooms() {
 
     // Get the fetch function from store
     const getRoomsList = useRoomStore((state) => state.getRoomsList);
+    console.log("rooms",rooms);
     // Fetch rooms on component mount
     useEffect(() => {
         const fetchRooms = async () => {
