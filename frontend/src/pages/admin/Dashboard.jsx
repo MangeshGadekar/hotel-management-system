@@ -1,4 +1,5 @@
 import StatCard from '../../components/common/StatCard';
+import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
   const stats = [
@@ -72,7 +73,11 @@ export default function Dashboard() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-800">Recent Bookings</h3>
-          <button className="text-xs font-semibold text-[#D96B43] hover:underline">View All</button>
+          <button className="text-xs font-semibold text-[#D96B43] hover:underline">
+              <Link to="/admin/bookings">
+                View All
+              </Link>
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
