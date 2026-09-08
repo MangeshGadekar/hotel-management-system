@@ -78,7 +78,6 @@ const roomStore = (set) => ({
       return error;
     }
   },
-
   deleteRoom: async (roomNumber) => {
     try {
       const res = await deleteRoom(roomNumber);
