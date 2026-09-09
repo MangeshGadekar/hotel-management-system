@@ -15,4 +15,5 @@ public class ReceptionistResponse {
     private String username;
     private String email;
     private Role role;
+    private String secretKey;
 }

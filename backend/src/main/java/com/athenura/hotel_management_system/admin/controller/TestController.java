@@ -10,7 +10,7 @@ public class TestController {
     @GetMapping("/check")
     public String test(){
         System.out.println("test");
-    return "test";
+        return "test";
     }
 
 }

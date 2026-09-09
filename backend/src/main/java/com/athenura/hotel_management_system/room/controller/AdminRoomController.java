@@ -25,7 +25,7 @@ public class AdminRoomController {
         return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(roomRequest));
     }
 
-    // partial update of room details
+
     @PatchMapping("/update/{roomNumber}")
     public ResponseEntity<RoomResponse> updateRoom(
             @PathVariable String roomNumber,

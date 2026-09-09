@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -22,16 +23,27 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public ReceptionistResponse createReceptionist(ReceptionistRequest request){
+    public ReceptionistResponse createReceptionist(ReceptionistRequest request) {
 
         if (userRepo.existsByEmail(request.getEmail()))
             throw new RuntimeException("Email already exists");
 
-        if (userRepo.existsByUsername(request.getUsername()))
+        if (request.getUsername() != null && userRepo.existsByUsername(request.getUsername()))
             throw new RuntimeException("Username already exists");
 
         Users receptionist = receptionistMapper.toEntity(request);
-        receptionist.setPassword(passwordEncoder.encode(receptionist.getPassword()));
+
+        receptionist.setRole(Role.RECEPTIONIST);
+
+        String generatedSecretKey = UUID.randomUUID().toString().substring(0, 8);
+        receptionist.setSecretKey(generatedSecretKey);
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            receptionist.setPassword(passwordEncoder.encode(request.getPassword()));
+        } else {
+            receptionist.setPassword("PENDING_REGISTRATION");
+        }
+
         Users savedReceptionist = userRepo.save(receptionist);
 
         return receptionistMapper.toResponse(savedReceptionist);
@@ -42,7 +54,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
         Users receptionist = userRepo.findByIdAndRole(id, Role.RECEPTIONIST)
                 .orElseThrow(() -> new RuntimeException("Receptionist not found"));
 
-        // Email validation
         if (request.getEmail() != null
                 && !receptionist.getEmail().equals(request.getEmail())
                 && userRepo.existsByEmail(request.getEmail())) {
@@ -50,7 +61,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             throw new RuntimeException("Email already exists");
         }
 
-        // Username validation
         if (request.getUsername() != null
                 && !receptionist.getUsername().equals(request.getUsername())
                 && userRepo.existsByUsername(request.getUsername())) {
@@ -58,7 +68,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             throw new RuntimeException("Username already exists");
         }
 
-        // Partial Update
         if (request.getFirstName() != null) {
             receptionist.setFirstName(request.getFirstName());
         }
@@ -75,7 +84,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             receptionist.setEmail(request.getEmail());
         }
 
-        if (request.getPassword() != null) {
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
             receptionist.setPassword(
                     passwordEncoder.encode(request.getPassword())
             );
@@ -90,16 +99,16 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     public String deleteReceptionist(Long id) {
 
         Users receptionist = userRepo.findByIdAndRole(id, Role.RECEPTIONIST)
-                .orElseThrow(()-> new RuntimeException("Receptionist not Found"));
+                .orElseThrow(() -> new RuntimeException("Receptionist not Found"));
 
         userRepo.delete(receptionist);
-        return "Receptionist with id "+ id +"is Deleted";
+        return "Receptionist with id " + id + " is Deleted";
     }
 
     @Override
     public ReceptionistResponse getReceptionistById(Long id) {
         Users receptionist = userRepo.findByIdAndRole(id, Role.RECEPTIONIST)
-                .orElseThrow(()-> new RuntimeException("Receptionist not Found"));
+                .orElseThrow(() -> new RuntimeException("Receptionist not Found"));
 
         return receptionistMapper.toResponse(receptionist);
     }
@@ -110,7 +119,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
         return userRepo.findAllByRole(Role.RECEPTIONIST)
                 .stream()
                 .map(receptionistMapper::toResponse)
-//                .map(user -> receptionistMapper.toResponse(user))
                 .toList();
     }
 }

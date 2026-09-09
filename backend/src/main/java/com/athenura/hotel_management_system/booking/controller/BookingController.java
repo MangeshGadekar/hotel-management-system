@@ -17,7 +17,7 @@ public class BookingController {
 
     private final BookingService bookingService;
 
-    // Create Booking
+
     @PostMapping("/create")
     public ResponseEntity<BookingResponse> createBooking(
             @RequestBody BookingRequest request) {
@@ -26,7 +26,6 @@ public class BookingController {
                 .body(bookingService.createBooking(request));
     }
 
-    // Update Booking
     @PatchMapping("/update/{id}")
     public ResponseEntity<BookingResponse> updateBooking(
             @PathVariable Long id,
@@ -37,7 +36,7 @@ public class BookingController {
         );
     }
 
-    // Get Booking By ID
+
     @GetMapping("/{id}")
     public ResponseEntity<BookingResponse> getBookingById(
             @PathVariable Long id) {
@@ -47,7 +46,7 @@ public class BookingController {
         );
     }
 
-    // Get All Bookings
+
     @GetMapping
     public ResponseEntity<List<BookingResponse>> getAllBookings() {
 
@@ -56,7 +55,7 @@ public class BookingController {
         );
     }
 
-    // Cancel Booking
+
     @PatchMapping("/cancel/{id}")
     public ResponseEntity<String> cancelBooking(
             @PathVariable Long id) {

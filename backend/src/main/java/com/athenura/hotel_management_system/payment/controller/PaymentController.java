@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
@@ -29,10 +28,9 @@ public class PaymentController {
             @PathVariable String receiptNumber)
     {
         return ResponseEntity.ok(paymentService.getReceiptByNumber(receiptNumber));
-
     }
 
-    @GetMapping("booking/{bookingId}")
+    @GetMapping("/booking/{bookingId}")
     public ResponseEntity<List<PaymentDTO.ReceiptResponse>> getPaymentsByBookId(
             @PathVariable Long bookingId)
     {
@@ -40,18 +38,17 @@ public class PaymentController {
     }
 
     @PostMapping("/razorpay/order")
-    public ResponseEntity<PaymentDTO.RazorpayOrderResponse> createRazorpayOrder(@RequestParam Long bookingId,
-                                                                                @RequestParam(defaultValue = "FULL") String paymentType){
+    public ResponseEntity<PaymentDTO.RazorpayOrderResponse> createRazorpayOrder(
+            @RequestParam Long bookingId,
+            @RequestParam(defaultValue = "FULL") String paymentType)
+    {
         return ResponseEntity.ok(paymentService.createRazorpayOrder(bookingId, paymentType));
     }
 
-    @PostMapping("razorpay/verify")
+    @PostMapping("/razorpay/verify")
     public ResponseEntity<PaymentDTO.ReceiptResponse> verifyRazorpayPayment(
-            @RequestBody PaymentDTO.RazorpayVerifyRequest request
-    ){
-        return ResponseEntity.ok(paymentService.verifyRazorpayPayment(request
-        ));
+            @RequestBody PaymentDTO.RazorpayVerifyRequest request)
+    {
+        return ResponseEntity.ok(paymentService.verifyRazorpayPayment(request));
     }
-
-
 }
