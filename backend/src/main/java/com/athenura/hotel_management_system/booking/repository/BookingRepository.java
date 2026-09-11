@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    // for creating a new booking
+
     @Query("""
         SELECT COUNT(b) > 0
         FROM Booking b

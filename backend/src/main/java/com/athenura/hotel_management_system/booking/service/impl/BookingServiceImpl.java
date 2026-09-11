@@ -88,38 +88,8 @@ public class BookingServiceImpl implements BookingService {
         // 7. Save
         Booking savedBooking = bookingRepository.save(booking);
 
-        // 8. Process payments
-        String payType = request.getPaymentType() != null ? request.getPaymentType() : "FULL";
-        String payMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : "CASH";
-
-        // Guest paying via Razorpay
-        if ("RAZORPAY".equalsIgnoreCase(payMethod)) {
-            PaymentDTO.RazorpayOrderResponse razorpayOrder = paymentService.createRazorpayOrder(
-                    savedBooking.getId(),
-                    payType
-            );
-
-            BookingResponse response = bookingMapper.toResponse(savedBooking);
-            response.setPaymentMethod("RAZORPAY");
-            response.setPaymentType(payType);
-            response.setAmountPaid(BigDecimal.ZERO);
-            response.setRemainingBalance(savedBooking.getTotalAmount());
-            response.setRazorpayOrder(razorpayOrder);
-
-            return response;
-        }
-
-        PaymentDTO.PaymentRequest paymentRequest = PaymentDTO.PaymentRequest.builder()
-                .bookingId(savedBooking.getId())
-                .paymentType(payType)
-                .paymentMethod(payMethod)
-                .amount(request.getAmount())
-                .build();
-
-        PaymentDTO.ReceiptResponse receipt = paymentService.processPayment(paymentRequest);
-
-        // 9. Convert to response with receipt details
-        return bookingMapper.toResponseWithPayment(savedBooking, receipt);
+        // 8. Convert to response
+        return bookingMapper.toResponse(savedBooking);
     }
 
     @Override

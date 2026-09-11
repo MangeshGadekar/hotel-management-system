@@ -3,9 +3,9 @@ spring:
     name: hotel-management-system
 
   datasource:
-    url: jdbc:mysql://localhost:3306/Hotel_Managment
+    url: jdbc:mysql://localhost:3306/Hotel_Managment?createDatabaseIfNotExist=true&useSSL=false
     username: root
-    password: "root"
+    password: "vedant123"
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -23,18 +23,24 @@ spring:
       port: 10818
       username: default
       password: ${REDIS_PASSWORD}
-#      ssl:
-#        enabled: true
 
 brevo:
   api:
-    key: ${BREVO_API_KEY}
-
+    key: xkeysib-
   sender:
-    email:  dalalstavan7@gmail.com
-    name:  Hotel Aatithya
+    email: dalalstavan7@gmail.com
+    name: Hotel Aatithya
 
 twilio:
   account-sid: AC758f931cd57c20ffd8412fcd24d0727c
   auth-token: a12825b464e118d2b1409e11c6b46442
   phone-number: +17372508034
+
+app:
+  security:
+    admin-secret-key: Admin@123
+
+razorpay:
+  key:
+    id: rzp_test_TUkFWZhCRkCanQ
+    secret: 9MaWmjVtdixU7B5L6EJcjLUX

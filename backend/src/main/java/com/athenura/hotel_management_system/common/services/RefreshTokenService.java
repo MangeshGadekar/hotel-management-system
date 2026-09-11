@@ -19,7 +19,7 @@ public class RefreshTokenService {
 
     public RefreshToken createRefreshToken(Users user) {
 
-        // Agar user ka purana refresh token hai to delete kar do
+
         refreshTokenRepo.findByUser(user)
                 .ifPresent(refreshTokenRepo::delete);
 
