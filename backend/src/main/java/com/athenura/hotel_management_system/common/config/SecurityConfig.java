@@ -29,25 +29,33 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
 
+
                         .requestMatchers("/auth/**").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/guest/create").permitAll()
+
+
+                        .requestMatchers(HttpMethod.GET, "/guest", "/guest/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.PATCH, "/guest/update/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.DELETE, "/guest/delete/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+
+
                         .requestMatchers(HttpMethod.POST, "/booking/create").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/booking", "/booking/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.PATCH, "/booking/update/**", "/booking/cancel/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+
+
+                        .requestMatchers("/api/payments/pay", "/api/payments/razorpay/**").permitAll()
+                        .requestMatchers("/api/payments/receipt/**", "/api/payments/booking/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+
                         .requestMatchers(HttpMethod.GET, "/admin/room", "/admin/room/{roomNumber}", "/admin/room/type/**", "/admin/room/status/**").permitAll()
-                        .requestMatchers("/api/payments/**").permitAll()
+
 
                         .requestMatchers("/admin/users/**", "/admin/reports/**", "/admin/receptionist/**").hasRole("ADMIN")
-
                         .requestMatchers(HttpMethod.POST, "/admin/room/create").hasAnyRole("ADMIN", "RECEPTIONIST")
                         .requestMatchers(HttpMethod.PATCH, "/admin/room/update/**").hasAnyRole("ADMIN", "RECEPTIONIST")
                         .requestMatchers(HttpMethod.DELETE, "/admin/room/delete/**").hasAnyRole("ADMIN", "RECEPTIONIST")
                         .requestMatchers("/reception/**", "/receptionist/**", "/checkin/**", "/checkout/**").hasAnyRole("ADMIN", "RECEPTIONIST")
-                        .requestMatchers(HttpMethod.GET, "/guest", "/guest/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
-
-                        .requestMatchers("/booking/my-bookings", "/booking/cancel/**").hasAnyRole("GUEST", "ADMIN", "RECEPTIONIST")
-                        .requestMatchers("/booking/{id}").hasAnyRole("GUEST", "ADMIN", "RECEPTIONIST")
-                        .requestMatchers("/guest/my-profile", "/guest/update-profile").hasRole("GUEST")
-
-                        .requestMatchers("/booking/update/**", "/booking").hasAnyRole("ADMIN", "RECEPTIONIST")
 
                         .anyRequest().authenticated()
                 )

@@ -32,22 +32,47 @@ public class GuestServiceImpl implements GuestService {
     public GuestResponse updateGuest(Long id, GuestRequest request) {
 
         Guest guest = guestRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Guest not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Guest not found"));
 
-        updateGuestFields(guest, request);
+        if (request.getFirstName() != null) {
+            guest.setFirstName(request.getFirstName());
+        }
 
-        Guest updatedGuest = guestRepository.save(guest);
+        if (request.getLastName() != null) {
+            guest.setLastName(request.getLastName());
+        }
 
-        return guestMapper.toResponse(updatedGuest);
-    }
+        if (request.getPhone() != null) {
+            guest.setPhone(request.getPhone());
+        }
 
-    @Override
-    public GuestResponse updateGuestByEmail(String email, GuestRequest request) {
+        if (request.getEmail() != null) {
+            guest.setEmail(request.getEmail());
+        }
 
-        Guest guest = guestRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Guest not found with email: " + email));
+        if (request.getIdProofType() != null) {
+            guest.setIdProofType(request.getIdProofType());
+        }
 
-        updateGuestFields(guest, request);
+        if (request.getIdProofNumber() != null) {
+            guest.setIdProofNumber(request.getIdProofNumber());
+        }
+
+        if (request.getAddress() != null) {
+            guest.setAddress(request.getAddress());
+        }
+
+        if (request.getCity() != null) {
+            guest.setCity(request.getCity());
+        }
+
+        if (request.getState() != null) {
+            guest.setState(request.getState());
+        }
+
+        if (request.getPostalCode() != null) {
+            guest.setPostalCode(request.getPostalCode());
+        }
 
         Guest updatedGuest = guestRepository.save(guest);
 
@@ -58,17 +83,7 @@ public class GuestServiceImpl implements GuestService {
     public GuestResponse getGuestById(Long id) {
 
         Guest guest = guestRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Guest not found with id: " + id));
-
-        return guestMapper.toResponse(guest);
-    }
-
-
-    @Override
-    public GuestResponse getGuestByEmail(String email) {
-
-        Guest guest = guestRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Guest not found with email: " + email));
+                .orElseThrow(() -> new RuntimeException("Guest not found"));
 
         return guestMapper.toResponse(guest);
     }
@@ -86,24 +101,10 @@ public class GuestServiceImpl implements GuestService {
     public String deleteGuest(Long id) {
 
         Guest guest = guestRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Guest not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Guest not found"));
 
         guestRepository.delete(guest);
 
         return "Guest with id " + id + " deleted successfully.";
-    }
-
-
-    private void updateGuestFields(Guest guest, GuestRequest request) {
-        if (request.getFirstName() != null) guest.setFirstName(request.getFirstName());
-        if (request.getLastName() != null) guest.setLastName(request.getLastName());
-        if (request.getPhone() != null) guest.setPhone(request.getPhone());
-        if (request.getEmail() != null) guest.setEmail(request.getEmail());
-        if (request.getIdProofType() != null) guest.setIdProofType(request.getIdProofType());
-        if (request.getIdProofNumber() != null) guest.setIdProofNumber(request.getIdProofNumber());
-        if (request.getAddress() != null) guest.setAddress(request.getAddress());
-        if (request.getCity() != null) guest.setCity(request.getCity());
-        if (request.getState() != null) guest.setState(request.getState());
-        if (request.getPostalCode() != null) guest.setPostalCode(request.getPostalCode());
     }
 }

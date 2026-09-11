@@ -26,7 +26,6 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", userDetails.getRole().name());
 
-
         long twentyFourHoursInMillis = 1000L * 60 * 60 * 24;
 
         return Jwts.builder()

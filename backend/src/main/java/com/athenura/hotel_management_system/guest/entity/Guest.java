@@ -22,6 +22,7 @@ public class Guest {
     @Column(nullable = false)
     private String lastName;
 
+    // for OTP verification and communication
     @Column(nullable = false)
     private String phone;
 
@@ -32,7 +33,7 @@ public class Guest {
 
     private String idProofNumber;
 
-
+    // not mandatory for all guests
     private String address;
 
     private String city;

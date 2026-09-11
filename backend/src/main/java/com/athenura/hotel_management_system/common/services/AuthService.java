@@ -58,9 +58,7 @@ public class AuthService {
             Users savedUser = userRepo.save(preCreatedReceptionist);
             return mapToUserResponseDto(savedUser);
         } else {
-            if (userRepo.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("Email address is already registered!");
-            }
+            throw new RuntimeException("Invalid Role!");
         }
 
         Users newUser = Users.builder()

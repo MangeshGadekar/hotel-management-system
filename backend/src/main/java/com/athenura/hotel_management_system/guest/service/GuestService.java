@@ -2,9 +2,11 @@ package com.athenura.hotel_management_system.guest.service;
 
 import com.athenura.hotel_management_system.guest.dto.GuestRequest;
 import com.athenura.hotel_management_system.guest.dto.GuestResponse;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public interface GuestService {
 
     GuestResponse createGuest(GuestRequest request);
@@ -16,9 +18,4 @@ public interface GuestService {
     List<GuestResponse> getAllGuests();
 
     String deleteGuest(Long id);
-
-
-    GuestResponse getGuestByEmail(String email);
-
-    GuestResponse updateGuestByEmail(String email, GuestRequest request);
 }
