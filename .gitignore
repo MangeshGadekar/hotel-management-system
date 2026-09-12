@@ -1,10 +1,8 @@
-# Environment files
-.env
-*.env
-backend/.env
-frontend/.env
-!*.env.example
-!**/.env.example
+# Environment files (both .env and .env.example ignored)
+*.env*
+.env*
+backend/.env*
+frontend/.env*
 
 # Logs
 *.log
