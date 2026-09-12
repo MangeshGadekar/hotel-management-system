@@ -1,5 +1,5 @@
 package com.athenura.hotel_management_system.booking.dto;
-
+import com.athenura.hotel_management_system.payment.dto.PaymentDTO;
 import com.athenura.hotel_management_system.booking.enums.BookingStatus;
 import lombok.*;
 

@@ -7,6 +7,8 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "rooms")
@@ -38,7 +40,14 @@ public class Room {
     @Enumerated(EnumType.STRING)
     private RoomStatus roomStatus;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "room_images", joinColumns = @JoinColumn(name = "room_id"))
+    @Column(name = "image_url", length = 1000)
+    @Builder.Default
+    private List<String> images = new ArrayList<>();
+
     private Instant createdAt;
+
     private Instant updatedAt;
 
     @PrePersist

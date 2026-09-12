@@ -64,6 +64,10 @@ public class RoomServiceImpl implements RoomService {
             room.setRoomStatus(roomRequest.getRoomStatus());
         }
 
+        if (roomRequest.getImages() != null) {
+            room.setImages(roomRequest.getImages());
+        }
+
         Room updatedRoom = roomRepository.save(room);
         return roomMapper.toResponse(updatedRoom);
     }
@@ -99,6 +103,7 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomResponse> getRoomByRoomStatus(RoomStatus roomStatus) {
+
         return roomRepository.findByRoomStatus(roomStatus)
                 .stream()
                 .map(roomMapper::toResponse)
@@ -108,12 +113,9 @@ public class RoomServiceImpl implements RoomService {
     @Override
     public List<RoomResponse> getAllRooms() {
 
-        List<Room> rooms = roomRepository.findAll();
-
-        return rooms.stream()
+        return roomRepository.findAll()
+                .stream()
                 .map(roomMapper::toResponse)
                 .toList();
     }
-
-
 }

@@ -2,7 +2,6 @@ package com.athenura.hotel_management_system.room.service;
 
 import com.athenura.hotel_management_system.room.dto.RoomRequest;
 import com.athenura.hotel_management_system.room.dto.RoomResponse;
-import com.athenura.hotel_management_system.room.entity.Room;
 import com.athenura.hotel_management_system.room.enums.RoomStatus;
 import com.athenura.hotel_management_system.room.enums.RoomType;
 
@@ -22,7 +21,4 @@ public interface RoomService {
     List<RoomResponse> getRoomByRoomType(RoomType roomType);
 
     List<RoomResponse> getRoomByRoomStatus(RoomStatus roomStatus);
-
-
-
 }

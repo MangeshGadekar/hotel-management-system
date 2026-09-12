@@ -1,6 +1,5 @@
 package com.athenura.hotel_management_system.room.controller;
 
-
 import com.athenura.hotel_management_system.room.dto.RoomRequest;
 import com.athenura.hotel_management_system.room.dto.RoomResponse;
 import com.athenura.hotel_management_system.room.enums.RoomStatus;
@@ -14,26 +13,26 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/admin/room")
+@RequestMapping({"/admin/room", "/admin/rooms", "/api/room", "/api/rooms"})
 @RequiredArgsConstructor
 public class AdminRoomController {
 
     private final RoomService roomService;
 
-    @PostMapping("create")
+    @PostMapping({"", "/create"})
     public ResponseEntity<RoomResponse> createRoom(@RequestBody RoomRequest roomRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(roomRequest));
     }
 
     // partial update of room details
-    @PatchMapping("/update/{roomNumber}")
+    @PatchMapping(value = {"/update/{roomNumber}", "/{roomNumber}/update", "/{roomNumber}"})
     public ResponseEntity<RoomResponse> updateRoom(
             @PathVariable String roomNumber,
             @RequestBody RoomRequest roomRequest) {
         return ResponseEntity.ok().body(roomService.updateRoom(roomNumber, roomRequest));
     }
 
-    @DeleteMapping("/delete/{roomNumber}")
+    @DeleteMapping(value = {"/delete/{roomNumber}", "/{roomNumber}"})
     public ResponseEntity<String> deleteRoom(@PathVariable String roomNumber) {
         return ResponseEntity.ok().body(roomService.deleteRoom(roomNumber));
     }

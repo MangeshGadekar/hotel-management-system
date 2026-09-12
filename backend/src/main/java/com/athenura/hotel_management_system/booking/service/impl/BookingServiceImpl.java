@@ -13,6 +13,8 @@ import com.athenura.hotel_management_system.common.exception.BookingOverlapExcep
 import com.athenura.hotel_management_system.common.repository.UserRepo;
 import com.athenura.hotel_management_system.guest.entity.Guest;
 import com.athenura.hotel_management_system.guest.repository.GuestRepository;
+import com.athenura.hotel_management_system.payment.dto.PaymentDTO;
+import com.athenura.hotel_management_system.payment.service.PaymentService;
 import com.athenura.hotel_management_system.room.entity.Room;
 import com.athenura.hotel_management_system.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,8 @@ public class BookingServiceImpl implements BookingService {
     private final RoomRepository roomRepository;
     private final UserRepo userRepo;
     private final BookingMapper bookingMapper;
+    private final PaymentService paymentService;
+
 
     @Override
     public BookingResponse createBooking(BookingRequest request) {

@@ -1,5 +1,5 @@
 package com.athenura.hotel_management_system.booking.dto;
-
+import java.math.BigDecimal;
 import lombok.*;
 
 import java.time.LocalDate;

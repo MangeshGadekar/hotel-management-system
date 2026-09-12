@@ -1,16 +1,17 @@
 package com.athenura.hotel_management_system.jwt;
-import com.athenura.hotel_management_system.common.entity.Users;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-// import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
-// import java.security.Key;
 import java.util.Date;
 
 import javax.crypto.SecretKey;
+
+import org.springframework.stereotype.Service;
+
+import com.athenura.hotel_management_system.common.entity.Users;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
