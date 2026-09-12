@@ -18,8 +18,12 @@ public class CloudinaryServiceImpl implements CloudinaryService {
 
     private final Cloudinary cloudinary;
 
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif", "image/avif", "image/svg+xml", "image/bmp", "image/jfif", "application/octet-stream"
+    );
+
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif"
+            ".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg", ".bmp", ".jfif"
     );
 
     @Override
@@ -29,8 +33,20 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         }
 
         String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_EXTENSIONS.contains(contentType.toLowerCase())) {
-            throw new IllegalArgumentException("Invalid file type. Only JPEG, PNG, WEBP, and GIF images are allowed.");
+        String originalFilename = file.getOriginalFilename();
+
+        boolean validContentType = contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase().trim());
+        boolean validExtension = false;
+        if (originalFilename != null && originalFilename.contains(".")) {
+            String ext = originalFilename.substring(originalFilename.lastIndexOf('.')).toLowerCase().trim();
+            validExtension = ALLOWED_EXTENSIONS.contains(ext);
+        }
+
+        // Allow if extension matches an image OR content type starts with image/
+        boolean isImage = (contentType != null && contentType.toLowerCase().startsWith("image/")) || validExtension;
+
+        if (!isImage && !validContentType) {
+            throw new IllegalArgumentException("Invalid file type. Only image files (JPEG, PNG, WEBP, GIF, etc.) are allowed.");
         }
 
         try {

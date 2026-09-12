@@ -19,11 +19,37 @@ public class CloudinaryController {
     private final CloudinaryService cloudinaryService;
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<List<String>> uploadImages(
-            @RequestParam("files") List<MultipartFile> files,
-            @RequestParam(value = "folder", defaultValue = "hotel_management/rooms") String folder) {
+    public ResponseEntity<?> uploadImages(
+            @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            @RequestParam(value = "file", required = false) List<MultipartFile> file,
+            @RequestParam(value = "photos", required = false) List<MultipartFile> photos,
+            @RequestParam(value = "photo", required = false) List<MultipartFile> photo,
+            @RequestParam(value = "image", required = false) List<MultipartFile> image,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "folder", defaultValue = "hotel_management/rooms") String folder,
+            org.springframework.web.multipart.MultipartHttpServletRequest request) {
 
-        List<String> urls = cloudinaryService.uploadImages(files, folder);
+        List<MultipartFile> allFiles = new java.util.ArrayList<>();
+        if (files != null) allFiles.addAll(files);
+        if (file != null) allFiles.addAll(file);
+        if (photos != null) allFiles.addAll(photos);
+        if (photo != null) allFiles.addAll(photo);
+        if (image != null) allFiles.addAll(image);
+        if (images != null) allFiles.addAll(images);
+
+        if (allFiles.isEmpty() && request != null) {
+            request.getMultiFileMap().values().forEach(allFiles::addAll);
+        }
+
+        List<MultipartFile> validFiles = allFiles.stream()
+                .filter(f -> f != null && !f.isEmpty())
+                .toList();
+
+        if (validFiles.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No file provided. Please attach an image file."));
+        }
+
+        List<String> urls = cloudinaryService.uploadImages(validFiles, folder);
         return ResponseEntity.ok(urls);
     }
 
