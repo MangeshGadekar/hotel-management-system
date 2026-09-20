@@ -1,56 +1,54 @@
-import { useState } from 'react';
-import { 
-  FaHotel, 
-  FaTag, 
-  FaMoneyBillWave, 
-  FaUsers, 
+import { useState } from "react";
+import {
+  FaHotel,
+  FaTag,
+  FaMoneyBillWave,
+  FaUsers,
   FaCheckCircle,
   FaTimesCircle,
   FaPlus,
-  FaDoorOpen
-} from 'react-icons/fa';
-import useRoomStore from '../../app/useRoomStore'; 
+  FaDoorOpen,
+} from "react-icons/fa";
+import useRoomStore from "../../app/useRoomStore";
 
 const RoomForm = () => {
   const [formData, setFormData] = useState({
-    roomNumber: '',
-    roomType: 'DELUXE',
-    pricePerNight: '',
-    capacity: '',
-    roomStatus: 'AVAILABLE'
+    roomNumber: "",
+    roomType: "DELUXE",
+    pricePerNight: "",
+    capacity: "",
+    roomStatus: "AVAILABLE",
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState("");
 
-  
   const addRoom = useRoomStore((state) => state.addRoom);
-
-  const roomTypes = ['STANDARD', 'DELUXE', 'SUITE', 'PRESIDENTIAL'];
-  const roomStatuses = ['AVAILABLE', 'BOOKED', 'MAINTENANCE', 'RESERVED'];
+  const roomTypes = ["STANDARD", "DELUXE", "SUITE", "PRESIDENTIAL"];
+  const roomStatuses = ["AVAILABLE", "OCCUPIED", "MAINTENANCE", "RESERVED"];
 
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.roomNumber.trim()) {
-      newErrors.roomNumber = 'Room number is required';
+      newErrors.roomNumber = "Room number is required";
     }
 
     if (!formData.roomType) {
-      newErrors.roomType = 'Room type is required';
+      newErrors.roomType = "Room type is required";
     }
 
     if (!formData.pricePerNight || parseFloat(formData.pricePerNight) <= 0) {
-      newErrors.pricePerNight = 'Price must be greater than 0';
+      newErrors.pricePerNight = "Price must be greater than 0";
     }
 
     if (!formData.capacity || parseInt(formData.capacity) <= 0) {
-      newErrors.capacity = 'Capacity must be at least 1';
+      newErrors.capacity = "Capacity must be at least 1";
     }
 
     if (!formData.roomStatus) {
-      newErrors.roomStatus = 'Room status is required';
+      newErrors.roomStatus = "Room status is required";
     }
 
     setErrors(newErrors);
@@ -59,23 +57,23 @@ const RoomForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     // Clear error for this field when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: "",
       }));
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setSuccessMessage('');
-    
+    setSuccessMessage("");
+
     if (!validateForm()) {
       return;
     }
@@ -88,30 +86,30 @@ const RoomForm = () => {
       roomType: formData.roomType,
       pricePerNight: parseFloat(formData.pricePerNight),
       capacity: parseInt(formData.capacity),
-      roomStatus: formData.roomStatus
+      roomStatus: formData.roomStatus,
     };
 
     try {
       // Add room using zustand store
       addRoom(roomData);
-      
+
       setSuccessMessage(`Room ${formData.roomNumber} added successfully!`);
-      
+
       // Reset form
       setFormData({
-        roomNumber: '',
-        roomType: 'DELUXE',
-        pricePerNight: '',
-        capacity: '',
-        roomStatus: 'AVAILABLE'
+        roomNumber: "",
+        roomType: "DELUXE",
+        pricePerNight: "",
+        capacity: "",
+        roomStatus: "AVAILABLE",
       });
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => {
-        setSuccessMessage('');
+        setSuccessMessage("");
       }, 3000);
     } catch (error) {
-      setErrors({ submit: error.message || 'Failed to add room' });
+      setErrors({ submit: error.message || "Failed to add room" });
     } finally {
       setIsSubmitting(false);
     }
@@ -119,14 +117,14 @@ const RoomForm = () => {
 
   const handleReset = () => {
     setFormData({
-      roomNumber: '',
-      roomType: 'DELUXE',
-      pricePerNight: '',
-      capacity: '',
-      roomStatus: 'AVAILABLE'
+      roomNumber: "",
+      roomType: "DELUXE",
+      pricePerNight: "",
+      capacity: "",
+      roomStatus: "AVAILABLE",
     });
     setErrors({});
-    setSuccessMessage('');
+    setSuccessMessage("");
   };
 
   return (
@@ -164,7 +162,7 @@ const RoomForm = () => {
             onChange={handleChange}
             placeholder="e.g., 101, A-201"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-              errors.roomNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              errors.roomNumber ? "border-red-500 bg-red-50" : "border-gray-300"
             }`}
           />
           {errors.roomNumber && (
@@ -183,10 +181,10 @@ const RoomForm = () => {
             value={formData.roomType}
             onChange={handleChange}
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-              errors.roomType ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              errors.roomType ? "border-red-500 bg-red-50" : "border-gray-300"
             }`}
           >
-            {roomTypes.map(type => (
+            {roomTypes.map((type) => (
               <option key={type} value={type}>
                 {type.charAt(0) + type.slice(1).toLowerCase()}
               </option>
@@ -204,7 +202,9 @@ const RoomForm = () => {
             Price Per Night
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+              $
+            </span>
             <input
               type="number"
               name="pricePerNight"
@@ -214,7 +214,9 @@ const RoomForm = () => {
               step="0.01"
               min="0"
               className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-                errors.pricePerNight ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                errors.pricePerNight
+                  ? "border-red-500 bg-red-50"
+                  : "border-gray-300"
               }`}
             />
           </div>
@@ -237,7 +239,7 @@ const RoomForm = () => {
             placeholder="Number of guests"
             min="1"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-              errors.capacity ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              errors.capacity ? "border-red-500 bg-red-50" : "border-gray-300"
             }`}
           />
           {errors.capacity && (
@@ -256,10 +258,10 @@ const RoomForm = () => {
             value={formData.roomStatus}
             onChange={handleChange}
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-              errors.roomStatus ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              errors.roomStatus ? "border-red-500 bg-red-50" : "border-gray-300"
             }`}
           >
-            {roomStatuses.map(status => (
+            {roomStatuses.map((status) => (
               <option key={status} value={status}>
                 {status.charAt(0) + status.slice(1).toLowerCase()}
               </option>
@@ -276,13 +278,13 @@ const RoomForm = () => {
             type="submit"
             disabled={isSubmitting}
             className={`flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all ${
-              isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              isSubmitting ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
             <FaPlus />
-            {isSubmitting ? 'Adding...' : 'Add Room'}
+            {isSubmitting ? "Adding..." : "Add Room"}
           </button>
-          
+
           <button
             type="button"
             onClick={handleReset}

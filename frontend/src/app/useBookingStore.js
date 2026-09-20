@@ -3,6 +3,7 @@ import { create } from "zustand";
 import {
   cancelBooking,
   createBooking,
+  fetchAllBooking,
   fetchBooking,
   patchBooking,
 } from "../apis/api";
@@ -54,7 +55,8 @@ const bookingStore = (set) => ({
   },
   getAllBooking: async () => {
     try {
-      const res = await fetchBooking();
+      const res = await fetchAllBooking();
+      console.log("res", res);
       const _bookingList = res;
       set({
         bookingList: _bookingList,
@@ -62,6 +64,7 @@ const bookingStore = (set) => ({
       console.log("_bookingList", _bookingList);
       return res;
     } catch (error) {
+      console.log("error", error);
       return error;
     }
   },
@@ -82,9 +85,7 @@ const bookingStore = (set) => ({
 
 const useBookingStore = create(
   devtools(
-    persist,
-    (bookingStore,
-    {
+    persist(bookingStore, {
       name: "bookings",
     }),
   ),

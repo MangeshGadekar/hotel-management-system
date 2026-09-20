@@ -44,5 +44,16 @@ public class CampaignController {
         return ResponseEntity.ok(campaignService.sendCampaign(id));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteCampaign(@PathVariable Long id){
+        campaignService.deleteCampaign(id);
+        return ResponseEntity.ok("Campaign" + id + " has been deleted Successfully");
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<List<CampaignResponseDto>> getCampaignHistory(){
+        return ResponseEntity.ok(campaignService.getCampaignHistory());
+    }
+
 
 }

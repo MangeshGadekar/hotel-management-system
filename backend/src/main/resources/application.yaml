@@ -26,10 +26,17 @@ spring:
 
 brevo:
   api:
-    key: xkeysib-
+    key: ${BREVO_API_KEY}
   sender:
     email: dalalstavan7@gmail.com
     name: Hotel Aatithya
+
+
+razorpay:
+  key:
+    id: rzp_test_TUkFWZhCRkCanQ
+    secret: 9MaWmjVtdixU7B5L6EJcjLUX
+
 
 twilio:
   account-sid: AC758f931cd57c20ffd8412fcd24d0727c

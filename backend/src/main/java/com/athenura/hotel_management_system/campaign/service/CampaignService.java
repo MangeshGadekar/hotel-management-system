@@ -15,4 +15,9 @@ public interface CampaignService {
     List<Guest> resolveAudience(Long campaignId);
     CampaignResponseDto sendCampaign(Long campaignId);
 
+    void deleteCampaign(Long id);
+
+    List<CampaignResponseDto> getCampaignHistory();
+    void processScheduledCampaigns();
+
 }
