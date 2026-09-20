@@ -58,5 +58,4 @@ public class Payment {
     @Column(name = "razorpay_payment_id")
     private String razorpayPaymentId;
 
-
 }

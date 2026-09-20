@@ -58,6 +58,26 @@ public class Campaign {
 
     private LocalDateTime createdAt;
 
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
+
+    @PrePersist
+    public void prePersist(){
+        if(this.createdAt == null){
+            this.createdAt = LocalDateTime.now();
+        }
+
+        if(this.status == null){
+            this.status = (this.schedule != null) ? CampaignStatus.SCHEDULED : CampaignStatus.DRAFT;
+        }
+
+        if(this.isDeleted == null){
+            this.isDeleted = false;
+        }
+    }
+
 
 
 

@@ -50,7 +50,6 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-
     // reception payment
     @Override
     @Transactional

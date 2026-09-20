@@ -58,6 +58,7 @@ const roomStore = (set) => ({
     try {
       const res = await fetchAllRooms();
       const _roomsList = res;
+      console.log("Res",res)
       set({
         roomList: _roomsList,
       });
@@ -78,7 +79,6 @@ const roomStore = (set) => ({
       return error;
     }
   },
-
   deleteRoom: async (roomNumber) => {
     try {
       const res = await deleteRoom(roomNumber);

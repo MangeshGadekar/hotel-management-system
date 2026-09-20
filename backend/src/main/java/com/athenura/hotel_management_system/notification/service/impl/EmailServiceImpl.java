@@ -13,7 +13,7 @@ import java.util.Map;
 @Service
 public class EmailServiceImpl implements EmailService {
 
-    @Value("${brevo.api.key}")
+    @Value("${BREVO_API_KEY}")
     private String apiKey;
 
     @Value("${brevo.sender.email}")

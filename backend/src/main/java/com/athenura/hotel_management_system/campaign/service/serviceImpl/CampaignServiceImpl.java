@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -119,4 +120,48 @@ public class CampaignServiceImpl implements CampaignService {
         campaign.setStatus(CampaignStatus.SENT);
         return campaignMapper.toDto(campaignRepository.save(campaign));
     }
+
+    @Override
+    public void deleteCampaign(Long id) {
+        Campaign campaign = campaignRepository.findById(id)
+                .orElseThrow(()-> new RuntimeException("Campaign not found with id: "+ id));
+
+        campaign.setIsDeleted(true);
+        campaignRepository.save(campaign);
+        log.info("Campaign with id {} soft-deleted successfully", id);
+
+    }
+
+    @Override
+    public List<CampaignResponseDto> getCampaignHistory() {
+        return campaignRepository.findByIsDeletedTrue().stream()
+                .map(campaignMapper::toDto)
+                .toList();
+    }
+
+
+    @Override
+    @Transactional
+    public void processScheduledCampaigns() {
+        List<Campaign> dueCampaigns = campaignRepository
+                .findByStatusAndScheduleLessThanEqualAndIsDeletedFalse(
+                        CampaignStatus.SCHEDULED,
+                        LocalDateTime.now()
+                );
+
+        if (!dueCampaigns.isEmpty()) {
+            log.info("Found {} scheduled campaign(s) to process", dueCampaigns.size());
+        }
+
+        for (Campaign campaign : dueCampaigns) {
+            try {
+                log.info("Executing scheduled campaign: {} (ID: {})", campaign.getCampaignName(), campaign.getId());
+                sendCampaign(campaign.getId());
+            } catch (Exception e) {
+                log.error("Failed to send scheduled campaign ID {}: {}", campaign.getId(), e.getMessage());
+            }
+        }
+    }
+
+
 }
