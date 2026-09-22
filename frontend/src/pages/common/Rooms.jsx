@@ -1,393 +1,470 @@
-// import React, { useState, useEffect } from 'react';
-// import loadScript from '../../config/rozarpay';
+import React, { useEffect, useMemo, useState } from 'react'
+import {
+  FaStar, FaWifi, FaTv, FaSnowflake, FaCoffee, FaUserFriends,
+  FaBed, FaRulerCombined, FaHeart, FaRegHeart, FaFilter,
+  FaTimes, FaChevronDown
+} from 'react-icons/fa'
+import { MdCheckCircle, MdLocalBar, MdBathtub, MdHotTub, MdWeekend, MdBalcony, MdKitchen, MdWork, MdLocationCity, MdGrass } from 'react-icons/md'
+import { BiLoaderAlt } from 'react-icons/bi'
+import { BsCupHot } from 'react-icons/bs'
+import { TbSofa } from 'react-icons/tb'
+import RoomsData from '../../config/Room.json'
+import { RiFridgeLine } from "react-icons/ri";
+import { FaChampagneGlasses } from "react-icons/fa6";
+import { Link, useNavigate } from 'react-router-dom';
 
-// const RoomBooking = () => {
-//   const [loading, setLoading] = useState(false);
-//   const [formData, setFormData] = useState({
-//     customerName: '',
-//     customerEmail: '',
-//     customerPhone: '',
-//     checkIn: '',
-//     checkOut: '',
-//     roomType: 'standard',
-//     numberOfGuests: 1,
-//     specialRequests: ''
-//   });
 
-//   const [roomDetails, setRoomDetails] = useState({
-//     standard: { price: 2000, available: true },
-//     deluxe: { price: 3500, available: true },
-//     suite: { price: 5000, available: true }
-//   });
+// ---- Fake API service ----
+const roomListService = {
+  fetchRooms: async () => {
+    return new Promise((resolve) => setTimeout(() => resolve(RoomsData), 600))
+  },
+}
 
-//   const [selectedRoom, setSelectedRoom] = useState(null);
-//   const [totalAmount, setTotalAmount] = useState(0);
-//   const [nights, setNights] = useState(0);
+// Full amenities list from your JSON
+const ALL_AMENITIES = [
+  'WiFi', 'TV', 'AC', 'Coffee', 'Mini Bar', 'Bathtub', 'Jacuzzi',
+  'Living Room', 'Balcony', 'Mini Fridge', 'Champagne', 'Work Desk',
+  'City View', 'Terrace', 'Kitchen', 'Lounge', 'Garden View', 'Living Area',
+]
 
-//   // Calculate total amount and nights
-//   useEffect(() => {
-//     if (formData.checkIn && formData.checkOut) {
-//       const checkIn = new Date(formData.checkIn);
-//       const checkOut = new Date(formData.checkOut);
-//       const diffTime = Math.abs(checkOut - checkIn);
-//       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-//       setNights(diffDays || 1);
-      
-//       const roomPrice = roomDetails[formData.roomType]?.price || 0;
-//       const total = roomPrice * (diffDays || 1);
-//       setTotalAmount(total);
-//     }
-//   }, [formData.checkIn, formData.checkOut, formData.roomType, roomDetails]);
+const amenityIcons = {
+  WiFi: <FaWifi />,
+  TV: <FaTv />,
+  AC: <FaSnowflake />,
+  Coffee: <FaCoffee />,
+  'Mini Bar': <MdLocalBar />,
+  Bathtub: <MdBathtub />,
+  Jacuzzi: <MdHotTub />,
+  'Living Room': <MdWeekend />,
+  Balcony: <MdBalcony />,
+  'Mini Fridge': <RiFridgeLine />,
+  Champagne: <FaChampagneGlasses />,
+  'Work Desk': <MdWork />,
+  'City View': <MdLocationCity />,
+  Terrace: <BsCupHot />,
+  Kitchen: <MdKitchen />,
+  Lounge: <TbSofa />,
+  'Garden View': <MdGrass />,
+  'Living Area': <MdWeekend />,
+}
 
-//   const handleInputChange = (e) => {
-//     const { name, value } = e.target;
-//     setFormData(prev => ({
-//       ...prev,
-//       [name]: value
-//     }));
-//   };
 
-//   const validateForm = () => {
-//     const { customerName, customerEmail, customerPhone, checkIn, checkOut } = formData;
-//     if (!customerName || !customerEmail || !customerPhone || !checkIn || !checkOut) {
-//       alert('Please fill in all required fields');
-//       return false;
-//     }
-//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-//       alert('Please enter a valid email address');
-//       return false;
-//     }
-//     if (!/^[0-9]{10}$/.test(customerPhone)) {
-//       alert('Please enter a valid 10-digit phone number');
-//       return false;
-//     }
-//     const checkInDate = new Date(checkIn);
-//     const checkOutDate = new Date(checkOut);
-//     if (checkInDate >= checkOutDate) {
-//       alert('Check-out date must be after check-in date');
-//       return false;
-//     }
-//     if (checkInDate < new Date()) {
-//       alert('Check-in date cannot be in the past');
-//       return false;
-//     }
-//     return true;
-//   };
+// ---------------- Room Card ----------------
+const RoomCard = ({ room, isFavorite, onToggleFavorite }) => (
+  <div className="group bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col">
+    <div className="relative h-56 overflow-hidden">
+      <img
+        src={room.images?.[0]}
+        alt={room.name}
+        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+      />
+      {room.isFeatured && (
+        <span className="absolute top-3 left-3 bg-amber-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">
+          Featured
+        </span>
+      )}
+      <span
+        className={`absolute top-3 right-3 text-xs font-semibold px-3 py-1 rounded-full shadow ${
+          room.isAvailable ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}
+      >
+        {room.isAvailable ? 'Available' : 'Booked'}
+      </span>
+      <button
+        onClick={() => onToggleFavorite(room.id)}
+        className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow hover:scale-110 transition"
+      >
+        {isFavorite ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-gray-600" />}
+      </button>
+    </div>
 
-//   const createBooking = async (paymentId) => {
-//     const bookingData = {
-//       ...formData,
-//       totalAmount,
-//       nights,
-//       paymentId,
-//       bookingDate: new Date().toISOString(),
-//       status: 'confirmed'
-//     };
+    <div className="p-5 flex flex-col flex-1">
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <h3 className="text-lg font-bold text-gray-800">{room.name}</h3>
+        <div className="flex items-center gap-1 text-amber-500 text-sm font-semibold shrink-0">
+          <FaStar />
+          <span>{room.rating}</span>
+          <span className="text-gray-400 font-normal">({room.reviews})</span>
+        </div>
+      </div>
 
-//     try {
-//       // Store booking in your backend
-//       const response = await fetch('/api/bookings/create', {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//         },
-//         body: JSON.stringify(bookingData)
-//       });
+      <p className="text-sm text-gray-500 line-clamp-2 mb-4">{room.description}</p>
 
-//       if (response.ok) {
-//         const booking = await response.json();
-//         alert(`Booking confirmed! Booking ID: ${booking.id}`);
-//         // Reset form
-//         setFormData({
-//           customerName: '',
-//           customerEmail: '',
-//           customerPhone: '',
-//           checkIn: '',
-//           checkOut: '',
-//           roomType: 'standard',
-//           numberOfGuests: 1,
-//           specialRequests: ''
-//         });
-//       }
-//     } catch (error) {
-//       console.error('Error creating booking:', error);
-//       alert('Booking created but failed to save. Please contact support.');
-//     }
-//   };
+      <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mb-4">
+        <div className="flex items-center gap-1">
+          <FaUserFriends className="text-indigo-500" />
+          <span>{room.capacity} Guests</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <FaBed className="text-indigo-500" />
+          <span className="truncate">{room.bedType}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <FaRulerCombined className="text-indigo-500" />
+          <span>{room.size}</span>
+        </div>
+      </div>
 
-//   const initiateRazorpayPayment = async () => {
-//     if (!validateForm()) return;
+      <div className="flex flex-wrap gap-2 mb-4">
+        {room.amenities?.slice(0, 4).map((a) => (
+          <span
+            key={a}
+            className="flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md"
+          >
+            {amenityIcons[a] || <MdCheckCircle />}
+            {a}
+          </span>
+        ))}
+        {room.amenities?.length > 4 && (
+          <span className="text-xs text-gray-500 px-2 py-1">
+            +{room.amenities.length - 4} more
+          </span>
+        )}
+      </div>
 
-//     setLoading(true);
+      <div className="mt-auto flex items-center justify-between pt-3 border-t border-gray-100">
+        <div>
+          <span className="text-2xl font-bold text-gray-800">${room.price}</span>
+          <span className="text-sm text-gray-500"> / night</span>
+        </div>
+         <button
+      disabled={!room.isAvailable}
+      onClick={() => navigate(`/${room.id}`)}
+      className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+        room.isAvailable
+          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+      }`}
+    >
+      {room.isAvailable ? 'Book Now' : 'Unavailable'}
+    </button>
+      </div>
+    </div>
+  </div>
+)
 
-//     try {
-//       // Load Razorpay script
-//       await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+// ---------------- Filters Sidebar ----------------
+const Filters = ({ filters, setFilters, priceBounds, onClear }) => {
+  const [amenityOpen, setAmenityOpen] = useState(true)
 
-//       // Create order on your backend
-//       const response = await fetch('/api/payments/create-order', {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//         },
-//         body: JSON.stringify({
-//           amount: totalAmount * 100, // Convert to paise
-//           currency: 'INR',
-//           receipt: `booking_${Date.now()}`
-//         })
-//       });
+  const toggleAmenity = (a) => {
+    setFilters((prev) => ({
+      ...prev,
+      amenities: prev.amenities.includes(a)
+        ? prev.amenities.filter((x) => x !== a)
+        : [...prev.amenities, a],
+    }))
+  }
 
-//       const orderData = await response.json();
-
-//       const options = {
-//         key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-//         amount: orderData.amount,
-//         currency: orderData.currency,
-//         name: 'Hotel Management',
-//         description: `Room Booking - ${formData.roomType.toUpperCase()} (${nights} nights)`,
-//         order_id: orderData.id,
-//         handler: function (response) {
-//           // Payment successful
-//           alert('Payment Successful!');
-//           createBooking(response.razorpay_payment_id);
-//         },
-//         prefill: {
-//           name: formData.customerName,
-//           email: formData.customerEmail,
-//           contact: formData.customerPhone
-//         },
-//         theme: {
-//           color: '#F37254'
-//         },
-//         modal: {
-//           ondismiss: function() {
-//             setLoading(false);
-//             alert('Payment cancelled');
-//           }
-//         }
-//       };
-
-//       const paymentObject = new window.Razorpay(options);
-//       paymentObject.open();
-
-//     } catch (error) {
-//       console.error('Payment initialization error:', error);
-//       alert('Error initializing payment. Please try again.');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-gray-50 py-8">
-//       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-//         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-//           {/* Updated title background with gradient from amber-600 to orange-500 */}
-//           <div className="bg-gradient-to-r from-amber-600 to-orange-500 px-6 py-4">
-//             <h1 className="text-2xl font-bold text-white">Hotel Room Booking</h1>
-//             <p className="text-orange-100 text-sm">Secure payment with Razorpay</p>
-//           </div>
-
-//           <div className="p-6">
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//               <div className="space-y-4">
-//                 <h3 className="text-lg font-semibold text-gray-800">Guest Details</h3>
-                
-//                 <div>
-//                   <label className="block text-sm font-medium text-gray-700 mb-1">
-//                     Full Name <span className="text-red-500">*</span>
-//                   </label>
-//                   <input
-//                     type="text"
-//                     name="customerName"
-//                     value={formData.customerName}
-//                     onChange={handleInputChange}
-//                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-//                     placeholder="Enter your full name"
-//                     required
-//                   />
-//                 </div>
-
-//                 <div>
-//                   <label className="block text-sm font-medium text-gray-700 mb-1">
-//                     Email <span className="text-red-500">*</span>
-//                   </label>
-//                   <input
-//                     type="email"
-//                     name="customerEmail"
-//                     value={formData.customerEmail}
-//                     onChange={handleInputChange}
-//                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-//                     placeholder="Enter your email"
-//                     required
-//                   />
-//                 </div>
-
-//                 <div>
-//                   <label className="block text-sm font-medium text-gray-700 mb-1">
-//                     Phone Number <span className="text-red-500">*</span>
-//                   </label>
-//                   <input
-//                     type="tel"
-//                     name="customerPhone"
-//                     value={formData.customerPhone}
-//                     onChange={handleInputChange}
-//                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-//                     placeholder="Enter 10-digit phone number"
-//                     required
-//                   />
-//                 </div>
-//               </div>
-
-//               <div className="space-y-4">
-//                 <h3 className="text-lg font-semibold text-gray-800">Room Details</h3>
-                
-//                 <div>
-//                   <label className="block text-sm font-medium text-gray-700 mb-1">
-//                     Room Type <span className="text-red-500">*</span>
-//                   </label>
-//                   <select
-//                     name="roomType"
-//                     value={formData.roomType}
-//                     onChange={handleInputChange}
-//                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-//                   >
-//                     <option value="standard">Standard Room - ₹{roomDetails.standard.price}/night</option>
-//                     <option value="deluxe">Deluxe Room - ₹{roomDetails.deluxe.price}/night</option>
-//                     <option value="suite">Suite - ₹{roomDetails.suite.price}/night</option>
-//                   </select>
-//                 </div>
-
-//                 <div>
-//                   <label className="block text-sm font-medium text-gray-700 mb-1">
-//                     Number of Guests <span className="text-red-500">*</span>
-//                   </label>
-//                   <select
-//                     name="numberOfGuests"
-//                     value={formData.numberOfGuests}
-//                     onChange={handleInputChange}
-//                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-//                   >
-//                     {[1, 2, 3, 4].map(num => (
-//                       <option key={num} value={num}>{num} {num === 1 ? 'Guest' : 'Guests'}</option>
-//                     ))}
-//                   </select>
-//                 </div>
-//               </div>
-//             </div>
-
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">
-//                   Check-in Date <span className="text-red-500">*</span>
-//                 </label>
-//                 <input
-//                   type="date"
-//                   name="checkIn"
-//                   value={formData.checkIn}
-//                   onChange={handleInputChange}
-//                   min={new Date().toISOString().split('T')[0]}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-//                   required
-//                 />
-//               </div>
-
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">
-//                   Check-out Date <span className="text-red-500">*</span>
-//                 </label>
-//                 <input
-//                   type="date"
-//                   name="checkOut"
-//                   value={formData.checkOut}
-//                   onChange={handleInputChange}
-//                   min={formData.checkIn || new Date().toISOString().split('T')[0]}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-//                   required
-//                 />
-//               </div>
-//             </div>
-
-//             <div className="mt-6">
-//               <label className="block text-sm font-medium text-gray-700 mb-1">
-//                 Special Requests
-//               </label>
-//               <textarea
-//                 name="specialRequests"
-//                 value={formData.specialRequests}
-//                 onChange={handleInputChange}
-//                 rows="3"
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-//                 placeholder="Any special requests (e.g., extra bed, room preferences, etc.)"
-//               />
-//             </div>
-
-//             {totalAmount > 0 && (
-//               <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
-//                 <h4 className="font-semibold text-gray-800 mb-2">Booking Summary</h4>
-//                 <div className="space-y-1 text-sm">
-//                   <p className="flex justify-between">
-//                     <span>Room Type:</span>
-//                     <span className="capitalize">{formData.roomType}</span>
-//                   </p>
-//                   <p className="flex justify-between">
-//                     <span>Nights:</span>
-//                     <span>{nights}</span>
-//                   </p>
-//                   <p className="flex justify-between">
-//                     <span>Price per night:</span>
-//                     <span>₹{roomDetails[formData.roomType]?.price}</span>
-//                   </p>
-//                   <div className="border-t border-gray-300 pt-2 mt-2">
-//                     <p className="flex justify-between font-bold text-lg">
-//                       <span>Total Amount:</span>
-//                       <span className="text-orange-600">₹{totalAmount}</span>
-//                     </p>
-//                   </div>
-//                 </div>
-//               </div>
-//             )}
-
-//             <div className="mt-8">
-//               <button
-//                 onClick={initiateRazorpayPayment}
-//                 disabled={loading || totalAmount === 0}
-//                 className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition-colors ${
-//                   loading || totalAmount === 0
-//                     ? 'bg-gray-400 cursor-not-allowed'
-//                     : 'bg-gradient-to-r from-amber-600 to-orange-500 hover:from-amber-700 hover:to-orange-600'
-//                 }`}
-//               >
-//                 {loading ? (
-//                   <span className="flex items-center justify-center">
-//                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-//                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-//                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-//                     </svg>
-//                     Processing...
-//                   </span>
-//                 ) : (
-//                   `Pay ₹${totalAmount} with Razorpay`
-//                 )}
-//               </button>
-//               <p className="text-xs text-gray-500 text-center mt-2">
-//                 Secure payment powered by Razorpay
-//               </p>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default RoomBooking;
-
-import React from 'react'
-
-const Rooms = () => {
   return (
-    <div>Rooms</div>
+    <aside className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:sticky lg:top-6 h-fit">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-gray-800">
+          <FaFilter className="text-indigo-600" /> Filters
+        </h2>
+        <button
+          onClick={onClear}
+          className="text-xs text-indigo-600 hover:underline font-medium"
+        >
+          Clear all
+        </button>
+      </div>
+
+      {/* Availability */}
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">Availability</h3>
+        <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+          <input
+            type="checkbox"
+            checked={filters.availableOnly}
+            onChange={(e) =>
+              setFilters((p) => ({ ...p, availableOnly: e.target.checked }))
+            }
+            className="accent-indigo-600 w-4 h-4"
+          />
+          Show available rooms only
+        </label>
+      </div>
+
+      {/* Price */}
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">
+          Price per night
+        </h3>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-sm font-semibold text-indigo-600">
+            ${filters.price[0]}
+          </span>
+          <span className="text-gray-400 text-sm">—</span>
+          <span className="text-sm font-semibold text-indigo-600">
+            ${filters.price[1]}
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500">Min</label>
+            <input
+              type="range"
+              min={priceBounds.min}
+              max={priceBounds.max}
+              value={filters.price[0]}
+              onChange={(e) =>
+                setFilters((p) => ({
+                  ...p,
+                  price: [Math.min(+e.target.value, p.price[1]), p.price[1]],
+                }))
+              }
+              className="w-full accent-indigo-600"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Max</label>
+            <input
+              type="range"
+              min={priceBounds.min}
+              max={priceBounds.max}
+              value={filters.price[1]}
+              onChange={(e) =>
+                setFilters((p) => ({
+                  ...p,
+                  price: [p.price[0], Math.max(+e.target.value, p.price[0])],
+                }))
+              }
+              className="w-full accent-indigo-600"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Amenities */}
+      <div>
+        <button
+          onClick={() => setAmenityOpen((o) => !o)}
+          className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 mb-2"
+        >
+          Amenities
+          <FaChevronDown
+            className={`transition-transform ${amenityOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {amenityOpen && (
+          <div className="max-h-64 overflow-y-auto pr-1 space-y-1.5">
+            {ALL_AMENITIES.map((a) => (
+              <label
+                key={a}
+                className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 hover:text-indigo-600"
+              >
+                <input
+                  type="checkbox"
+                  checked={filters.amenities.includes(a)}
+                  onChange={() => toggleAmenity(a)}
+                  className="accent-indigo-600 w-4 h-4"
+                />
+                <span className="text-indigo-500">
+                  {amenityIcons[a] || <MdCheckCircle />}
+                </span>
+                {a}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    </aside>
+  )
+}
+
+// ---------------- Main Rooms ----------------
+const Rooms = () => {
+  const [rooms, setRooms] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [favorites, setFavorites] = useState([])
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const navigate = useNavigate()
+
+
+  const [filters, setFilters] = useState({
+    amenities: [],
+    price: [0, 1000],
+    availableOnly: false,
+  })
+
+  useEffect(() => {
+    let isMounted = true
+    const load = async () => {
+      try {
+        setLoading(true)
+        const data = await roomListService.fetchRooms()
+        if (isMounted) {
+          setRooms(data || [])
+          const prices = (data || []).map((r) => r.price)
+          if (prices.length) {
+            const min = Math.min(...prices)
+            const max = Math.max(...prices)
+            setFilters((p) => ({ ...p, price: [min, max] }))
+          }
+        }
+      } catch (err) {
+        if (isMounted) setError(err.message || 'Something went wrong')
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    load()
+    return () => { isMounted = false }
+  }, [])
+
+  const priceBounds = useMemo(() => {
+    if (!rooms.length) return { min: 0, max: 1000 }
+    const prices = rooms.map((r) => r.price)
+    return { min: Math.min(...prices), max: Math.max(...prices) }
+  }, [rooms])
+
+  const filteredRooms = useMemo(() => {
+    return rooms.filter((room) => {
+      if (filters.availableOnly && !room.isAvailable) return false
+      if (room.price < filters.price[0] || room.price > filters.price[1]) return false
+      if (filters.amenities.length) {
+        const hasAll = filters.amenities.every((a) => room.amenities?.includes(a))
+        if (!hasAll) return false
+      }
+      return true
+    })
+  }, [rooms, filters])
+
+  const clearFilters = () => {
+    setFilters({
+      amenities: [],
+      price: [priceBounds.min, priceBounds.max],
+      availableOnly: false,
+    })
+  }
+
+  const toggleFavorite = (id) =>
+    setFavorites((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    )
+
+  const activeFilterCount =
+    filters.amenities.length +
+    (filters.availableOnly ? 1 : 0) +
+    (filters.price[0] !== priceBounds.min || filters.price[1] !== priceBounds.max ? 1 : 0)
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <BiLoaderAlt className="animate-spin text-4xl text-indigo-600" />
+        <p className="text-gray-500">Loading rooms...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <p className="text-red-500 font-medium">⚠ {error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 py-10">
+      {/* Header */}
+      <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Our Rooms</h1>
+          <p className="text-gray-500 mt-1">
+            {filteredRooms.length} of {rooms.length} rooms match your filters
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowMobileFilters(true)}
+          className="lg:hidden relative flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold"
+        >
+          <FaFilter /> Filters
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+        {/* Desktop Filters */}
+        <div className="hidden lg:block">
+          <Filters
+            filters={filters}
+            setFilters={setFilters}
+            priceBounds={priceBounds}
+            onClear={clearFilters}
+          />
+        </div>
+
+        {/* Mobile Filters Drawer */}
+        {showMobileFilters && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setShowMobileFilters(false)}
+            />
+            <div className="absolute right-0 top-0 bottom-0 w-80 max-w-full bg-white overflow-y-auto p-4">
+              <div className="flex justify-end mb-2">
+                <button
+                  onClick={() => setShowMobileFilters(false)}
+                  className="p-2 text-gray-500 hover:text-gray-800"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <Filters
+                filters={filters}
+                setFilters={setFilters}
+                priceBounds={priceBounds}
+                onClear={clearFilters}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Room Grid */}
+        <div>
+          {filteredRooms.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
+              <p className="text-gray-500 mb-3">No rooms match your filters.</p>
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredRooms.map((room) => (
+                <RoomCard
+                  key={room.id}
+                  room={room}
+                  isFavorite={favorites.includes(room.id)}
+                  onToggleFavorite={toggleFavorite}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }
 

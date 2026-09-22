@@ -4,6 +4,14 @@ import { apiClient } from "./apiClient";
 /* AUTHENTICATION */
 /* =================================================== */
 
+export const register = async(payload) => {
+  return await apiClient.post('/auth/signup', {json : payload}).json()
+}
+
+export const login = async(payload) => {
+  return await apiClient.post('/auth/login', {json : payload}).json()
+}
+
 /* =================================================== */
 /* RECEPTIONIST */
 /* =================================================== */
@@ -95,7 +103,9 @@ export const cancelBooking = async (id, payload) => {
 /* =================================================== */
 /* create rooms */
 export const createRoom = async (payload) => {
-  return await apiClient.post(`/admin/room/create`, {json : payload}).json();
+  const res = await apiClient.post(`/admin/room/create`, {json : payload}).json();
+  console.log("res", res)
+  return res
 };
 
 /* update room */
@@ -128,4 +138,15 @@ export const statusOfRooms = async (roomStatus) => {
 /* delete room */
 export const deleteRoom = async (roomNumber) => {
   return await apiClient.delete(`/admin/room/delete/${roomNumber}`).json();
+};
+
+
+/* =================================================== */
+/* DASHBOARD */
+/* =================================================== */
+/* admin dashboard */
+
+/* get type of rooms */
+export const adminDashboard = async () => {
+  return await apiClient.get(`/admin/dashboard/`).json();
 };

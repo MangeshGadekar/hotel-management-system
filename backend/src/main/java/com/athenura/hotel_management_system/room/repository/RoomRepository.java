@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RoomRepository extends JpaRepository<Room, Long> {
+
     Optional<Room> findByRoomNumber(String roomNumber);
 
     boolean existsByRoomNumber(String roomNumber);
@@ -18,4 +19,6 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     List<Room> findByRoomStatus(RoomStatus roomStatus);
 
     List<Room> findByRoomTypeAndRoomStatus(RoomType roomType, RoomStatus roomStatus);
+
+    long countByRoomStatus(RoomStatus roomStatus);
 }

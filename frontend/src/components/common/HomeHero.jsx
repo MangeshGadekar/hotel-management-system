@@ -3,6 +3,7 @@ import { BiBed, BiCalendar, BiPhone, BiStar } from 'react-icons/bi';
 import { BsArrowRight } from 'react-icons/bs';
 import { FaMapPin, FaUserSecret, FaUtensils, FaUtensilSpoon } from 'react-icons/fa';
 import { FcWiFiLogo } from 'react-icons/fc';
+import { Link } from 'react-router-dom';
 
 const HomeHero = () => {
   return (
@@ -56,10 +57,12 @@ const HomeHero = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4">
+                <Link to="/rooms">
               <button className="bg-amber-600 text-white px-8 py-4 rounded-full font-semibold hover:bg-amber-700 transition-all transform hover:scale-105 shadow-xl hover:shadow-amber-200 flex items-center gap-2">
                 Book Your Stay
                 <BsArrowRight className="w-5 h-5" />
               </button>
+                </Link>
               <button className="bg-white text-gray-700 px-8 py-4 rounded-full font-semibold hover:bg-gray-50 transition-all border-2 border-gray-200 flex items-center gap-2">
                 <BiCalendar className="w-5 h-5" />
                 Check Availability

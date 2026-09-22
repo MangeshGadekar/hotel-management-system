@@ -27,7 +27,7 @@ const ReceptionistDashboard = lazy(() => import("../pages/receptionist/Dashboard
 // Common Pages
 const RoomsAndSuits = lazy(() => import("../pages/common/RoomsAndSuits"));
 const RoomBooking = lazy(() => import("../pages/common/RoomBooking"));
-const RoomPage = lazy(() => import("../pages/common/RoomPage"));
+const Room = lazy(() => import("../pages/common/Room"));
 const Rooms = lazy(() => import("../pages/common/Rooms"));
 
 const Home = lazy(() => import("../pages/common/Home"));
@@ -78,7 +78,7 @@ export default function AppRoutes() {
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/rooms" element={<Rooms />} />
-        <Route path="/rooms/:id" element={<RoomPage />} />
+        <Route path="/rooms/:id" element={<Room />} />
         <Route path="/booking/:id" element={<RoomBooking />} />
         <Route path="/rooms-suites" element={<RoomsAndSuits />} />
         <Route path="/about" element={<About />} />

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Repository
@@ -45,4 +46,24 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("checkInDate") LocalDate checkInDate,
             @Param("checkOutDate") LocalDate checkOutDate
     );
+
+    long countByBookingStatus(BookingStatus bookingStatus);
+
+    long countByCheckInDate(LocalDate checkInDate);
+
+    @Query("""
+        SELECT COALESCE(SUM(
+            b.totalAmount -
+                COALESCE((
+                    SELECT SUM(p.amount)
+                    FROM Payment p
+                    WHERE p.booking.id = b.id
+                    AND p.paymentStatus = 'SUCCESS'
+                ), 0)
+        ), 0)
+        FROM Booking b
+        WHERE b.bookingStatus <> 'CANCELLED'
+    """)
+
+    BigDecimal getTotalPendingAmount();
 }
