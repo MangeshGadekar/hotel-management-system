@@ -39,6 +39,7 @@ const authStore = (set) => ({
         },
         token: res.data.accessToken,
       });
+      localStorage.setItem("token", res.data.accessToken);
       return res;
     } catch (error) {
       return error;
@@ -49,12 +50,15 @@ const authStore = (set) => ({
       const res = await userLogout();
       set({
         user: {},
+        token: "",
       });
+      localStorage.clear();
       return res;
     } catch (error) {
       set({
         user: {},
       });
+      localStorage.clear();
       return error;
     }
   },

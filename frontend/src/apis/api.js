@@ -79,7 +79,7 @@ export const deleteGuest = async (id) => {
 /* =================================================== */
 /* Create booking */
 export const createBooking = async (payload) => {
-  return await apiClient.post(`/booking/create`, { json : payload}).json();
+  return await apiClient.post(`/booking/create`, {json : payload}).json();
 };
 
 /* Update booking */
@@ -106,10 +106,22 @@ export const cancelBooking = async (id, payload) => {
 /* ROOMS */
 /* =================================================== */
 /* create rooms */
-export const createRoom = async (payload) => {
-  const res = await apiClient.post(`/admin/room/create`, {json : payload}).json();
-  console.log("res", res)
-  return res
+export const createRoom = async (payload, token) => {
+  console.log("token :", token);
+  console.log("payload :", payload);
+
+  const res = await apiClient
+    .post("admin/room/create", {
+      headers: {
+      Authorization: token,
+    },
+      json: payload,
+    })
+    .json();
+
+  console.log("res", res);
+
+  return res;
 };
 
 /* update room */
