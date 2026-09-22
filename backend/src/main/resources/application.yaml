@@ -28,7 +28,7 @@ brevo:
   api:
     key: ${BREVO_API_KEY}
   sender:
-    email: dalalstavan7@gmail.com
+    email:
     name: Hotel Aatithya
 
 
