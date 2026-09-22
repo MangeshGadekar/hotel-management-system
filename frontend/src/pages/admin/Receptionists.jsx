@@ -7,10 +7,10 @@ const INITIAL_STAFF = [
 ];
 
 const INITIAL_FORM_STATE = {
-  name: '',
+  firstName: '',
+  lastName: '',
+  username: '',
   email: '',
-  phone: '',
-  shift: 'Morning (06:00 - 14:00)',
   password: '',
 };
 
@@ -19,12 +19,16 @@ export default function Receptionists() {
   const [staffList, setStaffList] = useState(INITIAL_STAFF);
   const [newStaff, setNewStaff] = useState(INITIAL_FORM_STATE);
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewStaff((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleAddStaff = (e) => {
     e.preventDefault();
-    if (!newStaff.name.trim() || !newStaff.email.trim()) return;
+    if (!newStaff.firstName.trim() || !newStaff.email.trim()) return;
 
     setStaffList((prevStaff) => {
-      // Find maximum existing numeric ID to prevent duplicate keys after deletions
       const lastIdNum = prevStaff.reduce((max, s) => {
         const num = parseInt(s.id.replace('REC-', ''), 10);
         return !isNaN(num) && num > max ? num : max;
@@ -32,10 +36,10 @@ export default function Receptionists() {
 
       const nextStaffMember = {
         id: `REC-${lastIdNum + 1}`,
-        name: newStaff.name.trim(),
+        name: `${newStaff.firstName.trim()} ${newStaff.lastName.trim()}`.trim(),
         email: newStaff.email.trim(),
-        phone: newStaff.phone.trim() || 'N/A',
-        shift: newStaff.shift,
+        phone: 'N/A',
+        shift: 'Morning (06:00 - 14:00)',
         status: 'Active',
       };
 
@@ -149,67 +153,78 @@ export default function Receptionists() {
         </div>
       </div>
 
-      {/* Add Receptionist Modal */}
+      {/* Add Receptionist Modal Card */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4">
             <h3 className="text-lg font-bold text-slate-800">Add Receptionist Account</h3>
             <form onSubmit={handleAddStaff} className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    placeholder="First Name"
+                    value={newStaff.firstName}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    placeholder="Last Name"
+                    value={newStaff.lastName}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+                    required
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Full Name</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Username</label>
                 <input
                   type="text"
-                  placeholder="e.g. Ananya Roy"
-                  value={newStaff.name}
-                  onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
+                  name="username"
+                  placeholder="Username"
+                  value={newStaff.username}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                   required
                 />
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Email Address</label>
                 <input
                   type="email"
-                  placeholder="ananya@hotelparadise.com"
+                  name="email"
+                  placeholder="Email Address"
                   value={newStaff.email}
-                  onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                   required
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Phone Number</label>
-                <input
-                  type="text"
-                  placeholder="+91 98765 43210"
-                  value={newStaff.phone}
-                  onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Shift Timing</label>
-                <select
-                  value={newStaff.shift}
-                  onChange={(e) => setNewStaff({ ...newStaff, shift: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-                >
-                  <option>Morning (06:00 - 14:00)</option>
-                  <option>Evening (14:00 - 22:00)</option>
-                  <option>Night (22:00 - 06:00)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Initial Password</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Password</label>
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  name="password"
+                  placeholder="Password"
                   value={newStaff.password}
-                  onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                   required
                 />
               </div>
+
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
