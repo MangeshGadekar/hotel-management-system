@@ -1,30 +1,60 @@
 import { devtools, persist } from "zustand/middleware";
-import { login, register } from "../apis/api";
+import { userLogin, userLogout, userRegister } from "../apis/api";
 import { create } from "zustand";
 
 const authStore = (set) => ({
-  user: {},
+  user: {
+    firstName: "",
+    lastName: "",
+    username: "",
+    email: "",
+    id: "",
+    role: "",
+  },
+  token: "",
+
   register: async (data) => {
     try {
-      const res = await register(data);
-      console.log("login", res) 
+      const res = await userRegister(data);
+      console.log("login", res.data);
       set({
         user: res,
       });
-      return res
+      return res;
     } catch (error) {
       return error;
     }
   },
   login: async (data) => {
     try {
-      const res = await login(data);
-      console.log("res", res)
+      const res = await userLogin(data);
+      console.log("res", res);
       set({
-        user: res,
+        user: {
+          id: res.data.id,
+          username: res.data.username,
+          firstName: res.data.firstName,
+          lastName: res.data.lastName,
+          email: res.data.email,
+        },
+        token: res.data.accessToken,
       });
-      return res
+      return res;
     } catch (error) {
+      return error;
+    }
+  },
+  logout: async () => {
+    try {
+      const res = await userLogout();
+      set({
+        user: {},
+      });
+      return res;
+    } catch (error) {
+      set({
+        user: {},
+      });
       return error;
     }
   },

@@ -4,12 +4,16 @@ import { apiClient } from "./apiClient";
 /* AUTHENTICATION */
 /* =================================================== */
 
-export const register = async(payload) => {
+export const userRegister = async(payload) => {
   return await apiClient.post('/auth/signup', {json : payload}).json()
 }
 
-export const login = async(payload) => {
+export const userLogin = async(payload) => {
   return await apiClient.post('/auth/login', {json : payload}).json()
+}
+
+export const userLogout = async() => {
+  return await apiClient.get('/auth/logout').json()
 }
 
 /* =================================================== */
