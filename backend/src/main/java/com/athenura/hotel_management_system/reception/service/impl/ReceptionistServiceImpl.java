@@ -3,6 +3,7 @@ package com.athenura.hotel_management_system.reception.service.impl;
 import com.athenura.hotel_management_system.common.entity.Users;
 import com.athenura.hotel_management_system.common.enums.Role;
 import com.athenura.hotel_management_system.common.repository.UserRepo;
+import com.athenura.hotel_management_system.notification.service.EmailService;
 import com.athenura.hotel_management_system.reception.dto.ReceptionistRequest;
 import com.athenura.hotel_management_system.reception.dto.ReceptionistResponse;
 import com.athenura.hotel_management_system.reception.mapper.ReceptionistMapper;
@@ -12,7 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,30 +21,34 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     private final UserRepo userRepo;
     private final ReceptionistMapper receptionistMapper;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @Override
     public ReceptionistResponse createReceptionist(ReceptionistRequest request) {
 
-        if (userRepo.existsByEmail(request.getEmail()))
+        if (userRepo.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
-
-        if (request.getUsername() != null && userRepo.existsByUsername(request.getUsername()))
-            throw new RuntimeException("Username already exists");
-
-        Users receptionist = receptionistMapper.toEntity(request);
-
-        receptionist.setRole(Role.RECEPTIONIST);
-
-        String generatedSecretKey = UUID.randomUUID().toString().substring(0, 8);
-        receptionist.setSecretKey(generatedSecretKey);
-
-        if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            receptionist.setPassword(passwordEncoder.encode(request.getPassword()));
-        } else {
-            receptionist.setPassword("PENDING_REGISTRATION");
         }
 
+        if (request.getUsername() != null && !request.getUsername().isBlank() && userRepo.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("Username already exists");
+        }
+
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new RuntimeException("Password is required for creating a Receptionist");
+        }
+
+        Users receptionist = receptionistMapper.toEntity(request);
+        receptionist.setRole(Role.RECEPTIONIST);
+
+
+        String rawPassword = request.getPassword();
+        receptionist.setPassword(passwordEncoder.encode(rawPassword));
+
         Users savedReceptionist = userRepo.save(receptionist);
+
+
+        emailService.sendReceptionistCredentials(savedReceptionist.getEmail(), rawPassword, savedReceptionist.getFirstName());
 
         return receptionistMapper.toResponse(savedReceptionist);
     }
@@ -85,9 +89,7 @@ public class ReceptionistServiceImpl implements ReceptionistService {
         }
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            receptionist.setPassword(
-                    passwordEncoder.encode(request.getPassword())
-            );
+            receptionist.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
         Users updatedReceptionist = userRepo.save(receptionist);
@@ -97,7 +99,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
     @Override
     public String deleteReceptionist(Long id) {
-
         Users receptionist = userRepo.findByIdAndRole(id, Role.RECEPTIONIST)
                 .orElseThrow(() -> new RuntimeException("Receptionist not Found"));
 
@@ -115,7 +116,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
     @Override
     public List<ReceptionistResponse> getAllReceptionists() {
-
         return userRepo.findAllByRole(Role.RECEPTIONIST)
                 .stream()
                 .map(receptionistMapper::toResponse)

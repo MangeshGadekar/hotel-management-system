@@ -26,9 +26,9 @@ spring:
 
 brevo:
   api:
-    key: xkeysib-
+    key: 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
   sender:
-    email: dalalstavan7@gmail.com
+    email: marathevedant123@gmail.com
     name: Hotel Aatithya
 
 twilio:
