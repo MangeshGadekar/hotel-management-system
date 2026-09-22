@@ -53,10 +53,10 @@ export default function ReceptionistLayout() {
   const [activeMenu, setActiveMenu] = useState("Dashboard");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [showRegisterGuest, setShowRegisterGuest] = useState(false);
   const [showCreateBooking, setShowCreateBooking] = useState(false);
   const [otpModal, setOtpModal] = useState({ open: false, booking: null });
   const [checkoutModal, setCheckoutModal] = useState({ open: false, booking: null });
+  const [guestDetailsModal, setGuestDetailsModal] = useState({ open: false, guest: null });
   const [otpInput, setOtpInput] = useState("");
 
   const navItems = [
@@ -76,10 +76,82 @@ export default function ReceptionistLayout() {
   ];
 
   const [bookings, setBookings] = useState([
-    { id: "HM10254", guest: "Rahul Sharma", email: "rahul@example.com", phone: "+91 98765 43210", room: "204 - Deluxe", date: "12 May", status: "Confirmed", amount: "₹11,200" },
-    { id: "HM10253", guest: "Neha Verma", email: "neha@example.com", phone: "+91 98765 43211", room: "101 - Suite", date: "12 May", status: "Confirmed", amount: "₹6,500" },
-    { id: "HM10252", guest: "Amit Patel", email: "amit@example.com", phone: "+91 98765 43212", room: "305 - Standard", date: "11 May", status: "Checked-In", amount: "₹9,000" },
-    { id: "HM10251", guest: "Priya Singh", email: "priya@example.com", phone: "+91 98765 43213", room: "102 - Deluxe", date: "11 May", status: "Checked-Out", amount: "₹4,500" },
+    { 
+      id: "HM10254", 
+      guest: {
+        firstName: "Rahul",
+        lastName: "Sharma",
+        email: "rahul@example.com",
+        phone: "+91 98765 43210",
+        idProofType: "AADHAAR",
+        idProofNumber: "ABCD1234EF",
+        address: "123 MG Road",
+        city: "Pune",
+        state: "Maharashtra",
+        postalCode: "411001",
+      },
+      room: "204 - Deluxe", 
+      date: "12 May", 
+      status: "Confirmed", 
+      amount: "₹11,200" 
+    },
+    { 
+      id: "HM10253", 
+      guest: {
+        firstName: "Neha",
+        lastName: "Verma",
+        email: "neha@example.com",
+        phone: "+91 98765 43211",
+        idProofType: "PASSPORT",
+        idProofNumber: "Z9876543",
+        address: "45 Park Street",
+        city: "Mumbai",
+        state: "Maharashtra",
+        postalCode: "400001",
+      },
+      room: "101 - Suite", 
+      date: "12 May", 
+      status: "Confirmed", 
+      amount: "₹6,500" 
+    },
+    { 
+      id: "HM10252", 
+      guest: {
+        firstName: "Amit",
+        lastName: "Patel",
+        email: "amit@example.com",
+        phone: "+91 98765 43212",
+        idProofType: "DRIVING_LICENSE",
+        idProofNumber: "DL1420110012345",
+        address: "88 Ring Road",
+        city: "Ahmedabad",
+        state: "Gujarat",
+        postalCode: "380001",
+      },
+      room: "305 - Standard", 
+      date: "11 May", 
+      status: "Checked-In", 
+      amount: "₹9,000" 
+    },
+    { 
+      id: "HM10251", 
+      guest: {
+        firstName: "Priya",
+        lastName: "Singh",
+        email: "priya@example.com",
+        phone: "+91 98765 43213",
+        idProofType: "PAN_CARD",
+        idProofNumber: "ABCDE1234F",
+        address: "12 Civil Lines",
+        city: "Delhi",
+        state: "Delhi",
+        postalCode: "110054",
+      },
+      room: "102 - Deluxe", 
+      date: "11 May", 
+      status: "Checked-Out", 
+      amount: "₹4,500" 
+    },
   ]);
 
   const [requests, setRequests] = useState([
@@ -161,12 +233,6 @@ export default function ReceptionistLayout() {
             <p className="text-xs text-slate-500">Receptionist Front Desk Control Panel</p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowRegisterGuest(true)}
-              className="px-3.5 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
-            >
-              + Register Guest
-            </button>
             <button
               onClick={() => setShowCreateBooking(true)}
               className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors shadow-xs"
@@ -250,7 +316,14 @@ export default function ReceptionistLayout() {
                     {bookings.map((row) => (
                       <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-4 px-6 font-bold text-slate-800">{row.id}</td>
-                        <td className="py-4 px-6 text-slate-700 font-medium">{row.guest}</td>
+                        <td className="py-4 px-6">
+                          <button 
+                            onClick={() => setGuestDetailsModal({ open: true, guest: row.guest })}
+                            className="font-medium text-slate-700 hover:text-emerald-700 text-left underline-offset-2 hover:underline"
+                          >
+                            {row.guest.firstName} {row.guest.lastName}
+                          </button>
+                        </td>
                         <td className="py-4 px-6 text-slate-500">{row.room}</td>
                         <td className="py-4 px-6 text-slate-500">{row.date}</td>
                         <td className="py-4 px-6 font-medium text-slate-800">{row.amount}</td>
@@ -294,23 +367,6 @@ export default function ReceptionistLayout() {
       </div>
 
       {/* Modals */}
-      {showRegisterGuest && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full space-y-4 shadow-lg border border-slate-200">
-            <h3 className="text-lg font-bold text-slate-800">Register New Guest</h3>
-            <form onSubmit={(e) => { e.preventDefault(); setShowRegisterGuest(false); }} className="space-y-3">
-              <input type="text" placeholder="Full Name" required className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-600" />
-              <input type="email" placeholder="Email Address" required className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-600" />
-              <input type="tel" placeholder="Phone Number" required className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-600" />
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowRegisterGuest(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">Save Guest</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {showCreateBooking && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full space-y-4 shadow-lg border border-slate-200">
@@ -336,7 +392,7 @@ export default function ReceptionistLayout() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full space-y-4 shadow-lg border border-slate-200">
             <h3 className="text-lg font-bold text-slate-800">Check-In OTP Verification</h3>
-            <p className="text-xs text-slate-500">OTP sent to <span className="font-semibold text-emerald-600">{otpModal.booking?.email}</span></p>
+            <p className="text-xs text-slate-500">OTP sent to <span className="font-semibold text-emerald-600">{otpModal.booking?.guest?.email}</span></p>
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <input
                 type="text"
@@ -361,7 +417,7 @@ export default function ReceptionistLayout() {
           <div className="bg-white rounded-xl p-6 max-w-sm w-full space-y-4 shadow-lg border border-slate-200">
             <h3 className="text-lg font-bold text-slate-800">Process Checkout</h3>
             <div className="bg-slate-50 p-3 rounded-lg space-y-2 text-xs border border-slate-200">
-              <div className="flex justify-between text-slate-500"><span>Guest:</span> <span className="text-slate-800 font-medium">{checkoutModal.booking?.guest}</span></div>
+              <div className="flex justify-between text-slate-500"><span>Guest:</span> <span className="text-slate-800 font-medium">{checkoutModal.booking?.guest?.firstName} {checkoutModal.booking?.guest?.lastName}</span></div>
               <div className="flex justify-between text-slate-500"><span>Room:</span> <span className="text-slate-800 font-medium">{checkoutModal.booking?.room}</span></div>
               <div className="flex justify-between text-slate-500"><span>Total Bill:</span> <span className="font-bold text-emerald-600">{checkoutModal.booking?.amount}</span></div>
             </div>
@@ -369,6 +425,53 @@ export default function ReceptionistLayout() {
               <button onClick={() => setCheckoutModal({ open: false, booking: null })} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">Cancel</button>
               <button onClick={handleCheckout} className="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">Complete Checkout</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guest Details Modal */}
+      {guestDetailsModal.open && guestDetailsModal.guest && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full space-y-4 shadow-lg">
+            <h3 className="text-base font-bold text-slate-800">Guest Information</h3>
+            <div className="space-y-2 text-xs divide-y divide-slate-100">
+              <div className="pb-2">
+                <p className="text-slate-400 font-medium uppercase text-[10px]">Full Name</p>
+                <p className="text-slate-800 font-semibold text-sm">{guestDetailsModal.guest.firstName} {guestDetailsModal.guest.lastName}</p>
+              </div>
+              <div className="py-2 grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-slate-400 font-medium uppercase text-[10px]">Email</p>
+                  <p className="text-slate-800 font-medium">{guestDetailsModal.guest.email}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 font-medium uppercase text-[10px]">Phone</p>
+                  <p className="text-slate-800 font-medium">{guestDetailsModal.guest.phone}</p>
+                </div>
+              </div>
+              <div className="py-2 grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-slate-400 font-medium uppercase text-[10px]">ID Type</p>
+                  <p className="text-slate-800 font-medium">{guestDetailsModal.guest.idProofType}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 font-medium uppercase text-[10px]">ID Number</p>
+                  <p className="text-slate-800 font-medium">{guestDetailsModal.guest.idProofNumber}</p>
+                </div>
+              </div>
+              <div className="pt-2">
+                <p className="text-slate-400 font-medium uppercase text-[10px]">Address</p>
+                <p className="text-slate-800 font-medium">
+                  {guestDetailsModal.guest.address}, {guestDetailsModal.guest.city}, {guestDetailsModal.guest.state} - {guestDetailsModal.guest.postalCode}
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setGuestDetailsModal({ open: false, guest: null })}
+              className="w-full bg-slate-100 text-slate-700 py-2 rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors mt-2"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
