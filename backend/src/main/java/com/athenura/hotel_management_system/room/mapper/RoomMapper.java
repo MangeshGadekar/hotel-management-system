@@ -18,6 +18,7 @@ public class RoomMapper {
             .pricePerNight(roomRequest.getPricePerNight())
             .capacity(roomRequest.getCapacity())
             .roomStatus((roomRequest.getRoomStatus() != null ) ? roomRequest.getRoomStatus() : RoomStatus.AVAILABLE)
+            .images(roomRequest.getImages() != null ? roomRequest.getImages() : new java.util.ArrayList<>())
             .build();
     }
 
@@ -31,7 +32,9 @@ public class RoomMapper {
                 .pricePerNight(room.getPricePerNight())
                 .capacity(room.getCapacity())
                 .roomStatus(room.getRoomStatus())
+                .images(room.getImages() != null ? room.getImages() : new java.util.ArrayList<>())
                 .build();
     }
+
 
 }

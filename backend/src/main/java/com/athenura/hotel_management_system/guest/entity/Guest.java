@@ -4,6 +4,8 @@ import com.athenura.hotel_management_system.guest.enums.IdProofType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
+
 @Entity
 @Getter
 @Setter
@@ -41,4 +43,6 @@ public class Guest {
     private String state;
 
     private String postalCode;
+
+    private LocalDate dateOfBirth;
 }

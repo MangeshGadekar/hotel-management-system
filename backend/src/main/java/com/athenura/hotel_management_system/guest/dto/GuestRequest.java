@@ -3,6 +3,8 @@ package com.athenura.hotel_management_system.guest.dto;
 import com.athenura.hotel_management_system.guest.enums.IdProofType;
 import lombok.*;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 @Builder
@@ -22,4 +24,5 @@ public class GuestRequest {
     private String city;
     private String state;
     private String postalCode;
+    private LocalDate dateOfBirth;
 }

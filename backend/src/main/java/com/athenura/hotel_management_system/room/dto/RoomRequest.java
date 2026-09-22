@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @Builder
@@ -26,4 +27,7 @@ public class RoomRequest {
     private Integer capacity;
 
     private RoomStatus roomStatus;
+
+    private List<String> images;
 }
+

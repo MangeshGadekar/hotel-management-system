@@ -3,6 +3,7 @@ package com.athenura.hotel_management_system.reception.service.impl;
 import com.athenura.hotel_management_system.common.entity.Users;
 import com.athenura.hotel_management_system.common.enums.Role;
 import com.athenura.hotel_management_system.common.repository.UserRepo;
+import com.athenura.hotel_management_system.notification.service.EmailService;
 import com.athenura.hotel_management_system.reception.dto.ReceptionistRequest;
 import com.athenura.hotel_management_system.reception.dto.ReceptionistResponse;
 import com.athenura.hotel_management_system.reception.mapper.ReceptionistMapper;
@@ -20,19 +21,34 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     private final UserRepo userRepo;
     private final ReceptionistMapper receptionistMapper;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @Override
-    public ReceptionistResponse createReceptionist(ReceptionistRequest request){
+    public ReceptionistResponse createReceptionist(ReceptionistRequest request) {
 
-        if (userRepo.existsByEmail(request.getEmail()))
+        if (userRepo.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
+        }
 
-        if (userRepo.existsByUsername(request.getUsername()))
+        if (request.getUsername() != null && !request.getUsername().isBlank() && userRepo.existsByUsername(request.getUsername())) {
             throw new RuntimeException("Username already exists");
+        }
+
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new RuntimeException("Password is required for creating a Receptionist");
+        }
 
         Users receptionist = receptionistMapper.toEntity(request);
-        receptionist.setPassword(passwordEncoder.encode(receptionist.getPassword()));
+        receptionist.setRole(Role.RECEPTIONIST);
+
+
+        String rawPassword = request.getPassword();
+        receptionist.setPassword(passwordEncoder.encode(rawPassword));
+
         Users savedReceptionist = userRepo.save(receptionist);
+
+
+        emailService.sendReceptionistCredentials(savedReceptionist.getEmail(), rawPassword, savedReceptionist.getFirstName());
 
         return receptionistMapper.toResponse(savedReceptionist);
     }
@@ -42,7 +58,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
         Users receptionist = userRepo.findByIdAndRole(id, Role.RECEPTIONIST)
                 .orElseThrow(() -> new RuntimeException("Receptionist not found"));
 
-        // Email validation
         if (request.getEmail() != null
                 && !receptionist.getEmail().equals(request.getEmail())
                 && userRepo.existsByEmail(request.getEmail())) {
@@ -50,7 +65,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             throw new RuntimeException("Email already exists");
         }
 
-        // Username validation
         if (request.getUsername() != null
                 && !receptionist.getUsername().equals(request.getUsername())
                 && userRepo.existsByUsername(request.getUsername())) {
@@ -58,7 +72,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             throw new RuntimeException("Username already exists");
         }
 
-        // Partial Update
         if (request.getFirstName() != null) {
             receptionist.setFirstName(request.getFirstName());
         }
@@ -75,10 +88,8 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             receptionist.setEmail(request.getEmail());
         }
 
-        if (request.getPassword() != null) {
-            receptionist.setPassword(
-                    passwordEncoder.encode(request.getPassword())
-            );
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            receptionist.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
         Users updatedReceptionist = userRepo.save(receptionist);
@@ -88,29 +99,26 @@ public class ReceptionistServiceImpl implements ReceptionistService {
 
     @Override
     public String deleteReceptionist(Long id) {
-
         Users receptionist = userRepo.findByIdAndRole(id, Role.RECEPTIONIST)
-                .orElseThrow(()-> new RuntimeException("Receptionist not Found"));
+                .orElseThrow(() -> new RuntimeException("Receptionist not Found"));
 
         userRepo.delete(receptionist);
-        return "Receptionist with id "+ id +"is Deleted";
+        return "Receptionist with id " + id + " is Deleted";
     }
 
     @Override
     public ReceptionistResponse getReceptionistById(Long id) {
         Users receptionist = userRepo.findByIdAndRole(id, Role.RECEPTIONIST)
-                .orElseThrow(()-> new RuntimeException("Receptionist not Found"));
+                .orElseThrow(() -> new RuntimeException("Receptionist not Found"));
 
         return receptionistMapper.toResponse(receptionist);
     }
 
     @Override
     public List<ReceptionistResponse> getAllReceptionists() {
-
         return userRepo.findAllByRole(Role.RECEPTIONIST)
                 .stream()
                 .map(receptionistMapper::toResponse)
-//                .map(user -> receptionistMapper.toResponse(user))
                 .toList();
     }
 }

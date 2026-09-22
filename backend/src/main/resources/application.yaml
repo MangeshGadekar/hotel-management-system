@@ -3,9 +3,9 @@ spring:
     name: hotel-management-system
 
   datasource:
-    url: jdbc:mysql://localhost:3306/Hotel_Managment
+    url: jdbc:mysql://localhost:3306/Hotel_Managment?createDatabaseIfNotExist=true&useSSL=false
     username: root
-    password: "root"
+    password: "vedant123"
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -16,3 +16,38 @@ spring:
       hibernate:
         format_sql: true
     database-platform: org.hibernate.dialect.MySQLDialect
+
+  data:
+    redis:
+      host: desirable-empirical-throne-30441.db.redis.io
+      port: 10818
+      username: default
+      password: ${REDIS_PASSWORD}
+
+brevo:
+  api:
+    key: ${BREVO_API_KEY}
+  sender:
+    email:
+    name: Hotel Aatithya
+
+
+razorpay:
+  key:
+    id: rzp_test_TUkFWZhCRkCanQ
+    secret: 9MaWmjVtdixU7B5L6EJcjLUX
+
+
+twilio:
+  account-sid: AC758f931cd57c20ffd8412fcd24d0727c
+  auth-token: a12825b464e118d2b1409e11c6b46442
+  phone-number: +17372508034
+
+app:
+  security:
+    admin-secret-key: Admin@123
+
+razorpay:
+  key:
+    id: rzp_test_TUkFWZhCRkCanQ
+    secret: 9MaWmjVtdixU7B5L6EJcjLUX

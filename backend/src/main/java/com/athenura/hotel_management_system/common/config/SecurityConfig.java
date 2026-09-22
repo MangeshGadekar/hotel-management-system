@@ -1,37 +1,66 @@
 package com.athenura.hotel_management_system.common.config;
+
 import com.athenura.hotel_management_system.jwt.JwtAuthFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
     private final JwtAuthFilter jwtAuthFilter;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+
+
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/admin/**").permitAll()
-                        .requestMatchers("/guest/**").permitAll()
-                        .requestMatchers("/booking/**").permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/guest/create").permitAll()
+
+
+                        .requestMatchers(HttpMethod.GET, "/guest", "/guest/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.PATCH, "/guest/update/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.DELETE, "/guest/delete/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+
+
+                        .requestMatchers(HttpMethod.POST, "/booking/create").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/booking", "/booking/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.PATCH, "/booking/update/**", "/booking/cancel/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+
+
+                        .requestMatchers("/api/payments/pay", "/api/payments/razorpay/**").permitAll()
+                        .requestMatchers("/api/payments/receipt/**", "/api/payments/booking/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+
+                        .requestMatchers(HttpMethod.GET, "/admin/room", "/admin/room/{roomNumber}", "/admin/room/type/**", "/admin/room/status/**").permitAll()
+
+
+                        .requestMatchers("/admin/users/**", "/admin/reports/**", "/admin/receptionist/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/admin/room/create").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.PATCH, "/admin/room/update/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.DELETE, "/admin/room/delete/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+                        .requestMatchers("/reception/**", "/receptionist/**", "/checkin/**", "/checkout/**").hasAnyRole("ADMIN", "RECEPTIONIST")
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
@@ -44,6 +73,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-
 }

@@ -279,7 +279,15 @@
     "capacity": 4,
     "bedType": "King Size",
     "size": "140 sqm",
-    "amenities": ["WiFi", "TV", "AC", "Mini Bar", "Jacuzzi", "Terrace", "Kitchen"],
+    "amenities": [
+      "WiFi",
+      "TV",
+      "AC",
+      "Mini Bar",
+      "Jacuzzi",
+      "Terrace",
+      "Kitchen"
+    ],
     "description": "Exclusive penthouse featuring expansive interiors, a private terrace, and premium facilities.",
     "isAvailable": true,
     "isFeatured": true
@@ -338,7 +346,7 @@
     "size": "46 sqm",
     "amenities": ["WiFi", "TV", "AC", "Coffee", "Bathtub"],
     "description": "Classic suite offering refined interiors, spacious accommodation, and modern comforts.",
-    "isAvailable": true,
+    "isAvailable": false,
     "isFeatured": false
   },
   {
@@ -414,7 +422,7 @@
     "size": "48 sqm",
     "amenities": ["WiFi", "TV", "AC", "Garden View", "Balcony"],
     "description": "Elegant suite surrounded by peaceful garden views and lush greenery.",
-    "isAvailable": true,
+    "isAvailable": false,
     "isFeatured": false
   },
   {
@@ -471,7 +479,7 @@
     "size": "44 sqm",
     "amenities": ["WiFi", "TV", "AC", "Balcony", "Ocean View"],
     "description": "Stylish oceanfront room offering beautiful views, modern comforts, and a private balcony.",
-    "isAvailable": true,
+    "isAvailable": false,
     "isFeatured": true
   },
   {

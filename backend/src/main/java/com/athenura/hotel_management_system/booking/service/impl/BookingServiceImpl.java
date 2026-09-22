@@ -13,10 +13,13 @@ import com.athenura.hotel_management_system.common.exception.BookingOverlapExcep
 import com.athenura.hotel_management_system.common.repository.UserRepo;
 import com.athenura.hotel_management_system.guest.entity.Guest;
 import com.athenura.hotel_management_system.guest.repository.GuestRepository;
+import com.athenura.hotel_management_system.payment.dto.PaymentDTO;
+import com.athenura.hotel_management_system.payment.service.PaymentService;
 import com.athenura.hotel_management_system.room.entity.Room;
 import com.athenura.hotel_management_system.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
@@ -31,26 +34,29 @@ public class BookingServiceImpl implements BookingService {
     private final RoomRepository roomRepository;
     private final UserRepo userRepo;
     private final BookingMapper bookingMapper;
+    private final PaymentService paymentService;
 
     @Override
+    @Transactional
     public BookingResponse createBooking(BookingRequest request) {
 
         // 1. Find Guest
-        Guest guest = guestRepository.findById(request.getGuestId())
-                .orElseThrow(() -> new RuntimeException("Guest not found"));
+//        Guest guest = guestRepository.findById(request.getGuestId())
+//                .orElseThrow(() -> new RuntimeException("Guest not found"));
 
-        // 2. Find Room
-        Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new RuntimeException("Room not found"));
 
-        // 3. Validate dates
+        // 1. Validate dates
         if (!request.getCheckOutDate().isAfter(request.getCheckInDate())) {
             throw new RuntimeException(
                     "Check-out date must be after check-in date"
             );
         }
 
-        // Check room availability
+        // 2. Find Room
+        Room room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+
+        //3. Check room availability
         boolean roomAlreadyBooked =
                 bookingRepository.existsOverlappingBooking(
                         request.getRoomId(),
@@ -65,17 +71,34 @@ public class BookingServiceImpl implements BookingService {
             );
         }
 
-        // 4. Calculate number of nights
+
+        // 4. Create Guest
+        Guest guest = Guest.builder()
+                .firstName(request.getGuest().getFirstName())
+                .lastName(request.getGuest().getLastName())
+                .phone(request.getGuest().getPhone())
+                .email(request.getGuest().getEmail())
+                .idProofType(request.getGuest().getIdProofType())
+                .idProofNumber(request.getGuest().getIdProofNumber())
+                .address(request.getGuest().getAddress())
+                .city(request.getGuest().getCity())
+                .state(request.getGuest().getState())
+                .postalCode(request.getGuest().getPostalCode())
+                .build();
+
+        Guest savedGuest = guestRepository.save(guest);
+
+        // 5. Calculate number of nights
         long nights = ChronoUnit.DAYS.between(
                 request.getCheckInDate(),
                 request.getCheckOutDate()
         );
 
-        // 5. Calculate total amount
+        // 6. Calculate total amount
         BigDecimal totalAmount = room.getPricePerNight()
                 .multiply(BigDecimal.valueOf(nights));
 
-        // 6. Create Booking
+        // 7. Create Booking
         Booking booking = Booking.builder()
                 .guest(guest)
                 .room(room)
@@ -85,7 +108,7 @@ public class BookingServiceImpl implements BookingService {
                 .bookingStatus(BookingStatus.BOOKED)
                 .build();
 
-        // 7. Save
+        // 7. Save Booking
         Booking savedBooking = bookingRepository.save(booking);
 
         // 8. Convert to response
@@ -182,4 +205,5 @@ public class BookingServiceImpl implements BookingService {
 
         return "Booking with id " + id + " cancelled successfully.";
     }
+
 }
