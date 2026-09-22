@@ -2,8 +2,8 @@ package com.athenura.hotel_management_system.common.controller;
 
 import com.athenura.hotel_management_system.common.dto.ApiResponse;
 import com.athenura.hotel_management_system.common.dto.LoginRequestDto;
+import com.athenura.hotel_management_system.common.dto.LoginResponse;
 import com.athenura.hotel_management_system.common.dto.RefreshTokenRequest;
-import com.athenura.hotel_management_system.common.dto.TokenResponse;
 import com.athenura.hotel_management_system.common.dto.UserRequestDto;
 import com.athenura.hotel_management_system.common.dto.UserResponseDto;
 import com.athenura.hotel_management_system.common.services.AuthService;
@@ -32,17 +32,17 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<TokenResponse>> login(
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequestDto request) {
-        TokenResponse tokenResponse = authService.login(request);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Login successful!", tokenResponse));
+        LoginResponse loginResponse = authService.login(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Login successful!", loginResponse));
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<ApiResponse<TokenResponse>> refreshToken(
+    public ResponseEntity<ApiResponse<LoginResponse>> refreshToken(
             @Valid @RequestBody RefreshTokenRequest request) {
-        TokenResponse tokenResponse = authService.refreshToken(request);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Token refreshed successfully!", tokenResponse));
+        LoginResponse loginResponse = authService.refreshToken(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Token refreshed successfully!", loginResponse));
     }
 
     @PostMapping("/logout")

@@ -1,8 +1,8 @@
 package com.athenura.hotel_management_system.common.services;
 
 import com.athenura.hotel_management_system.common.dto.LoginRequestDto;
+import com.athenura.hotel_management_system.common.dto.LoginResponse;
 import com.athenura.hotel_management_system.common.dto.RefreshTokenRequest;
-import com.athenura.hotel_management_system.common.dto.TokenResponse;
 import com.athenura.hotel_management_system.common.dto.UserRequestDto;
 import com.athenura.hotel_management_system.common.dto.UserResponseDto;
 import com.athenura.hotel_management_system.common.entity.RefreshToken;
@@ -29,7 +29,6 @@ public class AuthService {
 
     @Value("${app.security.admin-secret-key}")
     private String configuredAdminSecretKey;
-
 
     public UserResponseDto signUpUser(UserRequestDto request) {
 
@@ -58,8 +57,7 @@ public class AuthService {
         return mapToUserResponseDto(savedUser);
     }
 
-
-    public TokenResponse login(LoginRequestDto request) {
+    public LoginResponse login(LoginRequestDto request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -73,16 +71,36 @@ public class AuthService {
         String accessToken = jwtService.generateToken(user);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
-        return new TokenResponse(accessToken, refreshToken.getToken());
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .build();
     }
 
-    public TokenResponse refreshToken(RefreshTokenRequest request) {
+    public LoginResponse refreshToken(RefreshTokenRequest request) {
         RefreshToken refreshToken = refreshTokenService.findByToken(request.getRefreshToken());
         refreshTokenService.verifyExpiration(refreshToken);
         RefreshToken newRefreshToken = refreshTokenService.rotateRefreshToken(refreshToken);
         String accessToken = jwtService.generateToken(newRefreshToken.getUser());
 
-        return new TokenResponse(accessToken, newRefreshToken.getToken());
+        Users user = newRefreshToken.getUser();
+
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(newRefreshToken.getToken())
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .build();
     }
 
     public void logout(String refreshToken) {
