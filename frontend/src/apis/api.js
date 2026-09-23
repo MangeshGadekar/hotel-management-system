@@ -80,28 +80,61 @@ export const removeReceptionist = async (id, token) => {
 /* GUEST */
 /* =================================================== */
 /* create guest */
-export const createGuest = async (payload) => {
-  return await apiClient.post("/guest/create", { json: payload }).json();
+export const createGuest = async (payload, token) => {
+  return await apiClient
+    .post("/guest/create", {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
 };
 
 /* update guest */
-export const patchGuest = async (id, payload) => {
-  return await apiClient.patch(`/guest/update/${id}`, { json: payload }).json();
+export const patchGuest = async (id, payload, token) => {
+  return await apiClient
+    .patch(`/guest/update/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
 };
 
 /* fetch guest */
-export const fetchGuest = async (id) => {
-  return await apiClient.get(`/guest/${id}`).json();
+export const fetchGuest = async (id, token) => {
+  return await apiClient
+    .get(`/guest/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* fetch guest list */
-export const fetchAllGuest = async () => {
-  return await apiClient.get(`/guest`).json();
+export const fetchAllGuest = async (token) => {
+  console.log("token",token)
+  return await apiClient
+    .get(`/guest`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* delete guest */
-export const deleteGuest = async (id) => {
-  return await apiClient.delete(`/guest/delete/${id}`).json();
+export const deleteGuest = async (id, token) => {
+  return await apiClient
+    .delete(`/guest/delete/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* =================================================== */
@@ -196,6 +229,12 @@ export const deleteRoom = async (roomNumber) => {
 /* admin dashboard */
 
 /* get type of rooms */
-export const adminDashboard = async () => {
-  return await apiClient.get(`/admin/dashboard/`).json();
+export const adminDashboard = async (token) => {
+  return await apiClient
+    .get(`/admin/dashboard`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };

@@ -17,7 +17,8 @@ const roomStore = (set) => ({
   addRoom: async (data) => {
     try {
       console.log("create room data", data);
-      let token = `Bearer ${localStorage.getItem("token")}`
+      console.log(data.images[0].length)
+      let token = localStorage.getItem("token")
       const res = await createRoom(data, token);
       const _room = res;
       set((state) => ({

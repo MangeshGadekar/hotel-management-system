@@ -36,11 +36,11 @@ const authStore = (set) => ({
           firstName: res.data.firstName,
           lastName: res.data.lastName,
           email: res.data.email,
-          role : res.data.role
+          role: res.data.role,
         },
-        token: res.data.accessToken,
+        token: `Bearer ${res.data.accessToken}`,
       });
-      localStorage.setItem("token", res.data.accessToken);
+      localStorage.setItem("token", `Bearer ${res.data.accessToken}`);
       return res;
     } catch (error) {
       return error;
