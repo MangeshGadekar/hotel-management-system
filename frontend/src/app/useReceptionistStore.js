@@ -8,12 +8,14 @@ import {
   removeReceptionist,
 } from "../apis/api";
 
+ const token = `Bearer ${localStorage.getItem("token")}`
+ 
 const receptionistStore = (set) => ({
   receptionistList: [],
   receptionist: {},
   addReceptionist: async (data) => {
 
-    const token = `Bearer ${localStorage.getItem("token")}`
+   
     console.log("reception create : ", data)
 
     try {
@@ -59,8 +61,9 @@ const receptionistStore = (set) => ({
   },
   getAllReceptionist: async () => {
     try {
-      const res = await fetchAllReceptionist();
+      const res = await fetchAllReceptionist(token);
       const _receptionistlist = res;
+      console.log("_receptionistlist",res)
       set({
         receptionistList: _receptionistlist,
       });

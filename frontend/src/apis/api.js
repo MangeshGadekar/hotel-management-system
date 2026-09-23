@@ -39,13 +39,21 @@ export const patchReceptionist = async (id, payload) => {
 };
 
 /* fetch receptionist */
-export const fetchReceptionist = async (id) => {
-  return await apiClient.get(`/admin/receptionist/${id}`).json();
+export const fetchReceptionist = async (id,token) => {
+  return await apiClient.get(`/admin/receptionist/${id}`,{
+    headers: {
+        Authorization: token,
+      },
+  }).json();
 };
 
 /* fetch all receptionist */
-export const fetchAllReceptionist = async () => {
-  return await apiClient.get(`/admin/receptionist`).json();
+export const fetchAllReceptionist = async (token) => {
+  return await apiClient.get(`/admin/receptionist` ,{
+     headers: {
+        Authorization: token,
+      },
+  }).json();
 };
 
 /* delete receptionist */
