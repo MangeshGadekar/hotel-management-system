@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FaHotel,
   FaTag,
@@ -10,35 +10,74 @@ import {
   FaDoorOpen,
   FaImage,
   FaTrash,
+  FaSave,
 } from "react-icons/fa";
-import useRoomStore from "../../app/useRoomStore";
 
-const RoomForm = () => {
-  const [formData, setFormData] = useState({
-    roomNumber: "",
-    roomType: "DELUXE",
-    pricePerNight: "",
-    capacity: "",
-    roomStatus: "AVAILABLE",
-  });
+const ROOM_TYPES = ["STANDARD", "DELUXE", "SUITE", "PRESIDENTIAL"];
+const ROOM_STATUSES = ["AVAILABLE", "OCCUPIED", "MAINTENANCE", "RESERVED"];
 
-  // Array of image URLs / base64 strings
+const EMPTY_FORM = {
+  roomNumber: "",
+  roomType: "DELUXE",
+  pricePerNight: "",
+  capacity: "",
+  roomStatus: "AVAILABLE",
+};
+
+const RoomForm = ({
+  initialData,
+  onSubmit,
+  onCancel,
+  isSubmitting = false,
+  submitError = "",
+}) => {
+  const isEditMode = Boolean(initialData?.id);
+
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  // entry: { kind: "new", file: File, preview: blobUrl }
+  //      | { kind: "existing", url: string, preview: string }
   const [images, setImages] = useState([]);
-
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  const addRoom = useRoomStore((state) => state.addRoom);
-  const roomTypes = ["STANDARD", "DELUXE", "SUITE", "PRESIDENTIAL"];
-  const roomStatuses = ["AVAILABLE", "OCCUPIED", "MAINTENANCE", "RESERVED"];
+  const blobUrlsRef = useRef([]);
 
-  // ---------- IMAGE HANDLING ----------
+  useEffect(() => {
+    if (!initialData) {
+      setFormData(EMPTY_FORM);
+      setImages([]);
+      return;
+    }
+    setFormData({
+      roomNumber: initialData.roomNumber ?? "",
+      roomType: initialData.roomType ?? "DELUXE",
+      pricePerNight: initialData.pricePerNight ?? "",
+      capacity: initialData.capacity ?? "",
+      roomStatus: initialData.roomStatus ?? "AVAILABLE",
+    });
+    setImages(
+      (initialData.images || []).map((url) => ({
+        kind: "existing",
+        url,
+        preview: url,
+      }))
+    );
+  }, [initialData]);
+
+  useEffect(() => {
+    const urls = blobUrlsRef.current;
+    return () => {
+      urls.forEach((u) => URL.revokeObjectURL(u));
+      blobUrlsRef.current = [];
+    };
+  }, []);
+
+  // ---------- IMAGE HANDLING (preview only, no base64) ----------
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
+    e.target.value = "";
     if (files.length === 0) return;
 
-    // Validate: max 5 images
     if (images.length + files.length > 5) {
       setErrors((prev) => ({
         ...prev,
@@ -47,7 +86,6 @@ const RoomForm = () => {
       return;
     }
 
-    // Validate each file (type & size)
     const validFiles = [];
     const newErrors = { ...errors };
 
@@ -68,28 +106,27 @@ const RoomForm = () => {
       return;
     }
 
-    // Convert files to base64 (or use URL.createObjectURL for preview only)
-    const readers = validFiles.map(
-      (file) =>
-        new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () =>
-            resolve({ file, preview: reader.result });
-          reader.readAsDataURL(file);
-        })
-    );
-
-    Promise.all(readers).then((results) => {
-      setImages((prev) => [...prev, ...results]);
-      setErrors((prev) => ({ ...prev, images: "" }));
+    const newEntries = validFiles.map((file) => {
+      const preview = URL.createObjectURL(file);
+      blobUrlsRef.current.push(preview);
+      return { kind: "new", file, preview };
     });
 
-    // Reset input so the same file can be re-selected if removed
-    e.target.value = "";
+    setImages((prev) => [...prev, ...newEntries]);
+    setErrors((prev) => ({ ...prev, images: "" }));
   };
 
   const handleRemoveImage = (index) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImages((prev) => {
+      const removed = prev[index];
+      if (removed?.kind === "new" && removed.preview) {
+        URL.revokeObjectURL(removed.preview);
+        blobUrlsRef.current = blobUrlsRef.current.filter(
+          (u) => u !== removed.preview
+        );
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const moveImage = (index, direction) => {
@@ -102,140 +139,128 @@ const RoomForm = () => {
     });
   };
 
-  // ---------- VALIDATION ----------
+  // ---------- VALIDATION / CHANGE ----------
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.roomNumber.trim()) {
+    if (!formData.roomNumber.trim())
       newErrors.roomNumber = "Room number is required";
-    }
-
-    if (!formData.roomType) {
-      newErrors.roomType = "Room type is required";
-    }
-
-    if (!formData.pricePerNight || parseFloat(formData.pricePerNight) <= 0) {
+    if (!formData.roomType) newErrors.roomType = "Room type is required";
+    if (!formData.pricePerNight || parseFloat(formData.pricePerNight) <= 0)
       newErrors.pricePerNight = "Price must be greater than 0";
-    }
-
-    if (!formData.capacity || parseInt(formData.capacity) <= 0) {
+    if (!formData.capacity || parseInt(formData.capacity) <= 0)
       newErrors.capacity = "Capacity must be at least 1";
-    }
-
-    if (!formData.roomStatus) {
-      newErrors.roomStatus = "Room status is required";
-    }
-
-    // Optional: require at least one image
-    // if (images.length === 0) {
-    //   newErrors.images = "At least one image is required";
-    // }
-
+    if (!formData.roomStatus) newErrors.roomStatus = "Room status is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // ---------- CHANGE HANDLER ----------
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   // ---------- SUBMIT ----------
-  const handleSubmit = async(e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMessage("");
+    if (!validateForm()) return;
 
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    // Prepare room data with images array
     const roomData = {
       roomNumber: formData.roomNumber.trim(),
       roomType: formData.roomType,
       pricePerNight: parseFloat(formData.pricePerNight),
       capacity: parseInt(formData.capacity),
       roomStatus: formData.roomStatus,
-      images: images.map((img) => img.preview)
     };
 
+    // Parent uploads new files and turns them into URLs (List<String>)
+    const imagePayload = images.map((img) =>
+      img.kind === "new"
+        ? { type: "new", file: img.file }
+        : { type: "existing", url: img.url }
+    );
+
     try {
-      const res = await addRoom(roomData);
-
-      console.log("res Addroom", res)
-      setSuccessMessage(`Room ${formData.roomNumber} added successfully!`);
-
-      // Reset form + images
-      setFormData({
-        roomNumber: "",
-        roomType: "DELUXE",
-        pricePerNight: "",
-        capacity: "",
-        roomStatus: "AVAILABLE",
-      });
-      setImages([]);
-
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
-    } catch (error) {
-      setErrors({ submit: error.message || "Failed to add room" });
-    } finally {
-      setIsSubmitting(false);
+      await onSubmit(roomData, imagePayload);
+      setSuccessMessage(
+        isEditMode
+          ? `Room ${roomData.roomNumber} updated successfully!`
+          : `Room ${roomData.roomNumber} added successfully!`
+      );
+      if (!isEditMode) {
+        blobUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+        blobUrlsRef.current = [];
+        setFormData(EMPTY_FORM);
+        setImages([]);
+      }
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch {
+      /* parent surfaces submitError */
     }
   };
 
   const handleReset = () => {
-    setFormData({
-      roomNumber: "",
-      roomType: "DELUXE",
-      pricePerNight: "",
-      capacity: "",
-      roomStatus: "AVAILABLE",
-    });
-    setImages([]);
+    blobUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    blobUrlsRef.current = [];
+
+    if (isEditMode && initialData) {
+      setFormData({
+        roomNumber: initialData.roomNumber ?? "",
+        roomType: initialData.roomType ?? "DELUXE",
+        pricePerNight: initialData.pricePerNight ?? "",
+        capacity: initialData.capacity ?? "",
+        roomStatus: initialData.roomStatus ?? "AVAILABLE",
+      });
+      setImages(
+        (initialData.images || []).map((url) => ({
+          kind: "existing",
+          url,
+          preview: url,
+        }))
+      );
+    } else {
+      setFormData(EMPTY_FORM);
+      setImages([]);
+    }
     setErrors({});
     setSuccessMessage("");
   };
 
+  const inputBase =
+    "w-full px-4 py-2 bg-white border rounded-lg text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-[#D96B43]/30 focus:border-[#D96B43]";
+  const inputOk = "border-slate-300";
+  const inputErr = "border-rose-400 bg-rose-50";
+
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-xl shadow-lg border border-gray-100">
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
-        <FaHotel className="text-3xl text-blue-600" />
-        <h2 className="text-2xl font-bold text-gray-800">Add New Room</h2>
+    <div className="max-w-2xl mx-auto p-6 bg-white rounded-xl shadow-lg border border-slate-200">
+      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200">
+        <div className="w-10 h-10 rounded-lg bg-[#D96B43]/10 flex items-center justify-center">
+          <FaHotel className="text-xl text-[#D96B43]" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-800">
+          {isEditMode ? "Edit Room" : "Add New Room"}
+        </h2>
       </div>
 
       {successMessage && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
-          <FaCheckCircle className="text-green-500" />
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-emerald-700 text-sm">
+          <FaCheckCircle className="text-emerald-500" />
           <span>{successMessage}</span>
         </div>
       )}
 
-      {errors.submit && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
-          <FaTimesCircle className="text-red-500" />
-          <span>{errors.submit}</span>
+      {submitError && (
+        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2 text-rose-700 text-sm">
+          <FaTimesCircle className="text-rose-500" />
+          <span>{submitError}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Room Number */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <FaDoorOpen className="inline mr-2 text-blue-500" />
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            <FaDoorOpen className="inline mr-2 text-[#D96B43]" />
             Room Number
           </label>
           <input
@@ -244,48 +269,42 @@ const RoomForm = () => {
             value={formData.roomNumber}
             onChange={handleChange}
             placeholder="e.g., 101, A-201"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-              errors.roomNumber ? "border-red-500 bg-red-50" : "border-gray-300"
-            }`}
+            className={`${inputBase} ${errors.roomNumber ? inputErr : inputOk}`}
           />
           {errors.roomNumber && (
-            <p className="mt-1 text-sm text-red-600">{errors.roomNumber}</p>
+            <p className="mt-1 text-xs text-rose-600">{errors.roomNumber}</p>
           )}
         </div>
 
-        {/* Room Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <FaTag className="inline mr-2 text-green-500" />
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            <FaTag className="inline mr-2 text-[#D96B43]" />
             Room Type
           </label>
           <select
             name="roomType"
             value={formData.roomType}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-              errors.roomType ? "border-red-500 bg-red-50" : "border-gray-300"
-            }`}
+            className={`${inputBase} ${errors.roomType ? inputErr : inputOk}`}
           >
-            {roomTypes.map((type) => (
+            {ROOM_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type.charAt(0) + type.slice(1).toLowerCase()}
               </option>
             ))}
           </select>
           {errors.roomType && (
-            <p className="mt-1 text-sm text-red-600">{errors.roomType}</p>
+            <p className="mt-1 text-xs text-rose-600">{errors.roomType}</p>
           )}
         </div>
 
-        {/* Price Per Night */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <FaMoneyBillWave className="inline mr-2 text-yellow-500" />
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            <FaMoneyBillWave className="inline mr-2 text-[#D96B43]" />
             Price Per Night
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
               ₹
             </span>
             <input
@@ -296,22 +315,19 @@ const RoomForm = () => {
               placeholder="0.00"
               step="0.01"
               min="0"
-              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-                errors.pricePerNight
-                  ? "border-red-500 bg-red-50"
-                  : "border-gray-300"
+              className={`${inputBase} pl-8 ${
+                errors.pricePerNight ? inputErr : inputOk
               }`}
             />
           </div>
           {errors.pricePerNight && (
-            <p className="mt-1 text-sm text-red-600">{errors.pricePerNight}</p>
+            <p className="mt-1 text-xs text-rose-600">{errors.pricePerNight}</p>
           )}
         </div>
 
-        {/* Capacity */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <FaUsers className="inline mr-2 text-purple-500" />
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            <FaUsers className="inline mr-2 text-[#D96B43]" />
             Capacity (Guests)
           </label>
           <input
@@ -321,64 +337,59 @@ const RoomForm = () => {
             onChange={handleChange}
             placeholder="Number of guests"
             min="1"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-              errors.capacity ? "border-red-500 bg-red-50" : "border-gray-300"
-            }`}
+            className={`${inputBase} ${errors.capacity ? inputErr : inputOk}`}
           />
           {errors.capacity && (
-            <p className="mt-1 text-sm text-red-600">{errors.capacity}</p>
+            <p className="mt-1 text-xs text-rose-600">{errors.capacity}</p>
           )}
         </div>
 
-        {/* Room Status */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <FaCheckCircle className="inline mr-2 text-blue-500" />
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            <FaCheckCircle className="inline mr-2 text-[#D96B43]" />
             Room Status
           </label>
           <select
             name="roomStatus"
             value={formData.roomStatus}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
-              errors.roomStatus ? "border-red-500 bg-red-50" : "border-gray-300"
-            }`}
+            className={`${inputBase} ${errors.roomStatus ? inputErr : inputOk}`}
           >
-            {roomStatuses.map((status) => (
+            {ROOM_STATUSES.map((status) => (
               <option key={status} value={status}>
                 {status.charAt(0) + status.slice(1).toLowerCase()}
               </option>
             ))}
           </select>
           {errors.roomStatus && (
-            <p className="mt-1 text-sm text-red-600">{errors.roomStatus}</p>
+            <p className="mt-1 text-xs text-rose-600">{errors.roomStatus}</p>
           )}
         </div>
 
-        {/* ---------- IMAGES (ARRAY) ---------- */}
+        {/* ---------- IMAGES ---------- */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <FaImage className="inline mr-2 text-pink-500" />
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            <FaImage className="inline mr-2 text-[#D96B43]" />
             Room Images
-            <span className="ml-2 text-xs text-gray-400">
+            <span className="ml-2 text-xs text-slate-400">
               (Max 5, up to 5MB each)
             </span>
           </label>
 
-          {/* Upload Button */}
           <label
             className={`flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition ${
               errors.images
-                ? "border-red-400 bg-red-50"
-                : "border-gray-300 hover:border-blue-400 hover:bg-blue-50"
+                ? "border-rose-400 bg-rose-50"
+                : "border-slate-300 hover:border-[#D96B43] hover:bg-[#D96B43]/5"
             }`}
           >
-            <FaPlus className="text-blue-500" />
-            <span className="text-sm text-gray-600">
+            <FaPlus className="text-[#D96B43]" />
+            <span className="text-sm text-slate-600">
               Click to upload images
             </span>
             <input
               type="file"
+              name="images"
               accept="image/*"
               multiple
               onChange={handleImageUpload}
@@ -387,37 +398,32 @@ const RoomForm = () => {
           </label>
 
           {errors.images && (
-            <p className="mt-1 text-sm text-red-600">{errors.images}</p>
+            <p className="mt-1 text-xs text-rose-600">{errors.images}</p>
           )}
 
-          {/* Image Previews */}
           {images.length > 0 && (
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
               {images.map((img, index) => (
                 <div
-                  key={index}
-                  className="relative group rounded-lg overflow-hidden border border-gray-200"
+                  key={`${img.kind}-${index}`}
+                  className="relative group rounded-lg overflow-hidden border border-slate-200"
                 >
                   <img
                     src={img.preview}
                     alt={`Room preview ${index + 1}`}
                     className="w-full h-28 object-cover"
                   />
-
-                  {/* Primary badge */}
                   {index === 0 && (
-                    <span className="absolute top-1 left-1 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded">
+                    <span className="absolute top-1 left-1 bg-[#D96B43] text-white text-[10px] px-2 py-0.5 rounded">
                       Primary
                     </span>
                   )}
-
-                  {/* Overlay actions */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                  <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
                     {index > 0 && (
                       <button
                         type="button"
                         onClick={() => moveImage(index, -1)}
-                        className="px-2 py-1 text-xs bg-white text-gray-700 rounded hover:bg-gray-100"
+                        className="px-2 py-1 text-xs bg-white text-slate-700 rounded hover:bg-slate-100"
                       >
                         ←
                       </button>
@@ -425,7 +431,7 @@ const RoomForm = () => {
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(index)}
-                      className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                      className="p-2 bg-rose-500 text-white rounded-full hover:bg-rose-600"
                       title="Remove image"
                     >
                       <FaTrash size={12} />
@@ -434,7 +440,7 @@ const RoomForm = () => {
                       <button
                         type="button"
                         onClick={() => moveImage(index, 1)}
-                        className="px-2 py-1 text-xs bg-white text-gray-700 rounded hover:bg-gray-100"
+                        className="px-2 py-1 text-xs bg-white text-slate-700 rounded hover:bg-slate-100"
                       >
                         →
                       </button>
@@ -446,26 +452,42 @@ const RoomForm = () => {
           )}
         </div>
 
-        {/* Form Actions */}
-        <div className="flex gap-3 pt-4 border-t border-gray-200">
+        {/* ---------- ACTIONS ---------- */}
+        <div className="flex gap-3 pt-4 border-t border-slate-200">
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-[#D96B43] text-white text-sm font-semibold rounded-lg hover:bg-[#c25a34] focus:ring-4 focus:ring-[#D96B43]/30 transition-all ${
               isSubmitting ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            <FaPlus />
-            {isSubmitting ? "Adding..." : "Add Room"}
+            {isEditMode ? <FaSave /> : <FaPlus />}
+            {isSubmitting
+              ? isEditMode
+                ? "Saving..."
+                : "Adding..."
+              : isEditMode
+              ? "Save Changes"
+              : "Add Room"}
           </button>
 
           <button
             type="button"
             onClick={handleReset}
-            className="px-6 py-2.5 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-all"
+            className="px-6 py-2.5 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-all"
           >
             Reset
           </button>
+
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-white transition-all"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </form>
     </div>
