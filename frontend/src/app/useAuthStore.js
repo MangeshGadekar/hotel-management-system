@@ -36,6 +36,7 @@ const authStore = (set) => ({
           firstName: res.data.firstName,
           lastName: res.data.lastName,
           email: res.data.email,
+          role : res.data.role
         },
         token: res.data.accessToken,
       });

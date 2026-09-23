@@ -59,11 +59,11 @@ const Login = () => {
       };
 
       const res = await login(payload);
-      console.log("res", res)
+      console.log("vlogin", res)
       if(res.success && res.success === true) {
         toast.success(` ${res.message}`);
       }
-      navigate("/admin/dashboard");
+      navigate(`/${res.data?.role?.toLowerCase()}/dashboard`);
     } catch (err) {
       setServerError(
         err?.response?.data?.message ||
