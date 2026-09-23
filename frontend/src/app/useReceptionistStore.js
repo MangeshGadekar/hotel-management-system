@@ -12,8 +12,12 @@ const receptionistStore = (set) => ({
   receptionistList: [],
   receptionist: {},
   addReceptionist: async (data) => {
+
+    const token = `Bearer ${localStorage.getItem("token")}`
+    console.log("reception create : ", data)
+
     try {
-      const res = await createReceptionist(data);
+      const res = await createReceptionist(data,token);
       const _receptionist = res;
       set((state) => ({
         receptionist: [_receptionist, ...state.receptionist],
@@ -49,6 +53,7 @@ const receptionistStore = (set) => ({
       console.log("_receptionist", _receptionist);
       return res;
     } catch (error) {
+      console.log("error : ", error)
       return error;
     }
   },

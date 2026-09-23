@@ -4,30 +4,37 @@ import { apiClient } from "./apiClient";
 /* AUTHENTICATION */
 /* =================================================== */
 
-export const userRegister = async(payload) => {
-  return await apiClient.post('/auth/signup', {json : payload}).json()
-}
+export const userRegister = async (payload) => {
+  return await apiClient.post("/auth/signup", { json: payload }).json();
+};
 
-export const userLogin = async(payload) => {
-  return await apiClient.post('/auth/login', {json : payload}).json()
-}
+export const userLogin = async (payload) => {
+  return await apiClient.post("/auth/login", { json: payload }).json();
+};
 
-export const userLogout = async() => {
-  return await apiClient.get('/auth/logout').json()
-}
+export const userLogout = async () => {
+  return await apiClient.get("/auth/logout").json();
+};
 
 /* =================================================== */
 /* RECEPTIONIST */
 /* =================================================== */
 /* create receptionist */
-export const createReceptionist = async (payload) => {
-  return await apiClient.post(`/admin/receptionist/create`, { json : payload}).json();
+export const createReceptionist = async (payload, token) => {
+  return await apiClient
+    .post(`/admin/receptionist/create`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
 };
 
 /* update receptionist */
 export const patchReceptionist = async (id, payload) => {
   return await apiClient
-    .patch(`/admin/receptionist/update/${id}`, { json : payload })
+    .patch(`/admin/receptionist/update/${id}`, { json: payload })
     .json();
 };
 
@@ -51,12 +58,12 @@ export const removeReceptionist = async (id) => {
 /* =================================================== */
 /* create guest */
 export const createGuest = async (payload) => {
-  return await apiClient.post("/guest/create", {json : payload}).json();
+  return await apiClient.post("/guest/create", { json: payload }).json();
 };
 
 /* update guest */
 export const patchGuest = async (id, payload) => {
-  return await apiClient.patch(`/guest/update/${id}`, { json : payload}).json();
+  return await apiClient.patch(`/guest/update/${id}`, { json: payload }).json();
 };
 
 /* fetch guest */
@@ -79,12 +86,14 @@ export const deleteGuest = async (id) => {
 /* =================================================== */
 /* Create booking */
 export const createBooking = async (payload) => {
-  return await apiClient.post(`/booking/create`, {json : payload}).json();
+  return await apiClient.post(`/booking/create`, { json: payload }).json();
 };
 
 /* Update booking */
 export const patchBooking = async (id, payload) => {
-  return await apiClient.patch(`/booking/update/${id}`, {json : payload}).json();
+  return await apiClient
+    .patch(`/booking/update/${id}`, { json: payload })
+    .json();
 };
 
 /* get booking */
@@ -99,7 +108,9 @@ export const fetchAllBooking = async () => {
 
 /* cancel booking */
 export const cancelBooking = async (id, payload) => {
-  return await apiClient.patch(`/booking/cancel/${id}`,{ json:  payload }).json();
+  return await apiClient
+    .patch(`/booking/cancel/${id}`, { json: payload })
+    .json();
 };
 
 /* =================================================== */
@@ -113,8 +124,8 @@ export const createRoom = async (payload, token) => {
   const res = await apiClient
     .post("admin/room/create", {
       headers: {
-      Authorization: token,
-    },
+        Authorization: token,
+      },
       json: payload,
     })
     .json();
@@ -127,7 +138,7 @@ export const createRoom = async (payload, token) => {
 /* update room */
 export const patchRoom = async (roomNumber, payload) => {
   return await apiClient
-    .patch(`/admin/room/update/${roomNumber}`, {json : payload})
+    .patch(`/admin/room/update/${roomNumber}`, { json: payload })
     .json();
 };
 
@@ -155,7 +166,6 @@ export const statusOfRooms = async (roomStatus) => {
 export const deleteRoom = async (roomNumber) => {
   return await apiClient.delete(`/admin/room/delete/${roomNumber}`).json();
 };
-
 
 /* =================================================== */
 /* DASHBOARD */
