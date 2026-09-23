@@ -9,6 +9,7 @@ const ReceptionistForm = ({
   onSubmit,
   onClose,
   isSubmitting = false,
+  isEditMode = false,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -36,10 +37,12 @@ const ReceptionistForm = ({
         <div className="flex items-start justify-between mb-6">
           <div>
             <h2 className="text-lg font-bold text-slate-800">
-              New Receptionist
+              {isEditMode ? "Edit Receptionist" : "New Receptionist"}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Fill in the details below to create an account.
+              {isEditMode
+                ? "Update the account details below."
+                : "Fill in the details below to create an account."}
             </p>
           </div>
           <button
@@ -137,13 +140,20 @@ const ReceptionistForm = ({
           {/* Password with show/hide */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Password
+              Password{" "}
+              {isEditMode && (
+                <span className="text-slate-400 font-normal">
+                  (leave blank to keep current)
+                </span>
+              )}
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 onChange={handle("password")}
-                placeholder="••••••••"
+                placeholder={
+                  isEditMode ? "•••••••• (unchanged)" : "••••••••"
+                }
                 value={values.password}
                 className={`${inputClass} pr-11 ${
                   errors.password ? errorClass : ""
@@ -191,7 +201,13 @@ const ReceptionistForm = ({
                          active:scale-[0.98] transition-all duration-200 
                          disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
             >
-              {isSubmitting ? "Creating…" : "Create Receptionist"}
+              {isSubmitting
+                ? isEditMode
+                  ? "Updating…"
+                  : "Creating…"
+                : isEditMode
+                ? "Update Receptionist"
+                : "Create Receptionist"}
             </button>
           </div>
         </form>

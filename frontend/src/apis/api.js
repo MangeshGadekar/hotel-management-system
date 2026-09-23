@@ -32,33 +32,48 @@ export const createReceptionist = async (payload, token) => {
 };
 
 /* update receptionist */
-export const patchReceptionist = async (id, payload) => {
+export const patchReceptionist = async (id, payload, token) => {
   return await apiClient
-    .patch(`/admin/receptionist/update/${id}`, { json: payload })
+    .patch(`/admin/receptionist/update/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
     .json();
 };
 
 /* fetch receptionist */
-export const fetchReceptionist = async (id,token) => {
-  return await apiClient.get(`/admin/receptionist/${id}`,{
-    headers: {
+export const fetchReceptionist = async (id, token) => {
+  return await apiClient
+    .get(`/admin/receptionist/${id}`, {
+      headers: {
         Authorization: token,
       },
-  }).json();
+    })
+    .json();
 };
 
 /* fetch all receptionist */
 export const fetchAllReceptionist = async (token) => {
-  return await apiClient.get(`/admin/receptionist` ,{
-     headers: {
+  return await apiClient
+    .get(`/admin/receptionist`, {
+      headers: {
         Authorization: token,
       },
-  }).json();
+    })
+    .json();
 };
 
 /* delete receptionist */
-export const removeReceptionist = async (id) => {
-  return await apiClient.delete(`/admin/receptionist/delete/${id}`).json();
+export const removeReceptionist = async (id, token) => {
+  return await apiClient
+    .delete(`/admin/receptionist/delete/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* =================================================== */

@@ -86,12 +86,18 @@ export default function Receptionists() {
     const nextErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!newStaff.firstName.trim()) nextErrors.firstName = "First name is required.";
-    if (!newStaff.lastName.trim()) nextErrors.lastName = "Last name is required.";
-    if (!newStaff.username.trim()) nextErrors.username = "Username is required.";
+    if (!newStaff.firstName.trim())
+      nextErrors.firstName = "First name is required.";
+    if (!newStaff.lastName.trim())
+      nextErrors.lastName = "Last name is required.";
+    if (!newStaff.username.trim())
+      nextErrors.username = "Username is required.";
+
+    // Password is required only when creating a new receptionist
     if (!editingId && !newStaff.password.trim()) {
       nextErrors.password = "Password is required.";
     }
+
     if (!newStaff.email.trim()) {
       nextErrors.email = "Email is required.";
     } else if (!emailRegex.test(newStaff.email.trim())) {
@@ -156,7 +162,7 @@ export default function Receptionists() {
       email: newStaff.email.trim(),
     };
 
-    // Only include password if provided (for edit mode)
+    // Only include password if provided (edit mode: optional, create mode: required)
     if (newStaff.password.trim()) {
       payload.password = newStaff.password.trim();
     }
@@ -172,7 +178,9 @@ export default function Receptionists() {
       await loadReceptionists();
     } catch (err) {
       console.error(
-        editingId ? "Failed to update receptionist:" : "Failed to add receptionist:",
+        editingId
+          ? "Failed to update receptionist:"
+          : "Failed to add receptionist:",
         err
       );
       setErrors((prev) => ({
@@ -245,26 +253,38 @@ export default function Receptionists() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-slate-400 text-sm">
+                  <td
+                    colSpan="5"
+                    className="px-6 py-8 text-center text-slate-400 text-sm"
+                  >
                     Loading receptionists…
                   </td>
                 </tr>
               ) : loadError ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-rose-500 text-sm">
+                  <td
+                    colSpan="5"
+                    className="px-6 py-8 text-center text-rose-500 text-sm"
+                  >
                     {loadError}
                   </td>
                 </tr>
               ) : staffList.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-slate-400 text-sm">
+                  <td
+                    colSpan="5"
+                    className="px-6 py-8 text-center text-slate-400 text-sm"
+                  >
                     No receptionist accounts found. Click &ldquo;+ Add New
                     Receptionist&rdquo; to create one.
                   </td>
                 </tr>
               ) : (
                 staffList.map((staff, index) => {
-                  const initials = getInitials(staff.firstName, staff.lastName);
+                  const initials = getInitials(
+                    staff.firstName,
+                    staff.lastName
+                  );
                   const avatarColor = colorFromString(
                     `${staff.firstName}${staff.lastName}${staff.id ?? ""}`
                   );
@@ -287,7 +307,9 @@ export default function Receptionists() {
                           </div>
                           <p className="font-medium text-slate-800 truncate">
                             {staff.name ||
-                              `${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim()}
+                              `${staff.firstName ?? ""} ${
+                                staff.lastName ?? ""
+                              }`.trim()}
                           </p>
                         </div>
                       </td>
@@ -302,10 +324,11 @@ export default function Receptionists() {
                           <button
                             onClick={() => handleEditClick(staff)}
                             title="Edit receptionist"
-                            aria-label={`Edit ${staff.firstName ?? ""} ${staff.lastName ?? ""}`}
+                            aria-label={`Edit ${staff.firstName ?? ""} ${
+                              staff.lastName ?? ""
+                            }`}
                             className="p-2 rounded-lg text-slate-500 hover:text-sky-600 hover:bg-sky-50 transition"
                           >
-                            {/* Pencil icon */}
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 24 24"
@@ -323,10 +346,11 @@ export default function Receptionists() {
                           <button
                             onClick={() => handleDeleteClick(staff)}
                             title="Delete receptionist"
-                            aria-label={`Delete ${staff.firstName ?? ""} ${staff.lastName ?? ""}`}
+                            aria-label={`Delete ${staff.firstName ?? ""} ${
+                              staff.lastName ?? ""
+                            }`}
                             className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition"
                           >
-                            {/* Trash icon */}
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 24 24"
@@ -404,7 +428,9 @@ export default function Receptionists() {
                   Are you sure you want to delete{" "}
                   <span className="font-semibold text-slate-700">
                     {deleteTarget.name ||
-                      `${deleteTarget.firstName ?? ""} ${deleteTarget.lastName ?? ""}`.trim()}
+                      `${deleteTarget.firstName ?? ""} ${
+                        deleteTarget.lastName ?? ""
+                      }`.trim()}
                   </span>
                   ? This action cannot be undone.
                 </p>
