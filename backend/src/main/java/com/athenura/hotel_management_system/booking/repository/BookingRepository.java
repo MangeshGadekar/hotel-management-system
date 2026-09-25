@@ -46,6 +46,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("checkInDate") LocalDate checkInDate,
             @Param("checkOutDate") LocalDate checkOutDate
     );
+
     long countByBookingStatus(BookingStatus bookingStatus);
 
     long countByCheckInDate(LocalDate checkInDate);
