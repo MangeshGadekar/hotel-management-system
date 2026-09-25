@@ -31,9 +31,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendBookingConfirmation(Booking booking) {
 
-        String guestName =
-                booking.getGuest().getFirstName() + " " +
-                        booking.getGuest().getLastName();
+        String guestName = booking.getGuest().getFirstName() + " " + booking.getGuest().getLastName();
 
         String htmlContent = """
                 <html>
@@ -64,36 +62,18 @@ public class EmailServiceImpl implements EmailService {
                 booking.getTotalAmount()
         );
 
-        Map<String, Object> requestBody = Map.of(
-                "sender", Map.of(
-                        "name", senderName,
-                        "email", senderEmail
-                ),
-                "to", List.of(
-                        Map.of(
-                                "name", guestName,
-                                "email", booking.getGuest().getEmail()
-                        )
-                ),
-                "subject", "Booking Confirmation - #" + booking.getId(),
-                "htmlContent", htmlContent
+        sendEmailViaBrevo(
+                booking.getGuest().getEmail(),
+                guestName,
+                "Booking Confirmation - #" + booking.getId(),
+                htmlContent
         );
-
-        restClient.post()
-                .uri("https://api.brevo.com/v3/smtp/email")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("api-key", apiKey)
-                .body(requestBody)
-                .retrieve()
-                .toBodilessEntity();
     }
 
     @Override
     public void sendCheckInOtp(Booking booking, String otp) {
 
-        String guestName =
-                booking.getGuest().getFirstName() + " " +
-                        booking.getGuest().getLastName();
+        String guestName = booking.getGuest().getFirstName() + " " + booking.getGuest().getLastName();
 
         String htmlContent = """
             <html>
@@ -106,9 +86,7 @@ public class EmailServiceImpl implements EmailService {
 
                 <h1>%s</h1>
 
-                <p>
-                    This OTP is valid for <b>5 minutes</b>.
-                </p>
+                <p>This OTP is valid for <b>5 minutes</b>.</p>
 
                 <p>
                     <b>Booking ID:</b> %d<br>
@@ -125,31 +103,13 @@ public class EmailServiceImpl implements EmailService {
                 booking.getRoom().getRoomNumber()
         );
 
-        Map<String, Object> requestBody = Map.of(
-                "sender", Map.of(
-                        "name", senderName,
-                        "email", senderEmail
-                ),
-                "to", List.of(
-                        Map.of(
-                                "name", guestName,
-                                "email", booking.getGuest().getEmail()
-                        )
-                ),
-                "subject", "Hotel Check-in OTP - Booking #" + booking.getId(),
-                "htmlContent", htmlContent
+        sendEmailViaBrevo(
+                booking.getGuest().getEmail(),
+                guestName,
+                "Hotel Check-in OTP - Booking #" + booking.getId(),
+                htmlContent
         );
-
-        restClient.post()
-                .uri("https://api.brevo.com/v3/smtp/email")
-
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("api-key", apiKey)
-                .body(requestBody)
-                .retrieve()
-                .toBodilessEntity();
     }
-
 
     @Override
     public void sendCampaignEmail(String recipientEmail, String recipientName, String subject, String content) {
@@ -165,6 +125,46 @@ public class EmailServiceImpl implements EmailService {
             </html>
             """.formatted(content.replace("\n", "<br>"));
 
+        try {
+            sendEmailViaBrevo(recipientEmail, recipientName, subject, htmlContent);
+        } catch (Exception e) {
+            throw new RuntimeException("Brevo email dispatch failed for " + recipientEmail + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void sendReceptionistCredentials(String toEmail, String rawPassword, String firstName) {
+        String recipientName = (firstName != null && !firstName.isBlank()) ? firstName : "User";
+
+        String htmlContent = """
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2>Account Created - Hotel Management System</h2>
+                <p>Hello <b>%s</b>,</p>
+                <p>Your Receptionist account has been created successfully by Admin.</p>
+                
+                <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                    <p style="margin: 0;"><b>Login Credentials:</b></p>
+                    <p style="margin: 5px 0;"><b>Email:</b> %s</p>
+                    <p style="margin: 5px 0;"><b>Password / Secret Key:</b> %s</p>
+                </div>
+                
+                <p>Please login using these credentials and complete your registration or update your password.</p>
+                <br>
+                <p>Best Regards,<br><b>Hotel Management Team</b></p>
+            </body>
+            </html>
+            """.formatted(recipientName, toEmail, rawPassword);
+
+        try {
+            sendEmailViaBrevo(toEmail, recipientName, "Account Created - Hotel Management System", htmlContent);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send Receptionist credentials to " + toEmail + ": " + e.getMessage(), e);
+        }
+    }
+
+
+    private void sendEmailViaBrevo(String recipientEmail, String recipientName, String subject, String htmlContent) {
         Map<String, Object> requestBody = Map.of(
                 "sender", Map.of(
                         "name", senderName,
@@ -180,17 +180,12 @@ public class EmailServiceImpl implements EmailService {
                 "htmlContent", htmlContent
         );
 
-        try {
-            restClient.post()
-                    .uri("https://api.brevo.com/v3/smtp/email")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("api-key", apiKey)
-                    .body(requestBody)
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (Exception e) {
-            throw new RuntimeException("Brevo email dispatch failed for " + recipientEmail + ": " + e.getMessage(), e);
-        }
+        restClient.post()
+                .uri("https://api.brevo.com/v3/smtp/email")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("api-key", apiKey)
+                .body(requestBody)
+                .retrieve()
+                .toBodilessEntity();
     }
-
 }

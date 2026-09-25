@@ -7,7 +7,7 @@ import com.athenura.hotel_management_system.common.entity.RefreshToken;
 import com.athenura.hotel_management_system.common.entity.Users;
 import com.athenura.hotel_management_system.common.repository.RefreshTokenRepo;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,17 +19,13 @@ public class RefreshTokenService {
 
     public RefreshToken createRefreshToken(Users user) {
 
-
         refreshTokenRepo.findByUser(user)
                 .ifPresent(refreshTokenRepo::delete);
 
         RefreshToken refreshToken = new RefreshToken();
 
-
         refreshToken.setUser(user);
-
         refreshToken.setToken(UUID.randomUUID().toString());
-
         refreshToken.setExpiryDate(
                 Instant.now().plusSeconds(7 * 24 * 60 * 60));
 
@@ -64,5 +60,12 @@ public class RefreshTokenService {
         newToken.setExpiryDate(oldToken.getExpiryDate());
 
         return refreshTokenRepo.save(newToken);
+    }
+
+    // Logout and token removal logic
+    @Transactional
+    public void deleteByToken(String token) {
+        RefreshToken refreshToken = findByToken(token);
+        refreshTokenRepo.delete(refreshToken);
     }
 }

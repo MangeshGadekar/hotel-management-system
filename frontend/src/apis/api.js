@@ -4,62 +4,137 @@ import { apiClient } from "./apiClient";
 /* AUTHENTICATION */
 /* =================================================== */
 
+export const userRegister = async (payload) => {
+  return await apiClient.post("/auth/signup", { json: payload }).json();
+};
+
+export const userLogin = async (payload) => {
+  return await apiClient.post("/auth/login", { json: payload }).json();
+};
+
+export const userLogout = async () => {
+  return await apiClient.get("/auth/logout").json();
+};
+
 /* =================================================== */
 /* RECEPTIONIST */
 /* =================================================== */
 /* create receptionist */
-export const createReceptionist = async (payload) => {
-  return await apiClient.post(`/admin/receptionist/create`, { json : payload}).json();
+export const createReceptionist = async (payload, token) => {
+  return await apiClient
+    .post(`/admin/receptionist/create`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
 };
 
 /* update receptionist */
-export const patchReceptionist = async (id, payload) => {
+export const patchReceptionist = async (id, payload, token) => {
   return await apiClient
-    .patch(`/admin/receptionist/update/${id}`, { json : payload })
+    .patch(`/admin/receptionist/update/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
     .json();
 };
 
 /* fetch receptionist */
-export const fetchReceptionist = async (id) => {
-  return await apiClient.get(`/admin/receptionist/${id}`).json();
+export const fetchReceptionist = async (id, token) => {
+  return await apiClient
+    .get(`/admin/receptionist/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* fetch all receptionist */
-export const fetchAllReceptionist = async () => {
-  return await apiClient.get(`/admin/receptionist`).json();
+export const fetchAllReceptionist = async (token) => {
+  return await apiClient
+    .get(`/admin/receptionist`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* delete receptionist */
-export const removeReceptionist = async (id) => {
-  return await apiClient.delete(`/admin/receptionist/delete/${id}`).json();
+export const removeReceptionist = async (id, token) => {
+  return await apiClient
+    .delete(`/admin/receptionist/delete/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* =================================================== */
 /* GUEST */
 /* =================================================== */
 /* create guest */
-export const createGuest = async (payload) => {
-  return await apiClient.post("/guest/create", {json : payload}).json();
+export const createGuest = async (payload, token) => {
+  return await apiClient
+    .post("/guest/create", {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
 };
 
 /* update guest */
-export const patchGuest = async (id, payload) => {
-  return await apiClient.patch(`/guest/update/${id}`, { json : payload}).json();
+export const patchGuest = async (id, payload, token) => {
+  return await apiClient
+    .patch(`/guest/update/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
 };
 
 /* fetch guest */
-export const fetchGuest = async (id) => {
-  return await apiClient.get(`/guest/${id}`).json();
+export const fetchGuest = async (id, token) => {
+  return await apiClient
+    .get(`/guest/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* fetch guest list */
-export const fetchAllGuest = async () => {
-  return await apiClient.get(`/guest`).json();
+export const fetchAllGuest = async (token) => {
+  console.log("token",token)
+  return await apiClient
+    .get(`/guest`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* delete guest */
-export const deleteGuest = async (id) => {
-  return await apiClient.delete(`/guest/delete/${id}`).json();
+export const deleteGuest = async (id, token) => {
+  return await apiClient
+    .delete(`/guest/delete/${id}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* =================================================== */
@@ -67,12 +142,14 @@ export const deleteGuest = async (id) => {
 /* =================================================== */
 /* Create booking */
 export const createBooking = async (payload) => {
-  return await apiClient.post(`/booking/create`, { json : payload}).json();
+  return await apiClient.post(`/booking/create`, { json: payload }).json();
 };
 
 /* Update booking */
 export const patchBooking = async (id, payload) => {
-  return await apiClient.patch(`/booking/update/${id}`, {json : payload}).json();
+  return await apiClient
+    .patch(`/booking/update/${id}`, { json: payload })
+    .json();
 };
 
 /* get booking */
@@ -87,21 +164,37 @@ export const fetchAllBooking = async () => {
 
 /* cancel booking */
 export const cancelBooking = async (id, payload) => {
-  return await apiClient.patch(`/booking/cancel/${id}`,{ json:  payload }).json();
+  return await apiClient
+    .patch(`/booking/cancel/${id}`, { json: payload })
+    .json();
 };
 
 /* =================================================== */
 /* ROOMS */
 /* =================================================== */
 /* create rooms */
-export const createRoom = async (payload) => {
-  return await apiClient.post(`/admin/room/create`, {json : payload}).json();
+export const createRoom = async (payload, token) => {
+  console.log("token :", token);
+  console.log("payload :", payload);
+
+  const res = await apiClient
+    .post("admin/room/create", {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
+
+  console.log("res", res);
+
+  return res;
 };
 
 /* update room */
 export const patchRoom = async (roomNumber, payload) => {
   return await apiClient
-    .patch(`/admin/room/update/${roomNumber}`, {json : payload})
+    .patch(`/admin/room/update/${roomNumber}`, { json: payload })
     .json();
 };
 
@@ -128,4 +221,20 @@ export const statusOfRooms = async (roomStatus) => {
 /* delete room */
 export const deleteRoom = async (roomNumber) => {
   return await apiClient.delete(`/admin/room/delete/${roomNumber}`).json();
+};
+
+/* =================================================== */
+/* DASHBOARD */
+/* =================================================== */
+/* admin dashboard */
+
+/* get type of rooms */
+export const adminDashboard = async (token) => {
+  return await apiClient
+    .get(`/admin/dashboard`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };

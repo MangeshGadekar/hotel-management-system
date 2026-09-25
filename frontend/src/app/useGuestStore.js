@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
+
 import {
   createGuest,
   deleteGuest,
@@ -13,7 +14,8 @@ const guestStore = (set) => ({
   guest: {},
   addGuest: async (data) => {
     try {
-      const res = await createGuest(data);
+      const token = localStorage.getItem("token");
+      const res = await createGuest(data, token);
       const _guest = await res;
       set((state) => ({
         guestList: [_guest, ...state.guestList],
@@ -26,7 +28,8 @@ const guestStore = (set) => ({
   },
   updateGuest: async (id, data) => {
     try {
-      const res = await patchGuest(id, data);
+      const token = localStorage.getItem("token");
+      const res = await patchGuest(id, data, token);
       const _guest = res;
       set((state) => ({
         guestList: state.guestList.map((guest) => {
@@ -41,7 +44,8 @@ const guestStore = (set) => ({
   },
   getGuest: async (id) => {
     try {
-      const res = await fetchGuest(id);
+      const token = localStorage.getItem("token");
+      const res = await fetchGuest(id, token);
       const _guest = res;
       set({
         guest: _guest,
@@ -54,7 +58,8 @@ const guestStore = (set) => ({
   },
   getGuestList: async () => {
     try {
-      const res = await fetchAllGuest();
+      const token = localStorage.getItem("token");
+      const res = await fetchAllGuest(token);
       const _guestList = await res;
       set({
         guestList: _guestList,
@@ -67,7 +72,8 @@ const guestStore = (set) => ({
   },
   removeGuest: async (id) => {
     try {
-      const res = await deleteGuest(id);
+      const token = localStorage.getItem("token");
+      const res = await deleteGuest(id, token);
       set((state) => ({
         roomList: state.roomList.filter((guest) => {
           guest.id !== id;

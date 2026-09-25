@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import BookingForm from '../../components/forms/BookingForm';
 import useBookingStore from '../../app/useBookingStore';
 
@@ -9,7 +9,7 @@ const STATUS_BADGES = {
   CANCELLED: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
-// Map your API status to display status
+// API status -> display label
 const STATUS_MAP = {
   BOOKED: 'Confirmed',
   'CHECKED-IN': 'Checked-In',
@@ -17,96 +17,150 @@ const STATUS_MAP = {
   CANCELLED: 'Cancelled',
 };
 
-// Reverse map for updating status
-const REVERSE_STATUS_MAP = {
-  'Confirmed': 'BOOKED',
-  'Checked-In': 'CHECKED-IN',
-  'Checked-Out': 'CHECKED-OUT',
-  'Cancelled': 'CANCELLED',
-};
+// Display label -> API status (derived so it can never drift)
+const REVERSE_STATUS_MAP = Object.fromEntries(
+  Object.entries(STATUS_MAP).map(([api, display]) => [display, api])
+);
+
+// Single source of truth for the dropdown options
+const STATUS_OPTIONS = Object.values(STATUS_MAP);
 
 export default function Bookings() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [allBookings, setAllBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const getBookingList = useBookingStore((state) => state.getAllBooking);
   const updateBookingStatus = useBookingStore((state) => state.updateBooking);
 
-  console.log("allBookings", allBookings);
-
-  useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const bookings = await getBookingList();
-        console.log(bookings);
-        setAllBookings(bookings);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching bookings:", err);
-        setError("Failed to load bookings. Please try again.");
-      }
-    };
-    fetchBookings();
-  }, [getBookingList]);
-
-  const handleStatusChange = async (bookingId, newDisplayStatus) => {
-    try {
-      // Convert display status to API status
-      const apiStatus = REVERSE_STATUS_MAP[newDisplayStatus];
-      await updateBookingStatus(bookingId, apiStatus);
-      
-      // Update local state to reflect the change
-      setAllBookings(prev =>
-        prev.map(booking =>
-          booking.id === bookingId
-            ? { ...booking, bookingStatus: apiStatus }
-            : booking
-        )
-      );
-    } catch (err) {
-      console.error("Error updating status:", err);
-      setError("Failed to update booking status. Please try again.");
-    }
-  };
-
-  const refreshBookings = async () => {
+  const fetchBookings = useCallback(async () => {
+    setLoading(true);
     try {
       const bookings = await getBookingList();
-      setAllBookings(bookings);
+      setAllBookings(Array.isArray(bookings) ? bookings : []);
       setError(null);
     } catch (err) {
-      console.error("Error fetching bookings:", err);
-      setError("Failed to load bookings. Please try again.");
+      console.error('Error fetching bookings:', err);
+      setError('Failed to load bookings. Please try again.');
+      setAllBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [getBookingList]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  // Close modal on Escape
+  useEffect(() => {
+    if (!showBookingForm) return;
+    const onEsc = (e) => {
+      if (e.key === 'Escape') setShowBookingForm(false);
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [showBookingForm]);
+
+  const handleStatusChange = async (bookingId, newDisplayStatus) => {
+    // 1. Validate the requested status
+    const apiStatus = REVERSE_STATUS_MAP[newDisplayStatus];
+    if (!apiStatus) {
+      setError(`Invalid status: ${newDisplayStatus}`);
+      return;
+    }
+
+    // 2. Make sure the booking actually exists in local state
+    const existing = allBookings.find((b) => b.id === bookingId);
+    if (!existing) {
+      setError(`Booking #${bookingId} not found.`);
+      return;
+    }
+
+    // 3. Skip no-op updates
+    if (existing.bookingStatus === apiStatus) return;
+
+    try {
+      const result = await updateBookingStatus(bookingId, apiStatus);
+
+      // 4. Treat falsy / unsuccessful / 404 responses as failures
+      const failed =
+        !result ||
+        result.success === false ||
+        result.status === 404 ||
+        result.error;
+
+      if (failed) {
+        setError(
+          result?.message ||
+            `Booking #${bookingId} not found. Status was not updated.`
+        );
+        return; // do NOT touch local state
+      }
+
+      // 5. Only update local state after confirmed success
+      setAllBookings((prev) =>
+        prev.map((b) =>
+          b.id === bookingId ? { ...b, bookingStatus: apiStatus } : b
+        )
+      );
+      setError(null);
+    } catch (err) {
+      console.error('Error updating status:', err);
+      setError('Failed to update booking status. Please try again.');
     }
   };
 
   const filteredBookings = allBookings.filter((b) => {
     const displayStatus = STATUS_MAP[b.bookingStatus] || b.bookingStatus;
-    const matchesStatus = filterStatus === 'All' || displayStatus === filterStatus;
+    const matchesStatus =
+      filterStatus === 'All' || displayStatus === filterStatus;
+
+    const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
-      b.guestName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.id?.toString().includes(searchQuery.toLowerCase()) ||
-      b.roomNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+      !q ||
+      String(b.guestName ?? '').toLowerCase().includes(q) ||
+      String(b.id ?? '').toLowerCase().includes(q) ||
+      String(b.roomNumber ?? '').toLowerCase().includes(q);
+
     return matchesStatus && matchesSearch;
   });
+
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(Number(amount) || 0);
 
   return (
     <div className="space-y-6">
       {/* Error Display */}
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm">
-          {error}
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm flex items-start justify-between gap-4">
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-rose-500 hover:text-rose-700 font-semibold"
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
         </div>
       )}
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Booking Management</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Track, update, and manage all guest reservations</p>
+          <h1 className="text-xl font-bold text-slate-800">
+            Booking Management
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Track, update, and manage all guest reservations
+          </p>
         </div>
 
         {/* Search & Filter Controls */}
@@ -130,10 +184,11 @@ export default function Bookings() {
             className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
           >
             <option value="All">All Statuses</option>
-            <option value="Confirmed">Confirmed</option>
-            <option value="Checked-In">Checked-In</option>
-            <option value="Checked-Out">Checked-Out</option>
-            <option value="Cancelled">Cancelled</option>
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -156,20 +211,39 @@ export default function Bookings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredBookings.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan="9" className="px-6 py-8 text-center text-slate-500">
+                  <td
+                    colSpan="9"
+                    className="px-6 py-8 text-center text-slate-500"
+                  >
+                    Loading bookings…
+                  </td>
+                </tr>
+              ) : filteredBookings.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="9"
+                    className="px-6 py-8 text-center text-slate-500"
+                  >
                     No bookings found
                   </td>
                 </tr>
               ) : (
                 filteredBookings.map((b) => {
-                  const displayStatus = STATUS_MAP[b.bookingStatus] || b.bookingStatus;
+                  const displayStatus =
+                    STATUS_MAP[b.bookingStatus] || b.bookingStatus;
                   return (
                     <tr key={b.id} className="hover:bg-slate-50/60 transition">
-                      <td className="px-6 py-4 font-semibold text-slate-900">#{b.id}</td>
-                      <td className="px-6 py-4 font-medium text-slate-800">{b.guestName}</td>
-                      <td className="px-6 py-4 text-xs font-medium text-slate-700">{b.roomNumber}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-900">
+                        #{b.id}
+                      </td>
+                      <td className="px-6 py-4 font-medium text-slate-800">
+                        {b.guestName}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-medium text-slate-700">
+                        {b.roomNumber}
+                      </td>
                       <td className="px-6 py-4 text-xs font-medium text-slate-700">
                         <span className="px-2 py-1 bg-slate-100 rounded-md">
                           {b.roomType}
@@ -178,23 +252,31 @@ export default function Bookings() {
                       <td className="px-6 py-4">{b.checkInDate}</td>
                       <td className="px-6 py-4">{b.checkOutDate}</td>
                       <td className="px-6 py-4 font-semibold text-slate-900">
-                        ₹{b.totalAmount}
+                        {formatCurrency(b.totalAmount)}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${STATUS_BADGES[b.bookingStatus] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                        <span
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
+                            STATUS_BADGES[b.bookingStatus] ||
+                            'bg-gray-50 text-gray-700 border-gray-200'
+                          }`}
+                        >
                           {displayStatus}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <select
                           value={displayStatus}
-                          onChange={(e) => handleStatusChange(b.id, e.target.value)}
+                          onChange={(e) =>
+                            handleStatusChange(b.id, e.target.value)
+                          }
                           className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                         >
-                          <option value="Confirmed">Confirmed</option>
-                          <option value="Checked-In">Checked-In</option>
-                          <option value="Checked-Out">Checked-Out</option>
-                          <option value="Cancelled">Cancelled</option>
+                          {STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
                         </select>
                       </td>
                     </tr>
@@ -206,23 +288,22 @@ export default function Bookings() {
         </div>
       </div>
 
-      {/* Full Screen Booking Form Modal with Scroll */}
+      {/* Full Screen Booking Form Modal */}
       {showBookingForm && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowBookingForm(false);
-            }
+            if (e.target === e.currentTarget) setShowBookingForm(false);
           }}
+          role="dialog"
+          aria-modal="true"
         >
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-            {/* Modal Content - Scrollable */}
             <div className="flex-1 overflow-y-auto p-6">
-              <BookingForm 
+              <BookingForm
                 isFullScreen={true}
                 onSuccess={() => {
-                  refreshBookings();
+                  fetchBookings();
                   setShowBookingForm(false);
                 }}
                 onCancel={() => setShowBookingForm(false)}

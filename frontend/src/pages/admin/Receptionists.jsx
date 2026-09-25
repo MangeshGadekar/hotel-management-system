@@ -1,89 +1,243 @@
-import { useState } from 'react';
-
-const INITIAL_STAFF = [
-  { id: 'REC-101', name: 'Ananya Roy', email: 'ananya@hotelparadise.com', phone: '+91 98765 43210', shift: 'Morning (06:00 - 14:00)', status: 'Active' },
-  { id: 'REC-102', name: 'Vikram Joshi', email: 'vikram@hotelparadise.com', phone: '+91 98765 43211', shift: 'Evening (14:00 - 22:00)', status: 'Active' },
-  { id: 'REC-103', name: 'Siddharth Rao', email: 'siddharth@hotelparadise.com', phone: '+91 98765 43212', shift: 'Night (22:00 - 06:00)', status: 'Inactive' },
-];
+import { useCallback, useEffect, useState } from "react";
+import ReceptionistForm from "../../components/forms/ReceptionistForm";
+import useReceptionistStore from "../../app/useReceptionistStore";
 
 const INITIAL_FORM_STATE = {
-  name: '',
-  email: '',
-  phone: '',
-  shift: 'Morning (06:00 - 14:00)',
-  password: '',
+  firstName: "",
+  lastName: "",
+  username: "",
+  email: "",
+  password: "",
+};
+
+const AVATAR_COLORS = [
+  "bg-rose-500",
+  "bg-amber-500",
+  "bg-emerald-500",
+  "bg-sky-500",
+  "bg-indigo-500",
+  "bg-fuchsia-500",
+  "bg-teal-500",
+  "bg-orange-500",
+];
+
+const getInitials = (first = "", last = "") => {
+  const f = first.trim().charAt(0).toUpperCase();
+  const l = last.trim().charAt(0).toUpperCase();
+  return `${f}${l}` || "?";
+};
+
+const colorFromString = (str = "") => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
 export default function Receptionists() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [staffList, setStaffList] = useState(INITIAL_STAFF);
+  const [editingId, setEditingId] = useState(null); // null = add mode, id = edit mode
   const [newStaff, setNewStaff] = useState(INITIAL_FORM_STATE);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAddStaff = (e) => {
-    e.preventDefault();
-    if (!newStaff.name.trim() || !newStaff.email.trim()) return;
+  // Delete confirmation modal state
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-    setStaffList((prevStaff) => {
-      // Find maximum existing numeric ID to prevent duplicate keys after deletions
-      const lastIdNum = prevStaff.reduce((max, s) => {
-        const num = parseInt(s.id.replace('REC-', ''), 10);
-        return !isNaN(num) && num > max ? num : max;
-      }, 100);
+  // List state
+  const [staffList, setStaffList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
-      const nextStaffMember = {
-        id: `REC-${lastIdNum + 1}`,
-        name: newStaff.name.trim(),
-        email: newStaff.email.trim(),
-        phone: newStaff.phone.trim() || 'N/A',
-        shift: newStaff.shift,
-        status: 'Active',
-      };
+  // Store selectors
+  const getAllReceptionist = useReceptionistStore((s) => s.getAllReceptionist);
+  const addReceptionist = useReceptionistStore((s) => s.addReceptionist);
+  const updateReceptionist = useReceptionistStore((s) => s.updateReceptionist);
+  const deleteReceptionist = useReceptionistStore((s) => s.deleteReceptionist);
 
-      return [...prevStaff, nextStaffMember];
-    });
+  const loadReceptionists = useCallback(async () => {
+    if (!getAllReceptionist) {
+      setStaffList([]);
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const data = await getAllReceptionist();
+      setStaffList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load receptionists:", err);
+      setLoadError(err?.message || "Failed to load receptionists.");
+      setStaffList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getAllReceptionist]);
 
-    setNewStaff(INITIAL_FORM_STATE);
-    setIsModalOpen(false);
-  };
+  useEffect(() => {
+    loadReceptionists();
+  }, [loadReceptionists]);
 
-  const toggleStatus = (id) => {
-    setStaffList((prevStaff) =>
-      prevStaff.map((staff) =>
-        staff.id === id
-          ? { ...staff, status: staff.status === 'Active' ? 'Inactive' : 'Active' }
-          : staff
+  // ---- Validation ----
+  const validateForm = () => {
+    const nextErrors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!newStaff.firstName.trim())
+      nextErrors.firstName = "First name is required.";
+    if (!newStaff.lastName.trim())
+      nextErrors.lastName = "Last name is required.";
+    if (!newStaff.username.trim())
+      nextErrors.username = "Username is required.";
+
+    // Password is required only when creating a new receptionist
+    if (!editingId && !newStaff.password.trim()) {
+      nextErrors.password = "Password is required.";
+    }
+
+    if (!newStaff.email.trim()) {
+      nextErrors.email = "Email is required.";
+    } else if (!emailRegex.test(newStaff.email.trim())) {
+      nextErrors.email = "Please enter a valid email address.";
+    } else if (
+      staffList.some(
+        (s) =>
+          s.id !== editingId &&
+          s.email?.toLowerCase() === newStaff.email.trim().toLowerCase()
       )
-    );
+    ) {
+      nextErrors.email = "A receptionist with this email already exists.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to remove this receptionist account?')) {
-      setStaffList((prevStaff) => prevStaff.filter((staff) => staff.id !== id));
+  const handleInputChange = (field, value) => {
+    setNewStaff((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
   const handleModalClose = () => {
     setNewStaff(INITIAL_FORM_STATE);
+    setErrors({});
     setIsModalOpen(false);
+    setEditingId(null);
+  };
+
+  const handleAddClick = () => {
+    setEditingId(null);
+    setNewStaff(INITIAL_FORM_STATE);
+    setErrors({});
+    setIsModalOpen(true);
+  };
+
+  const handleEditClick = (staff) => {
+    setEditingId(staff.id);
+    setNewStaff({
+      firstName: staff.firstName ?? "",
+      lastName: staff.lastName ?? "",
+      username: staff.username ?? "",
+      email: staff.email ?? "",
+      password: "", // leave blank; only fill if user wants to change it
+    });
+    setErrors({});
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    if (!validateForm()) return;
+
+    const payload = {
+      firstName: newStaff.firstName.trim(),
+      lastName: newStaff.lastName.trim(),
+      username: newStaff.username.trim(),
+      email: newStaff.email.trim(),
+    };
+
+    // Only include password if provided (edit mode: optional, create mode: required)
+    if (newStaff.password.trim()) {
+      payload.password = newStaff.password.trim();
+    }
+
+    try {
+      setIsSubmitting(true);
+      if (editingId) {
+        await updateReceptionist(editingId, payload);
+      } else {
+        await addReceptionist(payload);
+      }
+      handleModalClose();
+      await loadReceptionists();
+    } catch (err) {
+      console.error(
+        editingId
+          ? "Failed to update receptionist:"
+          : "Failed to add receptionist:",
+        err
+      );
+      setErrors((prev) => ({
+        ...prev,
+        email: err?.message || "Something went wrong. Please try again.",
+      }));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (staff) => {
+    setDeleteTarget(staff);
+  };
+
+  const handleDeleteCancel = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget || isDeleting) return;
+    try {
+      setIsDeleting(true);
+      await deleteReceptionist(deleteTarget.id);
+      setDeleteTarget(null);
+      await loadReceptionists();
+    } catch (err) {
+      console.error("Failed to delete receptionist:", err);
+      // Optionally surface an error to the user
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Receptionist Accounts</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Manage staff access, shifts, and credentials</p>
+          <h1 className="text-xl font-bold text-slate-800">
+            Receptionist Accounts
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Manage staff access and credentials &middot;{" "}
+            <span className="text-emerald-600 font-medium">
+              {staffList.length} total
+            </span>
+          </p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleAddClick}
           className="px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white text-sm font-semibold rounded-lg shadow-xs transition"
         >
           + Add New Receptionist
         </button>
       </div>
 
-      {/* Staff Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
@@ -91,141 +245,216 @@ export default function Receptionists() {
               <tr>
                 <th className="px-6 py-3">Staff ID</th>
                 <th className="px-6 py-3">Name</th>
-                <th className="px-6 py-3">Contact</th>
-                <th className="px-6 py-3">Assigned Shift</th>
-                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Username</th>
+                <th className="px-6 py-3">Email</th>
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {staffList.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-slate-400 text-sm">
-                    No receptionist accounts found. Click "+ Add New Receptionist" to create one.
+                  <td
+                    colSpan="5"
+                    className="px-6 py-8 text-center text-slate-400 text-sm"
+                  >
+                    Loading receptionists…
+                  </td>
+                </tr>
+              ) : loadError ? (
+                <tr>
+                  <td
+                    colSpan="5"
+                    className="px-6 py-8 text-center text-rose-500 text-sm"
+                  >
+                    {loadError}
+                  </td>
+                </tr>
+              ) : staffList.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="5"
+                    className="px-6 py-8 text-center text-slate-400 text-sm"
+                  >
+                    No receptionist accounts found. Click &ldquo;+ Add New
+                    Receptionist&rdquo; to create one.
                   </td>
                 </tr>
               ) : (
-                staffList.map((staff) => (
-                  <tr key={staff.id} className="hover:bg-slate-50/60 transition">
-                    <td className="px-6 py-4 font-semibold text-slate-900">{staff.id}</td>
-                    <td className="px-6 py-4 font-medium text-slate-800">{staff.name}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-xs space-y-0.5">
-                        <p className="text-slate-800 font-medium">{staff.email}</p>
-                        <p className="text-slate-400">{staff.phone}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-medium text-slate-700">{staff.shift}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
-                          staff.status === 'Active'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}
-                      >
-                        {staff.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2 text-xs">
-                      <button
-                        onClick={() => toggleStatus(staff.id)}
-                        className="px-2.5 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium transition"
-                      >
-                        {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(staff.id)}
-                        className="px-2.5 py-1 rounded-md border border-rose-100 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium transition"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                staffList.map((staff, index) => {
+                  const initials = getInitials(
+                    staff.firstName,
+                    staff.lastName
+                  );
+                  const avatarColor = colorFromString(
+                    `${staff.firstName}${staff.lastName}${staff.id ?? ""}`
+                  );
+
+                  return (
+                    <tr
+                      key={staff.id ?? staff.email ?? index}
+                      className="hover:bg-slate-50/60 transition"
+                    >
+                      <td className="px-6 py-4 font-semibold text-slate-900">
+                        REC-{staff.id ?? "—"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`h-9 w-9 flex-shrink-0 rounded-full ${avatarColor} text-white text-xs font-bold flex items-center justify-center ring-2 ring-white shadow-sm`}
+                            aria-hidden="true"
+                          >
+                            {initials}
+                          </div>
+                          <p className="font-medium text-slate-800 truncate">
+                            {staff.name ||
+                              `${staff.firstName ?? ""} ${
+                                staff.lastName ?? ""
+                              }`.trim()}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-medium text-slate-700">
+                        {staff.username ? `@${staff.username}` : "—"}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-slate-700">
+                        {staff.email}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditClick(staff)}
+                            title="Edit receptionist"
+                            aria-label={`Edit ${staff.firstName ?? ""} ${
+                              staff.lastName ?? ""
+                            }`}
+                            className="p-2 rounded-lg text-slate-500 hover:text-sky-600 hover:bg-sky-50 transition"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4"
+                            >
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(staff)}
+                            title="Delete receptionist"
+                            aria-label={`Delete ${staff.firstName ?? ""} ${
+                              staff.lastName ?? ""
+                            }`}
+                            className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4"
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              <line x1="10" y1="11" x2="10" y2="17" />
+                              <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add Receptionist Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-800">Add Receptionist Account</h3>
-            <form onSubmit={handleAddStaff} className="space-y-3 text-sm">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Ananya Roy"
-                  value={newStaff.name}
-                  onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="ananya@hotelparadise.com"
-                  value={newStaff.email}
-                  onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Phone Number</label>
-                <input
-                  type="text"
-                  placeholder="+91 98765 43210"
-                  value={newStaff.phone}
-                  onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Shift Timing</label>
-                <select
-                  value={newStaff.shift}
-                  onChange={(e) => setNewStaff({ ...newStaff, shift: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+        <ReceptionistForm
+          values={newStaff}
+          errors={errors}
+          onChange={handleInputChange}
+          onSubmit={handleSubmit}
+          onClose={handleModalClose}
+          isSubmitting={isSubmitting}
+          isEditMode={Boolean(editingId)}
+        />
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+          onClick={handleDeleteCancel}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div className="h-11 w-11 flex-shrink-0 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5"
                 >
-                  <option>Morning (06:00 - 14:00)</option>
-                  <option>Evening (14:00 - 22:00)</option>
-                  <option>Night (22:00 - 06:00)</option>
-                </select>
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Initial Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={newStaff.password}
-                  onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-                  required
-                />
+              <div className="flex-1">
+                <h2 className="text-base font-bold text-slate-800">
+                  Delete receptionist?
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold text-slate-700">
+                    {deleteTarget.name ||
+                      `${deleteTarget.firstName ?? ""} ${
+                        deleteTarget.lastName ?? ""
+                      }`.trim()}
+                  </span>
+                  ? This action cannot be undone.
+                </p>
               </div>
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleModalClose}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium text-xs transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white rounded-lg font-semibold text-xs shadow-xs transition"
-                >
-                  Create Account
-                </button>
-              </div>
-            </form>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition disabled:opacity-50"
+              >
+                {isDeleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
           </div>
         </div>
       )}

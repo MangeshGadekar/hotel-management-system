@@ -15,7 +15,9 @@ import {
 
 import useGuestStore from "../../app/useGuestStore";
 
-const GuestForm = () => {
+const GuestForm = ({
+  formClose
+}) => {
   const addGuest = useGuestStore((state) => state.addGuest);
 
   const [formData, setFormData] = useState({
@@ -54,6 +56,7 @@ const GuestForm = () => {
       console.error("Failed to create guest:", error);
     } finally {
       setIsSubmitting(false);
+      formClose()
     }
   };
 
@@ -64,9 +67,6 @@ const GuestForm = () => {
     "w-full h-12 pl-11 pr-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 outline-none transition-all duration-200 focus:border-[#D96B43] focus:ring-2 focus:ring-[#D96B43]/20 hover:border-slate-300 appearance-none cursor-pointer";
 
   const labelClass = "block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5";
-
-  const sectionIconClass = (color = "[#D96B43]") =>
-    `flex h-11 w-11 items-center justify-center rounded-xl bg-${color}/10 text-${color} flex-shrink-0`;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8 bg-white rounded-2xl p-8 shadow-sm border border-slate-200/60">
@@ -84,7 +84,26 @@ const GuestForm = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* First Name */}
+          {/* Email - Moved to top */}
+          <div className="md:col-span-2">
+            <label className={labelClass}>Email Address</label>
+            <div className="relative">
+              <FiMail
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={17}
+              />
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="john.doe@example.com"
+                required
+                className={inputClass}
+              />
+            </div>
+          </div>
+
           <div>
             <label className={labelClass}>First Name</label>
             <div className="relative">
@@ -138,26 +157,6 @@ const GuestForm = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+1 (555) 000-0000"
-                required
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className={labelClass}>Email Address</label>
-            <div className="relative">
-              <FiMail
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                size={17}
-              />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="john.doe@example.com"
                 required
                 className={inputClass}
               />
