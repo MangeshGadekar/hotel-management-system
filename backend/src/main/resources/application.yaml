@@ -31,12 +31,10 @@ brevo:
     email:
     name: Hotel Aatithya
 
-
 razorpay:
   key:
     id: rzp_test_TUkFWZhCRkCanQ
     secret: 9MaWmjVtdixU7B5L6EJcjLUX
-
 
 twilio:
   account-sid: AC758f931cd57c20ffd8412fcd24d0727c
@@ -47,7 +45,8 @@ app:
   security:
     admin-secret-key: Admin@123
 
-razorpay:
-  key:
-    id: rzp_test_TUkFWZhCRkCanQ
-    secret: 9MaWmjVtdixU7B5L6EJcjLUX
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+

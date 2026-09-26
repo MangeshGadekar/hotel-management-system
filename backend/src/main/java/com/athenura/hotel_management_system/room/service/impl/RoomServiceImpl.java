@@ -1,5 +1,7 @@
 package com.athenura.hotel_management_system.room.service.impl;
 
+import com.athenura.hotel_management_system.amenity.repository.AmenityRepository;
+import com.athenura.hotel_management_system.cloudinary.service.CloudinaryService;
 import com.athenura.hotel_management_system.common.exception.RoomNotFoundException;
 import com.athenura.hotel_management_system.room.dto.RoomRequest;
 import com.athenura.hotel_management_system.room.dto.RoomResponse;
@@ -11,7 +13,9 @@ import com.athenura.hotel_management_system.room.repository.RoomRepository;
 import com.athenura.hotel_management_system.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -20,6 +24,8 @@ public class RoomServiceImpl implements RoomService {
 
     private final RoomRepository roomRepository;
     private final RoomMapper roomMapper;
+    private final AmenityRepository amenityRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     public RoomResponse createRoom(RoomRequest roomRequest) {
@@ -28,6 +34,9 @@ public class RoomServiceImpl implements RoomService {
             throw new RuntimeException("Room Already Exists");
 
         Room room = roomMapper.toEntity(roomRequest);
+        if (roomRequest.getAmenityIds() != null && !roomRequest.getAmenityIds().isEmpty()) {
+            room.setAmenities(amenityRepository.findAllById(roomRequest.getAmenityIds()));
+        }
         Room savedRoom = roomRepository.save(room);
         return roomMapper.toResponse(savedRoom);
     }
@@ -66,6 +75,10 @@ public class RoomServiceImpl implements RoomService {
 
         if (roomRequest.getImages() != null) {
             room.setImages(roomRequest.getImages());
+        }
+
+        if (roomRequest.getAmenityIds() != null) {
+            room.setAmenities(amenityRepository.findAllById(roomRequest.getAmenityIds()));
         }
 
         Room updatedRoom = roomRepository.save(room);
@@ -117,5 +130,41 @@ public class RoomServiceImpl implements RoomService {
                 .stream()
                 .map(roomMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    public RoomResponse uploadRoomImages(String roomNumber, List<MultipartFile> files) {
+        Room room = roomRepository.findByRoomNumber(roomNumber)
+                .orElseThrow(() -> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
+
+        List<String> uploadedUrls = cloudinaryService.uploadImages(files, "hotel_management/rooms");
+        if (room.getImages() == null) {
+            room.setImages(new ArrayList<>());
+        }
+        room.getImages().addAll(uploadedUrls);
+
+        Room updatedRoom = roomRepository.save(room);
+        return roomMapper.toResponse(updatedRoom);
+    }
+
+    @Override
+    public RoomResponse removeRoomImage(String roomNumber, String imageUrl) {
+        Room room = roomRepository.findByRoomNumber(roomNumber)
+                .orElseThrow(() -> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
+
+        if (room.getImages() != null && imageUrl != null) {
+            room.getImages().removeIf(url -> url.equalsIgnoreCase(imageUrl.trim()));
+            String publicId = cloudinaryService.extractPublicIdFromUrl(imageUrl);
+            if (publicId != null) {
+                try {
+                    cloudinaryService.deleteImage(publicId);
+                } catch (Exception e) {
+                    // log warning
+                }
+            }
+        }
+
+        Room updatedRoom = roomRepository.save(room);
+        return roomMapper.toResponse(updatedRoom);
     }
 }

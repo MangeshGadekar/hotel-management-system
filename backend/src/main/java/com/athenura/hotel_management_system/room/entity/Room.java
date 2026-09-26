@@ -46,6 +46,15 @@ public class Room {
     @Builder.Default
     private List<String> images = new ArrayList<>();
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "room_amenities",
+        joinColumns = @JoinColumn(name = "room_id"),
+        inverseJoinColumns = @JoinColumn(name = "amenity_id")
+    )
+    @Builder.Default
+    private List<com.athenura.hotel_management_system.amenity.entity.Amenity> amenities = new ArrayList<>();
+
     private Instant createdAt;
 
     private Instant updatedAt;

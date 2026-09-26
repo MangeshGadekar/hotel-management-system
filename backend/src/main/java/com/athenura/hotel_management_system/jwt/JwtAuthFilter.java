@@ -38,32 +38,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             token = authHeader.substring(7);
             try {
                 username = jwtService.extractUsername(token);
-            } catch (ExpiredJwtException e) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Token Expired");
-                return;
-            } catch (MalformedJwtException e) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Invalid Token");
-                return;
-            } catch (SecurityException e) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Invalid Signature");
-                return;
+            } catch (Exception e) {
+                // If token is invalid or expired, continue filter chain so permitAll routes can still be accessed
             }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            Users user = (Users) userDetails;
+            try {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                Users user = (Users) userDetails;
 
-            if (jwtService.isTokenValid(token, user)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                if (jwtService.isTokenValid(token, user)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } catch (Exception e) {
+                // Ignore invalid user loading
             }
         }
 
@@ -73,13 +67,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        String method = request.getMethod();
 
         return path.startsWith("/auth/")
-                || (path.equals("/guest/create") && method.equalsIgnoreCase("POST"))
-                || (path.equals("/booking/create") && method.equalsIgnoreCase("POST"))
-                || (path.startsWith("/api/payments/pay"))
-                || (path.startsWith("/api/payments/razorpay/"))
+                || path.startsWith("/guest")
+                || path.startsWith("/booking")
+                || path.startsWith("/api/payments")
+                || path.startsWith("/admin")
+                || path.startsWith("/api/room")
+                || path.startsWith("/api/rooms")
+                || path.startsWith("/api/cloudinary")
+                || path.startsWith("/api/amenity")
+                || path.startsWith("/api/amenities")
                 || path.equals("/api/refresh-token");
     }
 }

@@ -22,4 +22,5 @@ public class BookingRequest {
     private String paymentType;
     private String paymentMethod;
     private BigDecimal amount;
+    private java.util.List<Long> amenityIds;
 }
