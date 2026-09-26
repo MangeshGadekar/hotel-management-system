@@ -116,7 +116,7 @@ export const fetchGuest = async (id, token) => {
 
 /* fetch guest list */
 export const fetchAllGuest = async (token) => {
-  console.log("token",token)
+  console.log("token", token);
   return await apiClient
     .get(`/guest`, {
       headers: {
@@ -221,6 +221,43 @@ export const statusOfRooms = async (roomStatus) => {
 /* delete room */
 export const deleteRoom = async (roomNumber) => {
   return await apiClient.delete(`/admin/room/delete/${roomNumber}`).json();
+};
+
+/* =================================================== */
+/* CAMPAINGS */
+/* =================================================== */
+/* create campaings */
+export const createCampaings = async (token, payload) => {
+  return await apiClient
+    .post(`admin/campaigns`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
+};
+
+/* get all campaings */
+export const getAllCampaings = async (token) => {
+  return apiClient
+    .get(`/admin/campaigns`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
+};
+
+/* delete campaings */
+export const deleteCampaign = async (token, campaignId) => {
+  return await apiClient
+    .delete(`/admin/campaigns/${campaignId}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
 };
 
 /* =================================================== */
