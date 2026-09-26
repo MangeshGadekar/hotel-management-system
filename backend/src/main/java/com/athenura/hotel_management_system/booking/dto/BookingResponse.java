@@ -36,4 +36,6 @@ public class BookingResponse {
     private BigDecimal totalAmount;
 
     private BookingStatus bookingStatus;
+
+    private java.util.List<com.athenura.hotel_management_system.amenity.dto.AmenityResponse> selectedAmenities;
 }

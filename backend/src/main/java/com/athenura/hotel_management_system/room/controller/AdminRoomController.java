@@ -70,4 +70,40 @@ public class AdminRoomController {
                 roomService.getRoomByRoomStatus(roomStatus));
     }
 
+    @PostMapping(value = "/{roomNumber}/upload-images", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RoomResponse> uploadRoomImages(
+            @PathVariable String roomNumber,
+            @RequestParam(value = "files", required = false) List<org.springframework.web.multipart.MultipartFile> files,
+            @RequestParam(value = "file", required = false) List<org.springframework.web.multipart.MultipartFile> file,
+            @RequestParam(value = "photos", required = false) List<org.springframework.web.multipart.MultipartFile> photos,
+            @RequestParam(value = "image", required = false) List<org.springframework.web.multipart.MultipartFile> image,
+            org.springframework.web.multipart.MultipartHttpServletRequest request) {
+
+        List<org.springframework.web.multipart.MultipartFile> allFiles = new java.util.ArrayList<>();
+        if (files != null) allFiles.addAll(files);
+        if (file != null) allFiles.addAll(file);
+        if (photos != null) allFiles.addAll(photos);
+        if (image != null) allFiles.addAll(image);
+
+        if (allFiles.isEmpty() && request != null) {
+            request.getMultiFileMap().values().forEach(allFiles::addAll);
+        }
+
+        List<org.springframework.web.multipart.MultipartFile> validFiles = allFiles.stream()
+                .filter(f -> f != null && !f.isEmpty())
+                .toList();
+
+        if (validFiles.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return ResponseEntity.ok(roomService.uploadRoomImages(roomNumber, validFiles));
+    }
+
+    @DeleteMapping("/{roomNumber}/remove-image")
+    public ResponseEntity<RoomResponse> removeRoomImage(
+            @PathVariable String roomNumber,
+            @RequestParam String imageUrl) {
+        return ResponseEntity.ok(roomService.removeRoomImage(roomNumber, imageUrl));
+    }
 }

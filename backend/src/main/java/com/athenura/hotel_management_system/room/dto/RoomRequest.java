@@ -22,12 +22,23 @@ public class RoomRequest {
     @NotNull
     private RoomType roomType;
     @NotNull
+    @com.fasterxml.jackson.annotation.JsonAlias({"price", "pricePerNight"})
     private BigDecimal pricePerNight;
+
+    public void setPrice(BigDecimal price) {
+        this.pricePerNight = price;
+    }
+
+    public BigDecimal getPrice() {
+        return this.pricePerNight;
+    }
     @NotNull
     private Integer capacity;
 
     private RoomStatus roomStatus;
 
     private List<String> images;
+
+    private List<Long> amenityIds;
 }
 

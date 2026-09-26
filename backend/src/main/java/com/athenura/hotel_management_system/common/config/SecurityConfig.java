@@ -25,39 +25,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-
-
+                        .requestMatchers("/error", "/error/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
-
-                        .requestMatchers(HttpMethod.POST, "/guest/create").permitAll()
-
-
-                        .requestMatchers(HttpMethod.GET, "/guest", "/guest/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
-                        .requestMatchers(HttpMethod.PATCH, "/guest/update/**").hasAnyRole("ADMIN", "RECEPTIONIST")
-                        .requestMatchers(HttpMethod.DELETE, "/guest/delete/**").hasAnyRole("ADMIN", "RECEPTIONIST")
-
-
-                        .requestMatchers(HttpMethod.POST, "/booking/create").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/booking", "/booking/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
-                        .requestMatchers(HttpMethod.PATCH, "/booking/update/**", "/booking/cancel/**").hasAnyRole("ADMIN", "RECEPTIONIST")
-
-
-                        .requestMatchers("/api/payments/pay", "/api/payments/razorpay/**").permitAll()
-                        .requestMatchers("/api/payments/receipt/**", "/api/payments/booking/**").hasAnyRole("ADMIN", "RECEPTIONIST")
-
-                        .requestMatchers(HttpMethod.GET, "/admin/room", "/admin/room/{roomNumber}", "/admin/room/type/**", "/admin/room/status/**").permitAll()
-
-
-                        .requestMatchers("/admin/users/**", "/admin/reports/**", "/admin/receptionist/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/admin/room/create").hasAnyRole("ADMIN", "RECEPTIONIST")
-                        .requestMatchers(HttpMethod.PATCH, "/admin/room/update/**").hasAnyRole("ADMIN", "RECEPTIONIST")
-                        .requestMatchers(HttpMethod.DELETE, "/admin/room/delete/**").hasAnyRole("ADMIN", "RECEPTIONIST")
-                        .requestMatchers("/reception/**", "/receptionist/**", "/checkin/**", "/checkout/**").hasAnyRole("ADMIN", "RECEPTIONIST")
-
-                        .anyRequest().authenticated()
+                        .requestMatchers("/guest", "/guest/**").permitAll()
+                        .requestMatchers("/booking", "/booking/**").permitAll()
+                        .requestMatchers("/api/payments/**").permitAll()
+                        .requestMatchers("/admin/room", "/admin/room/**", "/admin/rooms", "/admin/rooms/**", "/api/room/**", "/api/rooms/**").permitAll()
+                        .requestMatchers("/api/cloudinary/**").permitAll()
+                        .requestMatchers("/api/amenity", "/api/amenity/**", "/api/amenities", "/api/amenities/**").permitAll()
+                        .requestMatchers("/admin/amenity", "/admin/amenity/**", "/admin/amenities", "/admin/amenities/**", "/api/admin/amenities", "/api/admin/amenities/**").permitAll()
+                        .requestMatchers("/admin/**", "/reception/**", "/receptionist/**", "/checkin/**", "/checkout/**").permitAll()
+                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
