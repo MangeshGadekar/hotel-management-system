@@ -250,6 +250,18 @@ export const getAllCampaings = async (token) => {
 };
 
 /* delete campaings */
+export const patchCampaing = async (token, campaignId, payload) => {
+  return apiClient
+    .post(`/admin/campaign/${campaignId}`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
+};
+
+/* delete campaings */
 export const deleteCampaign = async (token, campaignId) => {
   return await apiClient
     .delete(`/admin/campaigns/${campaignId}`, {
