@@ -1,4 +1,8 @@
 import { createCampaings, getAllCampaings } from "../apis/api";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { devtools } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 
 const campaingsStore = (set) => ({
   campaing: {},
@@ -23,10 +27,19 @@ const campaingsStore = (set) => ({
       set({
         campaingList: _allCampaings,
       });
-
       return res;
     } catch (error) {
       return error;
     }
   },
 });
+
+const useCampaingStore = create(
+  devtools(
+    persist(campaingsStore, {
+      name: "campaing",
+    }),
+  ),
+);
+
+export default useCampaingStore;
