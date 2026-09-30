@@ -46,7 +46,7 @@ app:
     admin-secret-key: Admin@123
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:rnhgbfko}
-  api-key: ${CLOUDINARY_API_KEY:631357668877537}
-  api-secret: ${CLOUDINARY_API_SECRET:qK1ry3sz_-EbM1ADqvQA7YEml7M}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
 
