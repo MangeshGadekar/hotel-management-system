@@ -7,8 +7,6 @@ import java.util.List;
 
 public interface AmenityService {
 
-    AmenityResponse createAmenity(AmenityRequest request);
-
     AmenityResponse updateAmenity(Long id, AmenityRequest request);
 
     String deleteAmenity(Long id);
