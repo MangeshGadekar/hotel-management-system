@@ -113,15 +113,15 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse<>(false, ex.getMessage()));
-    }
-
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleGlobalException(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(false, "An unexpected error occurred: " + ex.getMessage()));
+    public ResponseEntity<ApiError> handleGenericException(Exception ex, HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
+                .message(ex.getMessage() != null ? ex.getMessage() : ex.toString())
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

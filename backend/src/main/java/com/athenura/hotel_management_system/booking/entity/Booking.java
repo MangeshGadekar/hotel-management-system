@@ -48,4 +48,13 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BookingStatus bookingStatus;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "booking_amenities",
+        joinColumns = @JoinColumn(name = "booking_id"),
+        inverseJoinColumns = @JoinColumn(name = "amenity_id")
+    )
+    @Builder.Default
+    private java.util.List<com.athenura.hotel_management_system.amenity.entity.Amenity> selectedAmenities = new java.util.ArrayList<>();
 }

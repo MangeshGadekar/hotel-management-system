@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 public class GuestMapper {
 
     public Guest toEntity(GuestRequest request) {
-
         return Guest.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -22,11 +21,11 @@ public class GuestMapper {
                 .city(request.getCity())
                 .state(request.getState())
                 .postalCode(request.getPostalCode())
+                .isVerified(false)
                 .build();
     }
 
     public GuestResponse toResponse(Guest guest) {
-
         return GuestResponse.builder()
                 .id(guest.getId())
                 .firstName(guest.getFirstName())
@@ -40,6 +39,7 @@ public class GuestMapper {
                 .city(guest.getCity())
                 .state(guest.getState())
                 .postalCode(guest.getPostalCode())
+                .isVerified(guest.getIsVerified())
                 .build();
     }
 }

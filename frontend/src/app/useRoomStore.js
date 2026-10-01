@@ -17,12 +17,13 @@ const roomStore = (set) => ({
   addRoom: async (data) => {
     try {
       console.log("create room data", data);
-      const res = await createRoom(data);
+      console.log(data.images[0].length)
+      let token = localStorage.getItem("token")
+      const res = await createRoom(data, token);
       const _room = res;
       set((state) => ({
         roomList: [_room, ...state.roomList],
       }));
-      console.log("create room", res);
       return res;
     } catch (error) {
       return error.message;

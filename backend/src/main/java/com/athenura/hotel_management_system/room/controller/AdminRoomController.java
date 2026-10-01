@@ -13,15 +13,57 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/admin/room", "/admin/rooms", "/api/room", "/api/rooms"})
+@RequestMapping({"/admin/room", "/admin/rooms"})
 @RequiredArgsConstructor
 public class AdminRoomController {
 
     private final RoomService roomService;
 
-    @PostMapping({"", "/create"})
-    public ResponseEntity<RoomResponse> createRoom(@RequestBody RoomRequest roomRequest) {
+    @PostMapping(value = {"", "/create"}, consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RoomResponse> createRoomJson(@RequestBody RoomRequest roomRequest) {
         return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(roomRequest));
+    }
+
+    @PostMapping(value = {"", "/create"}, consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RoomResponse> createRoomMultipart(
+            @RequestPart(value = "room", required = false) String roomJson,
+            @ModelAttribute RoomRequest formRoomRequest,
+            @RequestParam(value = "files", required = false) List<org.springframework.web.multipart.MultipartFile> files,
+            @RequestParam(value = "file", required = false) List<org.springframework.web.multipart.MultipartFile> file,
+            @RequestParam(value = "photos", required = false) List<org.springframework.web.multipart.MultipartFile> photos,
+            @RequestParam(value = "photo", required = false) List<org.springframework.web.multipart.MultipartFile> photo,
+            @RequestParam(value = "image", required = false) List<org.springframework.web.multipart.MultipartFile> image,
+            @RequestParam(value = "images", required = false) List<org.springframework.web.multipart.MultipartFile> images,
+            org.springframework.web.multipart.MultipartHttpServletRequest request) {
+
+        RoomRequest roomRequest = formRoomRequest;
+
+        if (roomJson != null && !roomJson.isBlank()) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                roomRequest = mapper.readValue(roomJson, RoomRequest.class);
+            } catch (Exception e) {
+                // Keep formRoomRequest if JSON parsing fails
+            }
+        }
+
+        List<org.springframework.web.multipart.MultipartFile> allFiles = new java.util.ArrayList<>();
+        if (files != null) allFiles.addAll(files);
+        if (file != null) allFiles.addAll(file);
+        if (photos != null) allFiles.addAll(photos);
+        if (photo != null) allFiles.addAll(photo);
+        if (image != null) allFiles.addAll(image);
+        if (images != null) allFiles.addAll(images);
+
+        if (allFiles.isEmpty() && request != null) {
+            request.getMultiFileMap().values().forEach(allFiles::addAll);
+        }
+
+        List<org.springframework.web.multipart.MultipartFile> validFiles = allFiles.stream()
+                .filter(f -> f != null && !f.isEmpty())
+                .toList();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(roomRequest, validFiles));
     }
 
 
@@ -69,5 +111,4 @@ public class AdminRoomController {
         return ResponseEntity.ok(
                 roomService.getRoomByRoomStatus(roomStatus));
     }
-
 }

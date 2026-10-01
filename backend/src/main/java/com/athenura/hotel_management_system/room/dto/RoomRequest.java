@@ -1,5 +1,6 @@
 package com.athenura.hotel_management_system.room.dto;
 
+import com.athenura.hotel_management_system.amenity.dto.AmenityRequest;
 import com.athenura.hotel_management_system.room.enums.RoomStatus;
 import com.athenura.hotel_management_system.room.enums.RoomType;
 import jakarta.validation.constraints.NotBlank;
@@ -22,12 +23,28 @@ public class RoomRequest {
     @NotNull
     private RoomType roomType;
     @NotNull
+    @com.fasterxml.jackson.annotation.JsonAlias({"price", "pricePerNight"})
     private BigDecimal pricePerNight;
+
+    public void setPrice(BigDecimal price) {
+        this.pricePerNight = price;
+    }
+
+    public BigDecimal getPrice() {
+        return this.pricePerNight;
+    }
     @NotNull
     private Integer capacity;
 
     private RoomStatus roomStatus;
 
     private List<String> images;
+
+    private List<Long> amenityIds;
+
+    private List<AmenityRequest> newAmenities;
+
+    private List<String> amenityNames;
 }
+
 
