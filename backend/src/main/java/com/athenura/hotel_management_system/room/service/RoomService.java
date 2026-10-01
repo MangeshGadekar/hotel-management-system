@@ -10,6 +10,8 @@ import java.util.List;
 public interface RoomService {
     RoomResponse createRoom(RoomRequest roomRequest);
 
+    RoomResponse createRoom(RoomRequest roomRequest, List<org.springframework.web.multipart.MultipartFile> files);
+
     RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest);
 
     String deleteRoom(String roomNumber);
@@ -21,8 +23,4 @@ public interface RoomService {
     List<RoomResponse> getRoomByRoomType(RoomType roomType);
 
     List<RoomResponse> getRoomByRoomStatus(RoomStatus roomStatus);
-
-    RoomResponse uploadRoomImages(String roomNumber, List<org.springframework.web.multipart.MultipartFile> files);
-
-    RoomResponse removeRoomImage(String roomNumber, String imageUrl);
 }

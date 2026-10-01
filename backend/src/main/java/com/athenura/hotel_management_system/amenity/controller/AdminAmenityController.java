@@ -12,17 +12,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/admin/amenity", "/admin/amenities", "/api/admin/amenities"})
+@RequestMapping({"/admin/amenity", "/admin/amenities"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AdminAmenityController {
 
     private final AmenityService amenityService;
-
-    @PostMapping
-    public ResponseEntity<AmenityResponse> createAmenity(@Valid @RequestBody AmenityRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(amenityService.createAmenity(request));
-    }
 
     @PutMapping("/{id}")
     public ResponseEntity<AmenityResponse> updateAmenity(
