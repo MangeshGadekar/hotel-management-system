@@ -24,10 +24,10 @@ public class Guest {
     @Column(nullable = false)
     private String lastName;
 
-    // for OTP verification and communication
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true, length = 10)
     private String phone;
 
+    @Column(nullable = false, unique = true)
     private String email;
 
     @Enumerated(EnumType.STRING)
@@ -35,7 +35,6 @@ public class Guest {
 
     private String idProofNumber;
 
-    // not mandatory for all guests
     private String address;
 
     private String city;
@@ -45,4 +44,7 @@ public class Guest {
     private String postalCode;
 
     private LocalDate dateOfBirth;
+
+    @Builder.Default
+    private Boolean isVerified = false;
 }

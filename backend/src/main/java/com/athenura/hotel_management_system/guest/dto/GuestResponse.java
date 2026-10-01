@@ -13,20 +13,16 @@ import java.time.LocalDate;
 public class GuestResponse {
 
     private Long id;
-
     private String firstName;
     private String lastName;
-
     private String phone;
     private String email;
-
     private IdProofType idProofType;
-
     private String idProofNumber;
-
     private String address;
     private String city;
     private String state;
     private String postalCode;
     private LocalDate dateOfBirth;
+    private Boolean isVerified;
 }
