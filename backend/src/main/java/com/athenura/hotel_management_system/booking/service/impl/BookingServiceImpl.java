@@ -1,5 +1,8 @@
 package com.athenura.hotel_management_system.booking.service.impl;
 
+import com.athenura.hotel_management_system.amenity.entity.Amenity;
+import com.athenura.hotel_management_system.amenity.enums.AmenityPriceType;
+import com.athenura.hotel_management_system.amenity.repository.AmenityRepository;
 import com.athenura.hotel_management_system.booking.dto.BookingRequest;
 import com.athenura.hotel_management_system.booking.dto.BookingResponse;
 import com.athenura.hotel_management_system.booking.entity.Booking;
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -35,6 +39,7 @@ public class BookingServiceImpl implements BookingService {
     private final UserRepo userRepo;
     private final BookingMapper bookingMapper;
     private final PaymentService paymentService;
+    private final AmenityRepository amenityRepository;
 
     @Override
     @Transactional
@@ -94,9 +99,24 @@ public class BookingServiceImpl implements BookingService {
                 request.getCheckOutDate()
         );
 
-        // 6. Calculate total amount
+        // 6. Calculate base room amount
         BigDecimal totalAmount = room.getPricePerNight()
                 .multiply(BigDecimal.valueOf(nights));
+
+        // 6.1 Calculate selected amenities amount
+        List<Amenity> selectedAmenities = new ArrayList<>();
+        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
+            selectedAmenities = amenityRepository.findAllById(request.getAmenityIds());
+            for (Amenity amenity : selectedAmenities) {
+                if (amenity.getPrice() != null) {
+                    if (amenity.getPriceType() == AmenityPriceType.PER_NIGHT) {
+                        totalAmount = totalAmount.add(amenity.getPrice().multiply(BigDecimal.valueOf(nights)));
+                    } else {
+                        totalAmount = totalAmount.add(amenity.getPrice());
+                    }
+                }
+            }
+        }
 
         // 7. Create Booking
         Booking booking = Booking.builder()
@@ -106,6 +126,7 @@ public class BookingServiceImpl implements BookingService {
                 .checkOutDate(request.getCheckOutDate())
                 .totalAmount(totalAmount)
                 .bookingStatus(BookingStatus.BOOKED)
+                .selectedAmenities(selectedAmenities)
                 .build();
 
         // 7. Save Booking

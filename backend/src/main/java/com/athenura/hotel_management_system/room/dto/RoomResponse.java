@@ -15,8 +15,13 @@ public class RoomResponse {
     private String roomNumber;
     private RoomType roomType;
     private BigDecimal pricePerNight;
+
+    public BigDecimal getPrice() {
+        return this.pricePerNight;
+    }
     private Integer capacity;
     private RoomStatus roomStatus;
     private List<String> images;
+    private List<com.athenura.hotel_management_system.amenity.dto.AmenityResponse> amenities;
 }
 
