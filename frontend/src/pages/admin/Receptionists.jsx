@@ -1,10 +1,5 @@
 import { useState } from 'react';
-
-const INITIAL_STAFF = [
-  { id: 'REC-101', name: 'Ananya Roy', email: 'ananya@hotelparadise.com', phone: '+91 98765 43210', shift: 'Morning (06:00 - 14:00)', status: 'Active' },
-  { id: 'REC-102', name: 'Vikram Joshi', email: 'vikram@hotelparadise.com', phone: '+91 98765 43211', shift: 'Evening (14:00 - 22:00)', status: 'Active' },
-  { id: 'REC-103', name: 'Siddharth Rao', email: 'siddharth@hotelparadise.com', phone: '+91 98765 43212', shift: 'Night (22:00 - 06:00)', status: 'Inactive' },
-];
+import useReceptionistStore from "../../app/useReceptionistStore";
 
 const INITIAL_FORM_STATE = {
   firstName: '',
@@ -16,53 +11,46 @@ const INITIAL_FORM_STATE = {
 
 export default function Receptionists() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [staffList, setStaffList] = useState(INITIAL_STAFF);
   const [newStaff, setNewStaff] = useState(INITIAL_FORM_STATE);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Zustand Store Hooks
+  const { receptionistList, addReceptionist, deleteReceptionist } = useReceptionistStore();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewStaff((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddStaff = (e) => {
+  const handleAddStaff = async (e) => {
     e.preventDefault();
-    if (!newStaff.firstName.trim() || !newStaff.email.trim()) return;
 
-    setStaffList((prevStaff) => {
-      const lastIdNum = prevStaff.reduce((max, s) => {
-        const num = parseInt(s.id.replace('REC-', ''), 10);
-        return !isNaN(num) && num > max ? num : max;
-      }, 100);
+    const payload = {
+      firstName: newStaff.firstName.trim(),
+      lastName: newStaff.lastName.trim(),
+      username: newStaff.username.trim(),
+      email: newStaff.email.trim(),
+      password: newStaff.password,
+    };
 
-      const nextStaffMember = {
-        id: `REC-${lastIdNum + 1}`,
-        name: `${newStaff.firstName.trim()} ${newStaff.lastName.trim()}`.trim(),
-        email: newStaff.email.trim(),
-        phone: 'N/A',
-        shift: 'Morning (06:00 - 14:00)',
-        status: 'Active',
-      };
+    setIsLoading(true);
 
-      return [...prevStaff, nextStaffMember];
-    });
-
-    setNewStaff(INITIAL_FORM_STATE);
-    setIsModalOpen(false);
+    try {
+      // Calling addReceptionist from Zustand store
+      await addReceptionist(payload);
+      setNewStaff(INITIAL_FORM_STATE);
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Failed to create receptionist:', error);
+      alert('Error creating receptionist account.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const toggleStatus = (id) => {
-    setStaffList((prevStaff) =>
-      prevStaff.map((staff) =>
-        staff.id === id
-          ? { ...staff, status: staff.status === 'Active' ? 'Inactive' : 'Active' }
-          : staff
-      )
-    );
-  };
-
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to remove this receptionist account?')) {
-      setStaffList((prevStaff) => prevStaff.filter((staff) => staff.id !== id));
+      await deleteReceptionist(id);
     }
   };
 
@@ -96,48 +84,42 @@ export default function Receptionists() {
                 <th className="px-6 py-3">Staff ID</th>
                 <th className="px-6 py-3">Name</th>
                 <th className="px-6 py-3">Contact</th>
-                <th className="px-6 py-3">Assigned Shift</th>
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {staffList.length === 0 ? (
+              {receptionistList.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-slate-400 text-sm">
+                  <td colSpan="5" className="px-6 py-8 text-center text-slate-400 text-sm">
                     No receptionist accounts found. Click "+ Add New Receptionist" to create one.
                   </td>
                 </tr>
               ) : (
-                staffList.map((staff) => (
+                receptionistList.map((staff) => (
                   <tr key={staff.id} className="hover:bg-slate-50/60 transition">
-                    <td className="px-6 py-4 font-semibold text-slate-900">{staff.id}</td>
-                    <td className="px-6 py-4 font-medium text-slate-800">{staff.name}</td>
+                    <td className="px-6 py-4 font-semibold text-slate-900">{staff.id || 'N/A'}</td>
+                    <td className="px-6 py-4 font-medium text-slate-800">
+                      {staff.firstName} {staff.lastName}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="text-xs space-y-0.5">
                         <p className="text-slate-800 font-medium">{staff.email}</p>
-                        <p className="text-slate-400">{staff.phone}</p>
+                        <p className="text-slate-400">@{staff.username}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-xs font-medium text-slate-700">{staff.shift}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
-                          staff.status === 'Active'
+                          staff.status === 'Active' || !staff.status
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : 'bg-slate-100 text-slate-600 border-slate-200'
                         }`}
                       >
-                        {staff.status}
+                        {staff.status || 'Active'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2 text-xs">
-                      <button
-                        onClick={() => toggleStatus(staff.id)}
-                        className="px-2.5 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium transition"
-                      >
-                        {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
-                      </button>
                       <button
                         onClick={() => handleDelete(staff.id)}
                         className="px-2.5 py-1 rounded-md border border-rose-100 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium transition"
@@ -229,15 +211,17 @@ export default function Receptionists() {
                 <button
                   type="button"
                   onClick={handleModalClose}
+                  disabled={isLoading}
                   className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium text-xs transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white rounded-lg font-semibold text-xs shadow-xs transition"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white rounded-lg font-semibold text-xs shadow-xs transition disabled:opacity-50"
                 >
-                  Create Account
+                  {isLoading ? 'Creating...' : 'Create Account'}
                 </button>
               </div>
             </form>
