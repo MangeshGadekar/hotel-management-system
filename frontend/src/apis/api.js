@@ -30,6 +30,7 @@ export const userLogout = async () => {
   return await apiClient.get("/auth/logout").json();
 };
 
+
 /* =================================================== */
 /* RECEPTIONIST */
 /* =================================================== */
@@ -107,6 +108,7 @@ export const fetchGuest = async (id, token) => {
 };
 
 export const fetchAllGuest = async (token) => {
+  console.log("token",token)
   return await apiClient
     .get(`/guest`, {
       headers: getAuthHeaders(token),
@@ -232,13 +234,66 @@ export const deleteRoom = async (roomNumber) => {
 };
 
 /* =================================================== */
-/* DASHBOARD */
+/* CAMPAINGS */
 /* =================================================== */
+/* create campaings */
+export const createCampaings = async (token, payload) => {
+  return await apiClient
+    .post(`admin/campaigns`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
+};
 
+/* get all campaings */
+export const getAllCampaings = async (token) => {
+  return apiClient
+    .get(`/admin/campaigns`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
+};
+
+/* delete campaings */
+export const patchCampaing = async (token, campaignId, payload) => {
+  return apiClient
+    .post(`/admin/campaign/${campaignId}`, {
+      headers: {
+        Authorization: token,
+      },
+      json: payload,
+    })
+    .json();
+};
+
+/* delete campaings */
+export const deleteCampaign = async (token, campaignId) => {
+  return await apiClient
+    .delete(`/admin/campaigns/${campaignId}`, {
+      headers: {
+        Authorization: token,
+      },
+    })
+    .json();
+};
+
+/* =================================================== */
+/* CAMPAINGS */
+/* =================================================== */
+/* admin dashboard */
+
+/* get type of rooms */
 export const adminDashboard = async (token) => {
   return await apiClient
     .get(`/admin/dashboard`, {
-      headers: getAuthHeaders(token),
+      headers: {
+        Authorization: token,
+      },
     })
     .json();
 };

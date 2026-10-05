@@ -1,4 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+// components/forms/GuestForm.jsx
+import React, { useState } from "react";
+import {
+  FiUser, FiPhone, FiMail, FiCreditCard, FiMapPin,
+  FiHome, FiMap, FiNavigation, FiHash, FiCheck, FiAward,
+} from "react-icons/fi";
 import useGuestStore from "../../app/useGuestStore";
 
 
@@ -113,55 +118,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setError("");
-
-    if (name === "phone") {
-      const sanitizedPhone = value.replace(/\D/g, "");
-      if (sanitizedPhone.length <= 10) {
-        setFormData((prev) => ({ ...prev, phone: sanitizedPhone }));
-      }
-      return;
-    }
-
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const validateForm = () => {
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      return "First Name and Last Name are required.";
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email || !emailRegex.test(formData.email.trim())) {
-      return "Please enter a valid email address.";
-    }
-
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(formData.phone.trim())) {
-      return "Please enter a valid 10-digit mobile number.";
-    }
-
-    return null;
-  };
-
-  const handleInitiateSubmit = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    setError("");
-
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    try {
-      await sendOtp(formData.email.trim(), token);
-      setShowOtpModal(true);
-      setResendTimer(30);
-      setOtpError("");
-    } catch (err) {
-      setError(err.message || "Failed to send OTP. Please check your email address and try again.");
-    }
   };
 
   const handleResendOtp = async () => {
@@ -181,7 +138,8 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    setOtpError("");
+    setIsSubmitting(true);
+    setError(null);
 
     if (!otp || otp.trim().length !== 6) {
       setOtpError("Please enter a valid 6-digit OTP.");
@@ -197,19 +155,17 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
       createdBy: currentUserId || null, 
     };
 
-    const payload = {
-      email: formData.email.trim(),
-      otp: otp.trim(),
-      guestData: cleanedGuestData,
-    };
+      // ✅ Pass the created guest back to the parent
+      if (onGuestCreated) {
+        onGuestCreated(result);
+      }
 
-    try {
-      await verifyOtpAndSave(payload, token);
-      setShowOtpModal(false);
-      setOtp("");
-      if (onSuccess) onSuccess();
-    } catch (err) {
-      setOtpError(err.message || "Failed to create/update guest. Invalid OTP or verification failed.");
+      formClose(result);
+    } catch (error) {
+      console.error("Failed to create guest:", error);
+      setError(error.message || "Failed to create guest. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -285,49 +241,8 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
             />
           </div>
 
-          <div>
-            <label className="block font-medium mb-1">
-              Last Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="lastName"
-              required
-              value={formData.lastName}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block font-medium mb-1">
-              Phone Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              required
-              maxLength={10}
-              placeholder="10 digit mobile number"
-              value={formData.phone}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-            />
-          </div>
-
-          <div>
-            <label className="block font-medium mb-1">Date of Birth</label>
-            <input
-              type="date"
-              name="dateOfBirth"
-              value={formData.dateOfBirth}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-            />
-          </div>
-        </div>
+  const selectClass =
+    "w-full h-12 pl-11 pr-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 outline-none transition-all duration-200 focus:border-[#D96B43] focus:ring-2 focus:ring-[#D96B43]/20 hover:border-slate-300 appearance-none cursor-pointer";
 
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -509,6 +424,22 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
           </div>
         </div>
       )}
-    </>
+
+      {/* Footer */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6 border-t border-slate-200/60">
+        <p className="text-xs text-slate-400">
+          <span className="text-red-500 font-medium">*</span> Required fields
+        </p>
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="inline-flex items-center justify-center gap-2.5 px-7 py-3 rounded-lg bg-[#D96B43] text-white text-sm font-semibold shadow-sm transition-all duration-200 hover:bg-[#c55e39] hover:shadow-md active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto min-w-[140px]"
+        >
+          <FiCheck size={18} />
+          {isSubmitting ? "Creating..." : "Create Guest"}
+        </button>
+      </div>
+    </form>
   );
 }
