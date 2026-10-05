@@ -14,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableMethodSecurity
@@ -21,33 +22,38 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(org.springframework.security.config.Customizer.withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers("/auth/**").permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/guest/check-email").permitAll()
+                        // Guest Public Endpoints (Validation, Search, OTP, Creation)
+                        .requestMatchers(HttpMethod.GET, "/guest/check-email", "/guest/search", "/guest/by-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/guest/create", "/guest/send-otp", "/guest/verify-otp").permitAll()
 
+                        // Guest Protected Endpoints
                         .requestMatchers(HttpMethod.GET, "/guest", "/guest/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
                         .requestMatchers(HttpMethod.PATCH, "/guest/update/**").hasAnyRole("ADMIN", "RECEPTIONIST")
                         .requestMatchers(HttpMethod.DELETE, "/guest/delete/**").hasAnyRole("ADMIN", "RECEPTIONIST")
 
+                        // Booking Endpoints
                         .requestMatchers(HttpMethod.POST, "/booking/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/booking", "/booking/{id}").hasAnyRole("ADMIN", "RECEPTIONIST")
                         .requestMatchers(HttpMethod.PATCH, "/booking/update/**", "/booking/cancel/**").hasAnyRole("ADMIN", "RECEPTIONIST")
 
+                        // Payment Endpoints
                         .requestMatchers("/api/payments/pay", "/api/payments/razorpay/**").permitAll()
                         .requestMatchers("/api/payments/receipt/**", "/api/payments/booking/**").hasAnyRole("ADMIN", "RECEPTIONIST")
 
+                        // Admin & Room Endpoints
                         .requestMatchers(HttpMethod.GET, "/admin/room", "/admin/room/{roomNumber}", "/admin/room/type/**", "/admin/room/status/**").permitAll()
-
                         .requestMatchers("/admin/users/**", "/admin/reports/**", "/admin/receptionist/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/admin/room/create").hasAnyRole("ADMIN", "RECEPTIONIST")
                         .requestMatchers(HttpMethod.PATCH, "/admin/room/update/**").hasAnyRole("ADMIN", "RECEPTIONIST")

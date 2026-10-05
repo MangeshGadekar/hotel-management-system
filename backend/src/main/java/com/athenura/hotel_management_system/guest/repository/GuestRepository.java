@@ -13,11 +13,14 @@ import java.util.Optional;
 @Repository
 public interface GuestRepository extends JpaRepository<Guest, Long> {
 
-    Optional<Guest> findByEmail(String email);
+    Optional<Guest> findByEmailIgnoreCase(String email);
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByPhone(String phone);
+
+    @Query("SELECT g FROM Guest g WHERE LOWER(g.email) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<Guest> searchByEmailQuery(@Param("query") String query);
 
     @Query("SELECT b.guest FROM Booking b GROUP BY b.guest HAVING COUNT(b.id) >= 3")
     List<Guest> findFrequentVisitors();
