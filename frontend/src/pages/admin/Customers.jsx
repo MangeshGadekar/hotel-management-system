@@ -3,7 +3,7 @@ import GuestForm from "../../components/forms/GuestForm";
 import useGuestStore from "../../app/useGuestStore";
 
 export default function Customers({ token: propToken }) {
-  // Fallback to localStorage or auth store if propToken is missing
+ 
   const token =
     propToken ||
     localStorage.getItem("token") ||
@@ -23,7 +23,7 @@ export default function Customers({ token: propToken }) {
     }
   }, [token, getGuestList]);
 
-  // Updated handleDelete with missing token check and error handling
+  
   const handleDelete = async (id) => {
     if (!token) {
       alert("Authentication error: Token missing. Please log in again.");
@@ -44,7 +44,7 @@ export default function Customers({ token: propToken }) {
     }
   };
 
-  // Safe search logic (Supports DB snake_case & camelCase)
+  
   const filteredCustomers = (guestList || []).filter((guest) => {
     const firstName = guest.first_name || guest.firstName || "";
     const lastName = guest.last_name || guest.lastName || "";
@@ -56,7 +56,7 @@ export default function Customers({ token: propToken }) {
     return fullName.includes(query) || email.includes(query) || phone.includes(query);
   });
 
-  // Helper function to format 'Created By' column
+ 
   const getCreatedByText = (guest) => {
     const creator = guest.created_by || guest.createdBy;
     if (!creator || creator.toLowerCase() === "self" || creator.toLowerCase() === "online") {
@@ -178,7 +178,7 @@ export default function Customers({ token: propToken }) {
                           </svg>
                         </button>
 
-                        {/* Edit Icon */}
+                       
                         <button
                           onClick={() => {
                             setEditingCustomer(guest);
@@ -192,7 +192,7 @@ export default function Customers({ token: propToken }) {
                           </svg>
                         </button>
 
-                        {/* Delete Icon */}
+                      
                         <button
                           onClick={() => handleDelete(guestId)}
                           title="Delete Guest"
@@ -220,7 +220,7 @@ export default function Customers({ token: propToken }) {
         </div>
       </div>
 
-      {/* View Details Modal */}
+      
       {selectedCustomer && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4">
@@ -265,7 +265,7 @@ export default function Customers({ token: propToken }) {
         </div>
       )}
 
-      {/* Add / Edit Guest Modal */}
+    
       {showGuestForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">

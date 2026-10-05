@@ -1,8 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import useGuestStore from "../../app/useGuestStore";
 
-export default function GuestForm({ onSuccess, initialData = null, token }) {
-  const { sendOtp, verifyOtpAndSave, searchGuests, searchResults, clearSearchResults, loading } = useGuestStore();
+
+export default function GuestForm({ onSuccess, initialData = null, token, currentUserId }) {
+  const {
+    sendOtp,
+    verifyOtpAndSave,
+    searchGuests,
+    searchResults,
+    clearSearchResults,
+    loading,
+  } = useGuestStore();
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -24,11 +32,9 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
   const [error, setError] = useState("");
   const [otpError, setOtpError] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  
-  // Resend OTP State & Timer State
   const [resendTimer, setResendTimer] = useState(30);
   const [isResending, setIsResending] = useState(false);
-  
+
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -60,7 +66,6 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Countdown timer logic when OTP modal is open
   useEffect(() => {
     let interval = null;
     if (showOtpModal && resendTimer > 0) {
@@ -183,11 +188,13 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
       return;
     }
 
+  
     const cleanedGuestData = {
       ...formData,
       email: formData.email.trim(),
       phone: formData.phone.trim(),
       dateOfBirth: formData.dateOfBirth ? formData.dateOfBirth : null,
+      createdBy: currentUserId || null, 
     };
 
     const payload = {
@@ -218,6 +225,7 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
           </div>
         )}
 
+        
         <div className="relative" ref={dropdownRef}>
           <label className="block font-medium mb-1">
             Email <span className="text-red-500">*</span>
@@ -261,6 +269,7 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
           </div>
         )}
 
+       
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-medium mb-1">
@@ -320,6 +329,7 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
           </div>
         </div>
 
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-medium mb-1">ID Proof Type</label>
@@ -348,6 +358,7 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
           </div>
         </div>
 
+       
         <div>
           <label className="block font-medium mb-1">Address</label>
           <input
@@ -359,6 +370,7 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
           />
         </div>
 
+        
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block font-medium mb-1">City</label>
@@ -394,6 +406,7 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
           </div>
         </div>
 
+        
         <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
           <button
             type="submit"
@@ -405,6 +418,7 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
         </div>
       </form>
 
+   
       {showOtpModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 border border-slate-200">
@@ -451,7 +465,6 @@ export default function GuestForm({ onSuccess, initialData = null, token }) {
                 />
               </div>
 
-              {/* Resend OTP Section */}
               <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
                 <span className="text-slate-500">Didn't receive code or expired?</span>
                 <button

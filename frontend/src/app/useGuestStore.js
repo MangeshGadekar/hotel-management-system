@@ -32,7 +32,7 @@ const useGuestStore = create(
       loading: false,
       error: null,
 
-      // Admin / Receptionist: Fetch all guests
+      
       getGuestList: async (token) => {
         if (!token) return;
         set({ loading: true, error: null });
@@ -51,7 +51,7 @@ const useGuestStore = create(
         }
       },
 
-      // Guest Self-Registration: Send OTP
+   
       sendOtp: async (email, token = null) => {
         set({ loading: true, error: null });
         try {
@@ -65,7 +65,7 @@ const useGuestStore = create(
         }
       },
 
-      // Guest Self-Registration: Verify OTP & Create/Update Guest
+      
       verifyOtpAndSave: async (verifyPayload, token = null) => {
         set({ loading: true, error: null });
         try {
@@ -98,7 +98,7 @@ const useGuestStore = create(
         }
       },
 
-      // Admin / Receptionist: Search guests
+      
       searchGuests: async (query, token) => {
         if (!query || query.trim().length < 2) {
           set({ searchResults: [] });
@@ -116,7 +116,7 @@ const useGuestStore = create(
 
       clearSearchResults: () => set({ searchResults: [] }),
 
-      // Admin / Receptionist: Remove guest
+  
       removeGuest: async (id, token) => {
         if (!token) {
           const errMsg = "Unauthorized: Admin/Receptionist token is required to delete guest.";
