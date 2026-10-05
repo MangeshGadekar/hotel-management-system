@@ -1,97 +1,153 @@
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
-
+import { persist } from "zustand/middleware";
 import {
-  createGuest,
-  deleteGuest,
   fetchAllGuest,
-  fetchGuest,
-  patchGuest,
+  searchGuestByQuery,
+  sendGuestOtp,
+  verifyGuestOtpAndSave,
+  deleteGuest,
 } from "../apis/api";
 
-const guestStore = (set) => ({
-  guestList: [],
-  guest: {},
-  addGuest: async (data) => {
+const parseErrorMessage = async (err, defaultMsg) => {
+  if (err?.response) {
     try {
-      const token = localStorage.getItem("token");
-      const res = await createGuest(data, token);
-      const _guest = await res;
-      set((state) => ({
-        guestList: [_guest, ...state.guestList],
-      }));
-      console.log("guest create :", res);
-      return res;
-    } catch (error) {
-      return error;
+      const resJson = await err.response.json();
+      return resJson?.message || defaultMsg;
+    } catch {
+      try {
+        return await err.response.text();
+      } catch {
+        return defaultMsg;
+      }
     }
-  },
-  updateGuest: async (id, data) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await patchGuest(id, data, token);
-      const _guest = res;
-      set((state) => ({
-        guestList: state.guestList.map((guest) => {
-          guest.id === id ? _guest : guest;
-        }),
-      }));
-      console.log("update guest", _guest);
-      return res;
-    } catch (error) {
-      return error;
-    }
-  },
-  getGuest: async (id) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetchGuest(id, token);
-      const _guest = res;
-      set({
-        guest: _guest,
-      });
-      console.log("fetch guest", _guest);
-      return res;
-    } catch (error) {
-      return error;
-    }
-  },
-  getGuestList: async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetchAllGuest(token);
-      const _guestList = await res;
-      set({
-        guestList: _guestList,
-      });
-      console.log("fetch guest", _guestList);
-      return _guestList;
-    } catch (error) {
-      return error;
-    }
-  },
-  removeGuest: async (id) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await deleteGuest(id, token);
-      set((state) => ({
-        roomList: state.roomList.filter((guest) => {
-          guest.id !== id;
-        }),
-      }));
-      return res;
-    } catch (error) {
-      return error;
-    }
-  },
-});
+  }
+  return err?.message || defaultMsg;
+};
 
 const useGuestStore = create(
-  devtools(
-    persist(guestStore, {
-      name: "guests",
+  persist(
+    (set) => ({
+      guestList: [],
+      searchResults: [],
+      loading: false,
+      error: null,
+
+      // Admin / Receptionist: Fetch all guests
+      getGuestList: async (token) => {
+        if (!token) return;
+        set({ loading: true, error: null });
+        try {
+          const data = await fetchAllGuest(token);
+          set({
+            guestList: Array.isArray(data) ? data : data?.guests || [],
+            loading: false,
+          });
+        } catch (err) {
+          const errMessage = await parseErrorMessage(err, "Failed to fetch guests");
+          set({
+            error: errMessage,
+            loading: false,
+          });
+        }
+      },
+
+      // Guest Self-Registration: Send OTP
+      sendOtp: async (email, token = null) => {
+        set({ loading: true, error: null });
+        try {
+          const res = await sendGuestOtp(email, token);
+          set({ loading: false });
+          return res;
+        } catch (err) {
+          const errMessage = await parseErrorMessage(err, "Failed to send OTP");
+          set({ error: errMessage, loading: false });
+          throw new Error(errMessage);
+        }
+      },
+
+      // Guest Self-Registration: Verify OTP & Create/Update Guest
+      verifyOtpAndSave: async (verifyPayload, token = null) => {
+        set({ loading: true, error: null });
+        try {
+          const savedGuest = await verifyGuestOtpAndSave(verifyPayload, token);
+          set((state) => {
+            const exists = state.guestList.some(
+              (g) => String(g.id || g._id) === String(savedGuest.id || savedGuest._id)
+            );
+            const updatedList = exists
+              ? state.guestList.map((g) =>
+                  String(g.id || g._id) === String(savedGuest.id || savedGuest._id)
+                    ? savedGuest
+                    : g
+                )
+              : [savedGuest, ...state.guestList];
+
+            return {
+              guestList: updatedList,
+              loading: false,
+            };
+          });
+          return savedGuest;
+        } catch (err) {
+          const errMessage = await parseErrorMessage(
+            err,
+            "Failed to create guest. Verification failed."
+          );
+          set({ error: errMessage, loading: false });
+          throw new Error(errMessage);
+        }
+      },
+
+      // Admin / Receptionist: Search guests
+      searchGuests: async (query, token) => {
+        if (!query || query.trim().length < 2) {
+          set({ searchResults: [] });
+          return [];
+        }
+        try {
+          const results = await searchGuestByQuery(query, token);
+          set({ searchResults: results || [] });
+          return results || [];
+        } catch (err) {
+          set({ searchResults: [] });
+          return [];
+        }
+      },
+
+      clearSearchResults: () => set({ searchResults: [] }),
+
+      // Admin / Receptionist: Remove guest
+      removeGuest: async (id, token) => {
+        if (!token) {
+          const errMsg = "Unauthorized: Admin/Receptionist token is required to delete guest.";
+          set({ error: errMsg });
+          throw new Error(errMsg);
+        }
+
+        set({ loading: true, error: null });
+        try {
+          await deleteGuest(id, token);
+          set((state) => ({
+            guestList: state.guestList.filter(
+              (g) => String(g._id || g.id) !== String(id)
+            ),
+            loading: false,
+          }));
+        } catch (err) {
+          const serverError = await parseErrorMessage(err, "Failed to delete guest");
+          set({
+            error: serverError,
+            loading: false,
+          });
+          throw new Error(serverError);
+        }
+      },
     }),
-  ),
+    {
+      name: "guest-storage",
+      partialize: (state) => ({ guestList: state.guestList }),
+    }
+  )
 );
 
 export default useGuestStore;
