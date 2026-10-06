@@ -1,5 +1,8 @@
 package com.athenura.hotel_management_system.room.service.impl;
 
+import com.athenura.hotel_management_system.amenity.dto.AmenityRequest;
+import com.athenura.hotel_management_system.amenity.entity.Amenity;
+import com.athenura.hotel_management_system.amenity.enums.AmenityPriceType;
 import com.athenura.hotel_management_system.amenity.repository.AmenityRepository;
 import com.athenura.hotel_management_system.cloudinary.service.CloudinaryService;
 import com.athenura.hotel_management_system.common.exception.RoomNotFoundException;
@@ -15,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -101,12 +105,67 @@ public class RoomServiceImpl implements RoomService {
             room.setImages(roomRequest.getImages());
         }
 
-        if (roomRequest.getAmenityIds() != null) {
-            room.setAmenities(amenityRepository.findAllById(roomRequest.getAmenityIds()));
+        if (roomRequest.getAmenityIds() != null || roomRequest.getNewAmenities() != null || roomRequest.getAmenityNames() != null) {
+            room.setAmenities(resolveAmenities(roomRequest));
         }
 
         Room updatedRoom = roomRepository.save(room);
         return roomMapper.toResponse(updatedRoom);
+    }
+
+    private List<Amenity> resolveAmenities(RoomRequest roomRequest) {
+        List<Amenity> amenities = new ArrayList<>();
+
+        // 1. Resolve existing amenity IDs
+        if (roomRequest.getAmenityIds() != null && !roomRequest.getAmenityIds().isEmpty()) {
+            amenities.addAll(amenityRepository.findAllById(roomRequest.getAmenityIds()));
+        }
+
+        // 2. Resolve & Create new amenity objects
+        if (roomRequest.getNewAmenities() != null && !roomRequest.getNewAmenities().isEmpty()) {
+            for (AmenityRequest newAmenityReq : roomRequest.getNewAmenities()) {
+                if (newAmenityReq != null && newAmenityReq.getName() != null && !newAmenityReq.getName().isBlank()) {
+                    String name = newAmenityReq.getName().trim();
+                    Amenity amenity = amenityRepository.findByNameIgnoreCase(name)
+                            .orElseGet(() -> amenityRepository.save(
+                                    Amenity.builder()
+                                            .name(name)
+                                            .description(newAmenityReq.getDescription())
+                                            .price(newAmenityReq.getPrice() != null ? newAmenityReq.getPrice() : BigDecimal.ZERO)
+                                            .priceType(newAmenityReq.getPriceType() != null ? newAmenityReq.getPriceType() : AmenityPriceType.PER_NIGHT)
+                                            .active(newAmenityReq.getActive() != null ? newAmenityReq.getActive() : true)
+                                            .icon(newAmenityReq.getIcon())
+                                            .build()
+                            ));
+                    if (!amenities.contains(amenity)) {
+                        amenities.add(amenity);
+                    }
+                }
+            }
+        }
+
+        // 3. Resolve & Create amenity names strings
+        if (roomRequest.getAmenityNames() != null && !roomRequest.getAmenityNames().isEmpty()) {
+            for (String nameStr : roomRequest.getAmenityNames()) {
+                if (nameStr != null && !nameStr.isBlank()) {
+                    String name = nameStr.trim();
+                    Amenity amenity = amenityRepository.findByNameIgnoreCase(name)
+                            .orElseGet(() -> amenityRepository.save(
+                                    Amenity.builder()
+                                            .name(name)
+                                            .price(BigDecimal.ZERO)
+                                            .priceType(AmenityPriceType.PER_NIGHT)
+                                            .active(true)
+                                            .build()
+                            ));
+                    if (!amenities.contains(amenity)) {
+                        amenities.add(amenity);
+                    }
+                }
+            }
+        }
+
+        return amenities;
     }
 
     @Override
@@ -154,41 +213,5 @@ public class RoomServiceImpl implements RoomService {
                 .stream()
                 .map(roomMapper::toResponse)
                 .toList();
-    }
-
-    @Override
-    public RoomResponse uploadRoomImages(String roomNumber, List<MultipartFile> files) {
-        Room room = roomRepository.findByRoomNumber(roomNumber)
-                .orElseThrow(() -> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
-
-        List<String> uploadedUrls = cloudinaryService.uploadImages(files, "hotel_management/rooms");
-        if (room.getImages() == null) {
-            room.setImages(new ArrayList<>());
-        }
-        room.getImages().addAll(uploadedUrls);
-
-        Room updatedRoom = roomRepository.save(room);
-        return roomMapper.toResponse(updatedRoom);
-    }
-
-    @Override
-    public RoomResponse removeRoomImage(String roomNumber, String imageUrl) {
-        Room room = roomRepository.findByRoomNumber(roomNumber)
-                .orElseThrow(() -> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
-
-        if (room.getImages() != null && imageUrl != null) {
-            room.getImages().removeIf(url -> url.equalsIgnoreCase(imageUrl.trim()));
-            String publicId = cloudinaryService.extractPublicIdFromUrl(imageUrl);
-            if (publicId != null) {
-                try {
-                    cloudinaryService.deleteImage(publicId);
-                } catch (Exception e) {
-                    // log warning
-                }
-            }
-        }
-
-        Room updatedRoom = roomRepository.save(room);
-        return roomMapper.toResponse(updatedRoom);
     }
 }

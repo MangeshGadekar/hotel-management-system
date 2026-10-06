@@ -163,6 +163,31 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    public void sendGuestRegistrationOtp(String toEmail, String otp) {
+        String htmlContent = """
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2>Hotel Guest Verification</h2>
+                <p>Hello,</p>
+                <p>Your OTP for Hotel Guest Verification is:</p>
+                
+                <h1 style="color: #2c3e50; letter-spacing: 2px;">%s</h1>
+                
+                <p>This OTP is valid for <b>5 minutes</b>.</p>
+                <p>If you did not request this OTP, please ignore this email.</p>
+                <br>
+                <p>Best Regards,<br><b>Hotel Management Team</b></p>
+            </body>
+            </html>
+            """.formatted(otp);
+
+        try {
+            sendEmailViaBrevo(toEmail, "Valued Guest", "Hotel Verification Code", htmlContent);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send verification OTP to " + toEmail + ": " + e.getMessage(), e);
+        }
+    }
 
     private void sendEmailViaBrevo(String recipientEmail, String recipientName, String subject, String htmlContent) {
         Map<String, Object> requestBody = Map.of(

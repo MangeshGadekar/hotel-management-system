@@ -53,7 +53,6 @@ public class ProfileService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .secretKey(user.getSecretKey())
                 .build();
     }
 }

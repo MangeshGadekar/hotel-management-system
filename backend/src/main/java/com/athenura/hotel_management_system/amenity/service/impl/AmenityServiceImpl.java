@@ -21,18 +21,6 @@ public class AmenityServiceImpl implements AmenityService {
 
     @Override
     @Transactional
-    public AmenityResponse createAmenity(AmenityRequest request) {
-        if (amenityRepository.existsByNameIgnoreCase(request.getName().trim())) {
-            throw new RuntimeException("Amenity with name '" + request.getName() + "' already exists");
-        }
-
-        Amenity entity = amenityMapper.toEntity(request);
-        Amenity savedEntity = amenityRepository.save(entity);
-        return amenityMapper.toResponse(savedEntity);
-    }
-
-    @Override
-    @Transactional
     public AmenityResponse updateAmenity(Long id, AmenityRequest request) {
         Amenity amenity = amenityRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Amenity not found with ID: " + id));

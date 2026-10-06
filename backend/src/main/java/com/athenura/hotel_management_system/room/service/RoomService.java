@@ -25,8 +25,4 @@ public interface RoomService {
     List<RoomResponse> getRoomByRoomType(RoomType roomType);
 
     List<RoomResponse> getRoomByRoomStatus(RoomStatus roomStatus);
-
-    RoomResponse uploadRoomImages(String roomNumber, List<org.springframework.web.multipart.MultipartFile> files);
-
-    RoomResponse removeRoomImage(String roomNumber, String imageUrl);
 }

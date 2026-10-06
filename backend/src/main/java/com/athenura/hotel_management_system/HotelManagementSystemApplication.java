@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-public class HotelManagementSystemApplication {
+public class 	HotelManagementSystemApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(HotelManagementSystemApplication.class, args);
 	}
