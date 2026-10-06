@@ -4,13 +4,15 @@ import com.athenura.hotel_management_system.room.dto.RoomRequest;
 import com.athenura.hotel_management_system.room.dto.RoomResponse;
 import com.athenura.hotel_management_system.room.enums.RoomStatus;
 import com.athenura.hotel_management_system.room.enums.RoomType;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface RoomService {
+
     RoomResponse createRoom(RoomRequest roomRequest);
 
-    RoomResponse createRoom(RoomRequest roomRequest, List<org.springframework.web.multipart.MultipartFile> files);
+    RoomResponse createRoom(RoomRequest roomRequest, List<MultipartFile> files);
 
     RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest);
 

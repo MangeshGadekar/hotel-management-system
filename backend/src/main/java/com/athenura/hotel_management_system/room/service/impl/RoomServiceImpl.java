@@ -31,33 +31,39 @@ public class RoomServiceImpl implements RoomService {
     private final AmenityRepository amenityRepository;
     private final CloudinaryService cloudinaryService;
 
+
     @Override
     public RoomResponse createRoom(RoomRequest roomRequest) {
         return createRoom(roomRequest, null);
     }
 
     @Override
-    public RoomResponse createRoom(RoomRequest roomRequest, List<MultipartFile> files) {
+    public RoomResponse createRoom(RoomRequest roomRequest , List<MultipartFile> files) {
 
         if(roomRepository.existsByRoomNumber(roomRequest.getRoomNumber()))
             throw new RuntimeException("Room Already Exists");
 
         Room room = roomMapper.toEntity(roomRequest);
 
-        // Resolve existing and new amenities
-        List<Amenity> resolvedAmenities = resolveAmenities(roomRequest);
-        if (!resolvedAmenities.isEmpty()) {
-            room.setAmenities(resolvedAmenities);
+
+        if (roomRequest.getAmenityIds() != null && !roomRequest.getAmenityIds().isEmpty()) {
+            room.setAmenities(amenityRepository.findAllById(roomRequest.getAmenityIds()));
         }
 
-        // Upload images if provided during room creation
         if (files != null && !files.isEmpty()) {
-            List<String> uploadedUrls = cloudinaryService.uploadImages(files, "hotel_management/rooms");
-            if (room.getImages() == null) {
-                room.setImages(new ArrayList<>());
+            List<MultipartFile> validFiles = files.stream()
+                    .filter(f -> f != null && !f.isEmpty())
+                    .toList();
+
+            if (!validFiles.isEmpty()) {
+                List<String> uploadedUrls = cloudinaryService.uploadImages(validFiles, "hotel_management/rooms");
+                if (room.getImages() == null) {
+                    room.setImages(new ArrayList<>());
+                }
+                room.getImages().addAll(uploadedUrls);
             }
-            room.getImages().addAll(uploadedUrls);
         }
+
 
         Room savedRoom = roomRepository.save(room);
         return roomMapper.toResponse(savedRoom);

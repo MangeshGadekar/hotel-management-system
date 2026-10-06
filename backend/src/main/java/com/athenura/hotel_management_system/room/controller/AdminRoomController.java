@@ -7,8 +7,11 @@ import com.athenura.hotel_management_system.room.enums.RoomType;
 import com.athenura.hotel_management_system.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import java.util.List;
 
@@ -64,6 +67,31 @@ public class AdminRoomController {
                 .toList();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(roomRequest, validFiles));
+    }
+
+
+    @PostMapping(value = "/create-with-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RoomResponse> createRoomWithImages(
+            @RequestPart("room") RoomRequest roomRequest,
+            @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            @RequestParam(value = "file", required = false) List<MultipartFile> file,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            MultipartHttpServletRequest request) {
+
+        List<MultipartFile> allFiles = new java.util.ArrayList<>();
+        if (files != null) allFiles.addAll(files);
+        if (file != null) allFiles.addAll(file);
+        if (images != null) allFiles.addAll(images);
+
+        if (allFiles.isEmpty() && request != null) {
+            request.getMultiFileMap().forEach((key, list) -> {
+                if (!"room".equals(key)) {
+                    allFiles.addAll(list);
+                }
+            });
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(roomRequest, allFiles));
     }
 
 
