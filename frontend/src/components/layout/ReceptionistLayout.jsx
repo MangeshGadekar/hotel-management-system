@@ -49,9 +49,22 @@ const IconSearch = () => (
   </svg>
 );
 
+const IconBed = () => (
+  <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+
 export default function ReceptionistLayout() {
   const [activeMenu, setActiveMenu] = useState("Dashboard");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Logged-in Receptionist State
+  const loggedInReceptionist = {
+    name: "Sumit Jadhav",
+    role: "Front Desk Officer",
+    avatarInitial: "S",
+  };
 
   const [showCreateBooking, setShowCreateBooking] = useState(false);
   const [otpModal, setOtpModal] = useState({ open: false, booking: null });
@@ -78,17 +91,13 @@ export default function ReceptionistLayout() {
   const [bookings, setBookings] = useState([
     { 
       id: "HM10254", 
+      roomNumber: "204",
+      type: "Deluxe Suite",
       guest: {
         firstName: "Rahul",
         lastName: "Sharma",
         email: "rahul@example.com",
         phone: "+91 98765 43210",
-        idProofType: "AADHAAR",
-        idProofNumber: "ABCD1234EF",
-        address: "123 MG Road",
-        city: "Pune",
-        state: "Maharashtra",
-        postalCode: "411001",
       },
       room: "204 - Deluxe", 
       date: "12 May", 
@@ -97,17 +106,13 @@ export default function ReceptionistLayout() {
     },
     { 
       id: "HM10253", 
+      roomNumber: "101",
+      type: "Executive Suite",
       guest: {
         firstName: "Neha",
         lastName: "Verma",
         email: "neha@example.com",
         phone: "+91 98765 43211",
-        idProofType: "PASSPORT",
-        idProofNumber: "Z9876543",
-        address: "45 Park Street",
-        city: "Mumbai",
-        state: "Maharashtra",
-        postalCode: "400001",
       },
       room: "101 - Suite", 
       date: "12 May", 
@@ -116,17 +121,13 @@ export default function ReceptionistLayout() {
     },
     { 
       id: "HM10252", 
+      roomNumber: "305",
+      type: "Standard Room",
       guest: {
         firstName: "Amit",
         lastName: "Patel",
         email: "amit@example.com",
         phone: "+91 98765 43212",
-        idProofType: "DRIVING_LICENSE",
-        idProofNumber: "DL1420110012345",
-        address: "88 Ring Road",
-        city: "Ahmedabad",
-        state: "Gujarat",
-        postalCode: "380001",
       },
       room: "305 - Standard", 
       date: "11 May", 
@@ -135,17 +136,13 @@ export default function ReceptionistLayout() {
     },
     { 
       id: "HM10251", 
+      roomNumber: "102",
+      type: "Deluxe Suite",
       guest: {
         firstName: "Priya",
         lastName: "Singh",
         email: "priya@example.com",
         phone: "+91 98765 43213",
-        idProofType: "PAN_CARD",
-        idProofNumber: "ABCDE1234F",
-        address: "12 Civil Lines",
-        city: "Delhi",
-        state: "Delhi",
-        postalCode: "110054",
       },
       room: "102 - Deluxe", 
       date: "11 May", 
@@ -171,6 +168,19 @@ export default function ReceptionistLayout() {
     setBookings(prev => prev.map(b => b.id === checkoutModal.booking.id ? { ...b, status: "Checked-Out" } : b));
     setCheckoutModal({ open: false, booking: null });
   };
+
+  // Filter bookings according to the active navigation menu
+  const getFilteredBookings = () => {
+    if (activeMenu === "Check-In Operations") {
+      return bookings.filter(b => b.status === "Confirmed");
+    }
+    if (activeMenu === "Check-Out Operations") {
+      return bookings.filter(b => b.status === "Checked-In");
+    }
+    return bookings;
+  };
+
+  const filteredBookings = getFilteredBookings();
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] font-sans overflow-hidden">
@@ -228,11 +238,29 @@ export default function ReceptionistLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between shadow-xs">
-          <div>
+          <div className="flex items-center gap-4">
             <h1 className="text-xl font-bold text-slate-800">{activeMenu}</h1>
-            <p className="text-xs text-slate-500">Receptionist Front Desk Control Panel</p>
+            <span className="h-4 w-[1px] bg-slate-200"></span>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <p className="text-sm text-slate-600 font-medium">
+                Welcome back, <span className="font-bold text-slate-800">{loggedInReceptionist.name}</span>
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+
+          <div className="flex items-center gap-4">
+            {/* Receptionist Badge */}
+            <div className="flex items-center gap-2.5 pl-3 border-l border-slate-100">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center border border-emerald-200">
+                {loggedInReceptionist.avatarInitial}
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="text-xs font-bold text-slate-800 leading-none">{loggedInReceptionist.name}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{loggedInReceptionist.role}</p>
+              </div>
+            </div>
+
             <button
               onClick={() => setShowCreateBooking(true)}
               className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors shadow-xs"
@@ -260,7 +288,149 @@ export default function ReceptionistLayout() {
             </div>
           )}
 
-          {activeMenu === "Guest Requests" ? (
+          {activeMenu === "Guest Management" && (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+              <div className="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h2 className="text-base font-bold text-slate-800">Guest Directory</h2>
+                <div className="relative w-64">
+                  <IconSearch />
+                  <input
+                    type="text"
+                    placeholder="Search guests..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-xs tracking-wider uppercase">
+                      <th className="py-3 px-6">GUEST NAME</th>
+                      <th className="py-3 px-6">EMAIL</th>
+                      <th className="py-3 px-6">PHONE NUMBER</th>
+                      <th className="py-3 px-6">ROOM ASSIGNED</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {bookings.map((row) => (
+                      <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-4 px-6 font-medium text-slate-800">
+                          {row.guest.firstName} {row.guest.lastName}
+                        </td>
+                        <td className="py-4 px-6 text-slate-600">{row.guest.email}</td>
+                        <td className="py-4 px-6 text-slate-600">{row.guest.phone}</td>
+                        <td className="py-4 px-6 text-slate-600 font-medium">{row.room}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Booking Management View (Card-Based Layout for Rooms) */}
+          {activeMenu === "Booking Management" && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 border border-slate-200 rounded-xl shadow-xs">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">Room Status & Bookings</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Overview of room availability, pricing, and current occupancy</p>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <IconSearch />
+                  <input
+                    type="text"
+                    placeholder="Search rooms or categories..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  />
+                </div>
+              </div>
+
+              {/* Room Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {bookings.map((roomCard) => (
+                  <div
+                    key={roomCard.id}
+                    className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between space-y-4"
+                  >
+                    <div>
+                      {/* Card Header: Room Number and Status Badge */}
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-slate-50 rounded-lg border border-slate-200 text-slate-600">
+                            <IconBed />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold text-slate-800 leading-none">Room {roomCard.roomNumber}</h3>
+                            <p className="text-xs text-slate-500 mt-1">{roomCard.type}</p>
+                          </div>
+                        </div>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                            roomCard.status === "Confirmed"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : roomCard.status === "Checked-In"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}
+                        >
+                          {roomCard.status}
+                        </span>
+                      </div>
+
+                      {/* Card Body Details */}
+                      <div className="mt-4 pt-3 border-t border-slate-100 space-y-2 text-xs">
+                        <div className="flex justify-between text-slate-500">
+                          <span>Booking ID:</span>
+                          <span className="font-semibold text-slate-700">{roomCard.id}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500">
+                          <span>Rate per night:</span>
+                          <span className="font-bold text-slate-800">{roomCard.amount}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500"><span>Date:</span> <span className="font-medium text-slate-700">{roomCard.date}</span></div>
+                      </div>
+                    </div>
+
+                    {/* Card Actions */}
+                    <div className="pt-3 border-t border-slate-100">
+                      {roomCard.status === "Confirmed" && (
+                        <button
+                          onClick={() => setOtpModal({ open: true, booking: roomCard })}
+                          className="w-full bg-emerald-600 text-white py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-xs"
+                        >
+                          Send OTP & Check-In
+                        </button>
+                      )}
+                      {roomCard.status === "Checked-In" && (
+                        <button
+                          onClick={() => setCheckoutModal({ open: true, booking: roomCard })}
+                          className="w-full border border-slate-200 text-slate-700 py-2 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors"
+                        >
+                          Process Checkout
+                        </button>
+                      )}
+                      {roomCard.status === "Checked-Out" && (
+                        <button
+                          disabled
+                          className="w-full bg-slate-100 text-slate-400 py-2 rounded-lg text-xs font-medium cursor-not-allowed"
+                        >
+                          Available for Cleaning
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeMenu === "Guest Requests" && (
             <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-4">
               <h2 className="text-base font-bold text-slate-800">Active Front Desk Requests</h2>
               <div className="grid gap-3">
@@ -283,10 +453,14 @@ export default function ReceptionistLayout() {
                 ))}
               </div>
             </div>
-          ) : (
+          )}
+
+          {activeMenu !== "Dashboard" && activeMenu !== "Guest Management" && activeMenu !== "Booking Management" && activeMenu !== "Guest Requests" && (
             <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
               <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                <h2 className="text-base font-bold text-slate-800">Recent Bookings</h2>
+                <h2 className="text-base font-bold text-slate-800">
+                  {activeMenu === "Check-Out Operations" ? "Guest Check-Out Queue" : "Recent Bookings"}
+                </h2>
                 <div className="relative w-64">
                   <IconSearch />
                   <input
@@ -313,7 +487,7 @@ export default function ReceptionistLayout() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {bookings.map((row) => (
+                    {filteredBookings.map((row) => (
                       <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-4 px-6 font-bold text-slate-800">{row.id}</td>
                         <td className="py-4 px-6">
@@ -339,7 +513,8 @@ export default function ReceptionistLayout() {
                           </span>
                         </td>
                         <td className="py-4 px-6 text-right space-x-2">
-                          {row.status === "Confirmed" && (
+                          {/* Display Send OTP button ONLY when NOT in Check-Out Operations */}
+                          {activeMenu !== "Check-Out Operations" && row.status === "Confirmed" && (
                             <button
                               onClick={() => setOtpModal({ open: true, booking: row })}
                               className="px-3 py-1 bg-emerald-600 text-white rounded-md text-xs font-medium hover:bg-emerald-700 transition-colors"
@@ -433,37 +608,19 @@ export default function ReceptionistLayout() {
       {guestDetailsModal.open && guestDetailsModal.guest && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full space-y-4 shadow-lg">
-            <h3 className="text-base font-bold text-slate-800">Guest Information</h3>
-            <div className="space-y-2 text-xs divide-y divide-slate-100">
+            <h3 className="text-base font-bold text-slate-800">Basic Guest Details</h3>
+            <div className="space-y-3 text-xs divide-y divide-slate-100">
               <div className="pb-2">
                 <p className="text-slate-400 font-medium uppercase text-[10px]">Full Name</p>
                 <p className="text-slate-800 font-semibold text-sm">{guestDetailsModal.guest.firstName} {guestDetailsModal.guest.lastName}</p>
               </div>
-              <div className="py-2 grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-slate-400 font-medium uppercase text-[10px]">Email</p>
-                  <p className="text-slate-800 font-medium">{guestDetailsModal.guest.email}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-medium uppercase text-[10px]">Phone</p>
-                  <p className="text-slate-800 font-medium">{guestDetailsModal.guest.phone}</p>
-                </div>
-              </div>
-              <div className="py-2 grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-slate-400 font-medium uppercase text-[10px]">ID Type</p>
-                  <p className="text-slate-800 font-medium">{guestDetailsModal.guest.idProofType}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-medium uppercase text-[10px]">ID Number</p>
-                  <p className="text-slate-800 font-medium">{guestDetailsModal.guest.idProofNumber}</p>
-                </div>
+              <div className="pt-2">
+                <p className="text-slate-400 font-medium uppercase text-[10px]">Email Address</p>
+                <p className="text-slate-800 font-medium text-xs mt-0.5">{guestDetailsModal.guest.email}</p>
               </div>
               <div className="pt-2">
-                <p className="text-slate-400 font-medium uppercase text-[10px]">Address</p>
-                <p className="text-slate-800 font-medium">
-                  {guestDetailsModal.guest.address}, {guestDetailsModal.guest.city}, {guestDetailsModal.guest.state} - {guestDetailsModal.guest.postalCode}
-                </p>
+                <p className="text-slate-400 font-medium uppercase text-[10px]">Phone Number</p>
+                <p className="text-slate-800 font-medium text-xs mt-0.5">{guestDetailsModal.guest.phone}</p>
               </div>
             </div>
             <button 
