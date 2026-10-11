@@ -19,7 +19,8 @@ public class PaymentDTO {
         private Long bookingId;
         private String paymentType; //full, split_advance, split_Balance
         private String paymentMethod;// cash,upi,card
-        private BigDecimal amount; // custom amount can be entered
+        private BigDecimal amount;
+        private String transactionReference;// custom amount can be entered
     }
 
 
@@ -40,6 +41,7 @@ public class PaymentDTO {
         private String paymentMethod;
         private String receiptType;      // full_payment_receipt / advance_payment_receipt
         private LocalDateTime transactionTime;
+        private String transactionReference;
     }
 
     @Data
