@@ -180,6 +180,44 @@ export const patchBooking = async (id, payload) => {
     .json();
 };
 
+export const updateBookingApi = patchBooking;
+
+/* =================================================== */
+/* BOOKINGS & OPERATIONS */
+/* =================================================== */
+
+export const checkInGuestApi = async (bookingId, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .patch(`booking/${bookingId}/check-in`, {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
+};
+
+export const checkOutGuestApi = async (bookingId, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .patch(`booking/${bookingId}/check-out`, {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
+};
+
+export const settleBalancePaymentApi = async (bookingId, payload, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .post(`booking/${bookingId}/settle-balance`, {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
+};
+
+
+/* =================================================== */
+/* PAYMENTS */
+/* =================================================== */
 export const fetchBooking = async (id) => {
   return await apiClient.get(`/booking/${id}`).json();
 };
@@ -192,6 +230,150 @@ export const cancelBooking = async (id, payload) => {
   return await apiClient
     .patch(`/booking/cancel/${id}`, { json: payload })
     .json();
+};
+
+
+/* =================================================== */
+/* PAYMENTS & RAZORPAY GATEWAY */
+/* =================================================== */
+
+export const processPaymentApi = async (payload, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .post("api/payments/pay", {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
+};
+
+export const createRazorpayOrderApi = async (bookingId, paymentType, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .post("api/payments/razorpay/order", {
+      headers: getAuthHeaders(authToken),
+      searchParams: { bookingId, paymentType },
+    })
+    .json();
+};
+
+export const verifyRazorpayPaymentApi = async (payload, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .post("api/payments/razorpay/verify", {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
+};
+
+
+/* =================================================== */
+/* PAYMENTS & AUDIT */
+/* =================================================== */
+
+export const fetchAllPaymentsApi = async (token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .get("api/payments", {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+    })
+    .json();
+};
+
+export const fetchPaymentsByBookingApi = async (bookingId, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .get(`api/payments/booking/${bookingId}`, {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+    })
+    .json();
+};
+
+export const addCustomServiceToBookingApi = async (bookingId, payload, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .post(`booking/${bookingId}/add-custom-service`, {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      json: payload,
+    })
+    .json();
+};
+
+
+export const createExtraServiceApi = async (payload, token = null) => {
+  const authToken = token || localStorage.getItem("token");
+  return await apiClient
+    .post("api/extra-services", {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      json: payload,
+    })
+    .json();
+};
+
+export const addExtraServicesToBookingApi = async (bookingId, extraServiceIds, token = null) => {
+  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .post(`booking/${bookingId}/add-services`, {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      json: extraServiceIds, // Sends JSON array directly: [1]
+    })
+    .json();
+};
+
+
+export const downloadCheckInReceiptApi = async (bookingId) => {
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken");
+
+  const response = await fetch(`http://localhost:8080/booking/${bookingId}/receipt-pdf`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to download Check-In receipt PDF");
+  }
+
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = `CheckIn_Receipt_${bookingId}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+};
+
+
+
+export const removeExtraServiceFromBookingApi = async (bookingId, serviceId, token = null) => {
+  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .delete(`booking/${bookingId}/remove-service/${serviceId}`, {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
+};
+
+/* =================================================== */
+/* COUPONS */
+/* =================================================== */
+
+export const fetchCouponsApi = async () => {
+  return await apiClient.get("coupon").json();
+};
+
+/* =================================================== */
+/* EXTRA SERVICES */
+/* =================================================== */
+
+export const fetchActiveExtraServices = async () => {
+  return await apiClient.get("api/extra-services").json();
 };
 
 /* =================================================== */
