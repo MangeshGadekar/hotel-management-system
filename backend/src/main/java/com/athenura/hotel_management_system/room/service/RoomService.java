@@ -16,6 +16,9 @@ public interface RoomService {
 
     RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest);
 
+
+    RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest, List<MultipartFile> files);
+
     String deleteRoom(String roomNumber);
 
     List<RoomResponse> getAllRooms();

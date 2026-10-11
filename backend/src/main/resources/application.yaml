@@ -2,6 +2,11 @@ spring:
   application:
     name: hotel-management-system
 
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 100MB
+
   datasource:
     url: jdbc:mysql://localhost:3306/Hotel_Managment?createDatabaseIfNotExist=true&useSSL=false
     username: root
@@ -24,6 +29,11 @@ spring:
       username: default
       password: ${REDIS_PASSWORD}
 
+cloudinary:
+  cloud-name: dwfqsavsx
+  api-key: 911959791416542
+  api-secret: IbfJ3lzDkXhYonTIAqxAe51tvQ8
+
 brevo:
   api:
     key:
@@ -44,4 +54,3 @@ twilio:
 app:
   security:
     admin-secret-key: Admin@123
-

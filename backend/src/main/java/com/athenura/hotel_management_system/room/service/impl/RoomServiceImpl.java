@@ -31,20 +31,18 @@ public class RoomServiceImpl implements RoomService {
     private final AmenityRepository amenityRepository;
     private final CloudinaryService cloudinaryService;
 
-
     @Override
     public RoomResponse createRoom(RoomRequest roomRequest) {
         return createRoom(roomRequest, null);
     }
 
     @Override
-    public RoomResponse createRoom(RoomRequest roomRequest , List<MultipartFile> files) {
+    public RoomResponse createRoom(RoomRequest roomRequest, List<MultipartFile> files) {
 
-        if(roomRepository.existsByRoomNumber(roomRequest.getRoomNumber()))
+        if (roomRepository.existsByRoomNumber(roomRequest.getRoomNumber()))
             throw new RuntimeException("Room Already Exists");
 
         Room room = roomMapper.toEntity(roomRequest);
-
 
         if (roomRequest.getAmenityIds() != null && !roomRequest.getAmenityIds().isEmpty()) {
             room.setAmenities(amenityRepository.findAllById(roomRequest.getAmenityIds()));
@@ -64,20 +62,24 @@ public class RoomServiceImpl implements RoomService {
             }
         }
 
-
         Room savedRoom = roomRepository.save(room);
         return roomMapper.toResponse(savedRoom);
     }
 
     @Override
     public RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest) {
+        return updateRoom(roomNumber, roomRequest, null);
+    }
 
-        Room room = roomRepository.findByRoomNumber(roomNumber).orElseThrow(()-> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
+    @Override
+    public RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest, List<MultipartFile> files) {
+
+        Room room = roomRepository.findByRoomNumber(roomNumber)
+                .orElseThrow(() -> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
 
         if (roomRequest.getRoomNumber() != null &&
                 !room.getRoomNumber().equals(roomRequest.getRoomNumber()) &&
-                roomRepository.existsByRoomNumber(roomRequest.getRoomNumber()))
-        {
+                roomRepository.existsByRoomNumber(roomRequest.getRoomNumber())) {
             throw new RuntimeException("Room number already exists");
         }
 
@@ -101,9 +103,23 @@ public class RoomServiceImpl implements RoomService {
             room.setRoomStatus(roomRequest.getRoomStatus());
         }
 
+        List<String> updatedImages = new ArrayList<>();
         if (roomRequest.getImages() != null) {
-            room.setImages(roomRequest.getImages());
+            updatedImages.addAll(roomRequest.getImages());
         }
+
+        if (files != null && !files.isEmpty()) {
+            List<MultipartFile> validFiles = files.stream()
+                    .filter(f -> f != null && !f.isEmpty())
+                    .toList();
+
+            if (!validFiles.isEmpty()) {
+                List<String> uploadedUrls = cloudinaryService.uploadImages(validFiles, "hotel_management/rooms");
+                updatedImages.addAll(uploadedUrls);
+            }
+        }
+
+        room.setImages(updatedImages);
 
         if (roomRequest.getAmenityIds() != null || roomRequest.getNewAmenities() != null || roomRequest.getAmenityNames() != null) {
             room.setAmenities(resolveAmenities(roomRequest));
@@ -116,12 +132,10 @@ public class RoomServiceImpl implements RoomService {
     private List<Amenity> resolveAmenities(RoomRequest roomRequest) {
         List<Amenity> amenities = new ArrayList<>();
 
-        // 1. Resolve existing amenity IDs
         if (roomRequest.getAmenityIds() != null && !roomRequest.getAmenityIds().isEmpty()) {
             amenities.addAll(amenityRepository.findAllById(roomRequest.getAmenityIds()));
         }
 
-        // 2. Resolve & Create new amenity objects
         if (roomRequest.getNewAmenities() != null && !roomRequest.getNewAmenities().isEmpty()) {
             for (AmenityRequest newAmenityReq : roomRequest.getNewAmenities()) {
                 if (newAmenityReq != null && newAmenityReq.getName() != null && !newAmenityReq.getName().isBlank()) {
@@ -144,7 +158,6 @@ public class RoomServiceImpl implements RoomService {
             }
         }
 
-        // 3. Resolve & Create amenity names strings
         if (roomRequest.getAmenityNames() != null && !roomRequest.getAmenityNames().isEmpty()) {
             for (String nameStr : roomRequest.getAmenityNames()) {
                 if (nameStr != null && !nameStr.isBlank()) {
@@ -170,18 +183,15 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public String deleteRoom(String roomNumber) {
-
         Room room = roomRepository.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
 
         roomRepository.delete(room);
-
         return "Room deleted successfully.";
     }
 
     @Override
     public RoomResponse getRoomByRoomNumber(String roomNumber) {
-
         Room room = roomRepository.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
 
@@ -190,7 +200,6 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomResponse> getRoomByRoomType(RoomType roomType) {
-
         return roomRepository.findByRoomType(roomType)
                 .stream()
                 .map(roomMapper::toResponse)
@@ -199,7 +208,6 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomResponse> getRoomByRoomStatus(RoomStatus roomStatus) {
-
         return roomRepository.findByRoomStatus(roomStatus)
                 .stream()
                 .map(roomMapper::toResponse)
@@ -208,7 +216,6 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomResponse> getAllRooms() {
-
         return roomRepository.findAll()
                 .stream()
                 .map(roomMapper::toResponse)
