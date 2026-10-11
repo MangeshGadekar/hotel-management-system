@@ -12,3 +12,82 @@
     }
   }
 }
+
+@media print {
+  /* Hide the rest of the app, background modal backdrop, and action buttons */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make only the receipt container visible and occupy full page */
+  #printable-receipt,
+  #printable-receipt * {
+    visibility: visible;
+  }
+
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure background colors/borders print accurately */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    margin: 1cm;
+    size: auto;
+  }
+
+
+  /* Print isolation rule */
+@media print {
+  /* Hide the rest of the application */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Reveal only the Master Folio document and its contents */
+  #master-folio-document,
+  #master-folio-document * {
+    visibility: visible !important;
+  }
+
+  /* Position the document cleanly at the top of the printed page */
+  #master-folio-document {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+
+  /* Force background colors, cards, and borders to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+}
+
+  
+}
