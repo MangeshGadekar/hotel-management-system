@@ -29,6 +29,24 @@ public class Payment {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
+
+    @Column(name = "taxable_amount", precision = 10, scale = 2)
+    private BigDecimal taxableAmount;
+
+    @Builder.Default
+    @Column(name = "tax_rate", precision = 5, scale = 2)
+    private BigDecimal taxRate = new BigDecimal("18.00"); //18% gst
+
+    @Column(name = "tax_amount", precision = 10, scale =2)
+    private BigDecimal taxAmount;
+
+    @Column(name ="total_amount", precision = 10, scale = 2)
+    private BigDecimal totalAmount;
+
+    @Builder.Default
+    @Column(name = "balance_due", precision = 10, scale =2)
+    private BigDecimal balanceDue = BigDecimal.ZERO;
+
     @Column(nullable = false)
     private String paymentType; //full, split_advance, split_balance
 
@@ -43,6 +61,9 @@ public class Payment {
 
     @Column(name = "payment_date", nullable = false)
     private LocalDateTime paymentDate;
+
+    @Column(name = "transaction_reference")
+    private String transactionReference;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

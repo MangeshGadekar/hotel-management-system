@@ -11,6 +11,5 @@ public interface EmailService {
     void sendCampaignEmail(String recipientEmail, String recipientName, String subject, String content);
 
     void sendReceptionistCredentials(String toEmail, String rawPassword, String firstName);
-
-    void sendGuestRegistrationOtp(String toEmail, String otp);
+    void sendBookingConfirmationWithReceipt(Booking booking, byte[] pdfBytes);
 }

@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+Code snippet
+# Generated receipt uploads
+uploads/
+uploads/receipts/
+
+# Zips and binaries
+*.zip
+../backend.zip

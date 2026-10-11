@@ -16,6 +16,11 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
+    @GetMapping
+    public ResponseEntity<List<PaymentDTO.ReceiptResponse>> getAllPayments() {
+        return ResponseEntity.ok(paymentService.getAllPayments());
+    }
+
     @PostMapping("/pay")
     public ResponseEntity<PaymentDTO.ReceiptResponse> makePayment(
             @RequestBody PaymentDTO.PaymentRequest request)
