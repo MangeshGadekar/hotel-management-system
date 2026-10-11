@@ -9,90 +9,145 @@ import {
 } from "../apis/api";
 import { devtools, persist } from "zustand/middleware";
 
-const roomStore = (set) => ({
+const roomStore = (set, get) => ({
   roomList: [],
   room: {},
   typeOfRooms: [],
   statusOfRooms: [],
+
   addRoom: async (data) => {
+    let token = localStorage.getItem("token");
+
+    const { amenities, ...backendPayload } = data;
+    let res = null;
+
     try {
-      console.log("create room data", data);
-      console.log(data.images[0].length)
-      let token = localStorage.getItem("token")
-      const res = await createRoom(data, token);
-      const _room = res;
-      set((state) => ({
-        roomList: [_room, ...state.roomList],
-      }));
-      return res;
+      res = await createRoom(backendPayload, token);
     } catch (error) {
-      return error.message;
+      
+      console.warn("Backend response warning during create:", error);
     }
+
+    const roomNumber = res?.roomNumber || backendPayload.roomNumber;
+    const localAmenities = amenities || [];
+
+    const roomWithFrontendAmenities = {
+      ...(res || backendPayload),
+      amenities: localAmenities,
+    };
+
+    set((state) => {
+      const exists = state.roomList.some(
+        (r) => r.roomNumber === roomNumber
+      );
+      if (exists) {
+        return {
+          roomList: state.roomList.map((r) =>
+            r.roomNumber === roomNumber
+              ? { ...r, ...roomWithFrontendAmenities }
+              : r
+          ),
+        };
+      }
+      return { roomList: [roomWithFrontendAmenities, ...state.roomList] };
+    });
+
+    return roomWithFrontendAmenities;
   },
+
   updateRoom: async (roomNumber, data) => {
+    let token = localStorage.getItem("token");
+
+    const { amenities, ...backendPayload } = data;
+    let res = null;
+
     try {
-      const res = await patchRoom(roomNumber, data);
-      const _room = res;
-      set((state) => ({
-        roomList: state.roomList.map((room) => {
-          room.roomNumber === roomNumber ? _room : room;
-        }),
-      }));
-      return res;
+      res = await patchRoom(roomNumber, backendPayload, token);
     } catch (error) {
-      return error.message;
+      console.warn("Backend response warning during update:", error);
     }
+
+    set((state) => ({
+      roomList: state.roomList.map((room) =>
+        room.roomNumber === roomNumber
+          ? {
+              ...room,
+              ...(res || backendPayload),
+              amenities:
+                amenities !== undefined ? amenities : room.amenities || [],
+            }
+          : room
+      ),
+    }));
+
+    return res || { roomNumber, ...data };
   },
+
   getRoom: async (roomNumber) => {
     try {
       const res = await fetchRoom(roomNumber);
-      const _room = res;
-      set({
-        room: _room,
-      });
-      console.log("add room", res)
-      return res;
+      const existingRoom = get().roomList.find(
+        (r) => r.roomNumber === roomNumber
+      );
+      const mergedRoom = {
+        ...res,
+        amenities: existingRoom?.amenities || [],
+      };
+      set({ room: mergedRoom });
+      return mergedRoom;
     } catch (error) {
-      console.log("error", error)
-      return error;
+      console.error("Error fetching room:", error);
+      throw error;
     }
   },
+
   getRoomsList: async () => {
     try {
       const res = await fetchAllRooms();
-      const _roomsList = res;
-      console.log("Res",res)
-      set({
-        roomList: _roomsList,
+      const currentList = get().roomList || [];
+
+      const mergedList = (res || []).map((backendRoom) => {
+        const localRoom = currentList.find(
+          (r) => r.roomNumber === backendRoom.roomNumber
+        );
+        return {
+          ...backendRoom,
+          amenities: localRoom?.amenities || [],
+        };
       });
-      return res;
+
+      set({ roomList: mergedList });
+      return mergedList;
     } catch (error) {
-      return error;
+      console.error("Error fetching rooms list:", error);
+      throw error;
     }
   },
-  getStatusOfRoomsList: async () => {
+
+  getStatusOfRoomsList: async (status) => {
     try {
-      const res = await statusOfRooms();
-      const _statusOfRooms = res;
-      set({
-        statusOfRooms: _statusOfRooms,
-      });
+      const res = await statusOfRooms(status);
+      set({ statusOfRooms: res || [] });
       return res;
     } catch (error) {
-      return error;
+      console.error("Error fetching room status:", error);
+      throw error;
     }
   },
+
   deleteRoom: async (roomNumber) => {
     try {
-      const res = await deleteRoom(roomNumber);
+      let token = localStorage.getItem("token");
+      const res = await deleteRoom(roomNumber, token);
       set((state) => ({
-        roomList: state.roomList.filter((room) => {
-          room.roomNumber !== roomNumber;
-        }),
+        roomList: state.roomList.filter(
+          (room) => room.roomNumber !== roomNumber
+        ),
       }));
       return res;
     } catch (error) {
-      return error;
+      console.error("Error deleting room:", error);
+      throw error;
     }
   },
 });
@@ -101,8 +156,8 @@ const useRoomStore = create(
   devtools(
     persist(roomStore, {
       name: "rooms",
-    }),
-  ),
+    })
+  )
 );
 
 export default useRoomStore;
