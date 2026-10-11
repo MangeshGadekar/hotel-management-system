@@ -1,10 +1,9 @@
 import { apiClient } from "./apiClient";
 
-/* Helper to build header config safely */
+
 const getAuthHeaders = (token) => {
   if (!token) return {};
 
-  // Clean token if extra spaces/quotes exist
   const cleanToken = token.replace(/^"|"$/g, "").trim();
 
   return {
@@ -116,13 +115,12 @@ export const fetchAllGuest = async (token) => {
     .json();
 };
 
-/* delete guest */
 export const deleteGuest = async (id, token) => {
   return await apiClient
-    .delete(`guest/delete/${id}`, {
+    .delete(`/guest/delete/${id}`, {
       headers: getAuthHeaders(token),
     })
-    .text(); // Use .text() because Spring Boot returns ResponseEntity<String>
+    .text();
 };
 
 export const searchGuestByQuery = async (query, token) => {
@@ -149,7 +147,6 @@ export const getGuestByEmail = async (email, token) => {
     .json();
 };
 
-/* Public / Authenticated Send OTP */
 export const sendGuestOtp = async (email, token = null) => {
   const options = token ? { headers: getAuthHeaders(token) } : {};
   return await apiClient
@@ -157,7 +154,6 @@ export const sendGuestOtp = async (email, token = null) => {
     .text();
 };
 
-/* Public / Authenticated Verify OTP */
 export const verifyGuestOtpAndSave = async (payload, token = null) => {
   const options = { json: payload };
   if (token) {
@@ -199,17 +195,81 @@ export const cancelBooking = async (id, payload) => {
 /* =================================================== */
 
 export const createRoom = async (payload, token) => {
+  const formData = new FormData();
+
+  const roomJson = JSON.stringify({
+    roomNumber: String(payload.roomNumber),
+    roomType: payload.roomType,
+    pricePerNight: Number(payload.pricePerNight),
+    capacity: Number(payload.capacity),
+    roomStatus: payload.roomStatus,
+  });
+
+  formData.append("room", roomJson);
+  formData.append("roomNumber", String(payload.roomNumber));
+  formData.append("roomType", payload.roomType);
+  formData.append("pricePerNight", String(payload.pricePerNight));
+  formData.append("capacity", String(payload.capacity));
+  formData.append("roomStatus", payload.roomStatus);
+
+  if (payload.imagePayload && Array.isArray(payload.imagePayload)) {
+    payload.imagePayload.forEach((item) => {
+      if (item.type === "new" && item.file instanceof File) {
+        formData.append("files", item.file);
+      }
+    });
+  }
+
   return await apiClient
-    .post("admin/room/create", {
-      headers: getAuthHeaders(token),
-      json: payload,
+    .post("/admin/room/create", {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type": undefined,
+      },
+      body: formData,
     })
     .json();
 };
 
-export const patchRoom = async (roomNumber, payload) => {
+export const patchRoom = async (roomNumber, payload, token) => {
+  const formData = new FormData();
+
+  const retainedImages = payload.imagePayload
+    ? payload.imagePayload
+        .filter((item) => item.type === "existing")
+        .map((item) => item.url)
+    : payload.images || [];
+
+  const roomJson = JSON.stringify({
+    roomType: payload.roomType,
+    pricePerNight: Number(payload.pricePerNight),
+    capacity: Number(payload.capacity),
+    roomStatus: payload.roomStatus,
+    images: retainedImages,
+  });
+
+  formData.append("room", roomJson);
+  formData.append("roomType", payload.roomType);
+  formData.append("pricePerNight", String(payload.pricePerNight));
+  formData.append("capacity", String(payload.capacity));
+  formData.append("roomStatus", payload.roomStatus);
+
+  if (payload.imagePayload && Array.isArray(payload.imagePayload)) {
+    payload.imagePayload.forEach((item) => {
+      if (item.type === "new" && item.file instanceof File) {
+        formData.append("files", item.file);
+      }
+    });
+  }
+
   return await apiClient
-    .patch(`/admin/room/update/${roomNumber}`, { json: payload })
+    .patch(`/admin/room/update/${roomNumber}`, {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type": undefined,
+      },
+      body: formData,
+    })
     .json();
 };
 
@@ -229,8 +289,12 @@ export const statusOfRooms = async (roomStatus) => {
   return await apiClient.get(`/admin/room/status/${roomStatus}`).json();
 };
 
-export const deleteRoom = async (roomNumber) => {
-  return await apiClient.delete(`/admin/room/delete/${roomNumber}`).json();
+export const deleteRoom = async (roomNumber, token) => {
+  return await apiClient
+    .delete(`/admin/room/delete/${roomNumber}`, {
+      headers: getAuthHeaders(token),
+    })
+    .text();
 };
 
 /* =================================================== */

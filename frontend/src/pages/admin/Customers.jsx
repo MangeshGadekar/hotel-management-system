@@ -127,7 +127,7 @@ export default function Customers({ token: propToken }) {
                 return (
                   <tr key={guestId} className="hover:bg-slate-50/60 transition">
                     <td className="px-6 py-4 font-semibold text-slate-900">
-                      #{guestId}
+                      {guestId}
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-800">
                       {firstName} {lastName}
