@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import ReceptionistForm from "../../components/forms/ReceptionistForm";
 import useReceptionistStore from "../../app/useReceptionistStore";
 
 const INITIAL_FORM_STATE = {
   firstName: "",
   lastName: "",
-  username: "",
   email: "",
   password: "",
 };
@@ -37,41 +37,31 @@ const colorFromString = (str = "") => {
 
 export default function Receptionists() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null); // null = add mode, id = edit mode
+  const [editingId, setEditingId] = useState(null);
   const [newStaff, setNewStaff] = useState(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Delete confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // List state
-  const [staffList, setStaffList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  // Store selectors
+  const receptionistList = useReceptionistStore((s) => s.receptionistList);
   const getAllReceptionist = useReceptionistStore((s) => s.getAllReceptionist);
   const addReceptionist = useReceptionistStore((s) => s.addReceptionist);
   const updateReceptionist = useReceptionistStore((s) => s.updateReceptionist);
   const deleteReceptionist = useReceptionistStore((s) => s.deleteReceptionist);
 
   const loadReceptionists = useCallback(async () => {
-    if (!getAllReceptionist) {
-      setStaffList([]);
-      setIsLoading(false);
-      return;
-    }
     try {
       setIsLoading(true);
       setLoadError(null);
-      const data = await getAllReceptionist();
-      setStaffList(Array.isArray(data) ? data : []);
+      await getAllReceptionist();
     } catch (err) {
       console.error("Failed to load receptionists:", err);
       setLoadError(err?.message || "Failed to load receptionists.");
-      setStaffList([]);
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +71,6 @@ export default function Receptionists() {
     loadReceptionists();
   }, [loadReceptionists]);
 
-  // ---- Validation ----
   const validateForm = () => {
     const nextErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -90,10 +79,7 @@ export default function Receptionists() {
       nextErrors.firstName = "First name is required.";
     if (!newStaff.lastName.trim())
       nextErrors.lastName = "Last name is required.";
-    if (!newStaff.username.trim())
-      nextErrors.username = "Username is required.";
 
-    // Password is required only when creating a new receptionist
     if (!editingId && !newStaff.password.trim()) {
       nextErrors.password = "Password is required.";
     }
@@ -102,14 +88,6 @@ export default function Receptionists() {
       nextErrors.email = "Email is required.";
     } else if (!emailRegex.test(newStaff.email.trim())) {
       nextErrors.email = "Please enter a valid email address.";
-    } else if (
-      staffList.some(
-        (s) =>
-          s.id !== editingId &&
-          s.email?.toLowerCase() === newStaff.email.trim().toLowerCase()
-      )
-    ) {
-      nextErrors.email = "A receptionist with this email already exists.";
     }
 
     setErrors(nextErrors);
@@ -142,9 +120,8 @@ export default function Receptionists() {
     setNewStaff({
       firstName: staff.firstName ?? "",
       lastName: staff.lastName ?? "",
-      username: staff.username ?? "",
       email: staff.email ?? "",
-      password: "", // leave blank; only fill if user wants to change it
+      password: "",
     });
     setErrors({});
     setIsModalOpen(true);
@@ -158,11 +135,9 @@ export default function Receptionists() {
     const payload = {
       firstName: newStaff.firstName.trim(),
       lastName: newStaff.lastName.trim(),
-      username: newStaff.username.trim(),
       email: newStaff.email.trim(),
     };
 
-    // Only include password if provided (edit mode: optional, create mode: required)
     if (newStaff.password.trim()) {
       payload.password = newStaff.password.trim();
     }
@@ -175,17 +150,11 @@ export default function Receptionists() {
         await addReceptionist(payload);
       }
       handleModalClose();
-      await loadReceptionists();
     } catch (err) {
-      console.error(
-        editingId
-          ? "Failed to update receptionist:"
-          : "Failed to add receptionist:",
-        err
-      );
+      console.error("Failed to save receptionist:", err);
       setErrors((prev) => ({
         ...prev,
-        email: err?.message || "Something went wrong. Please try again.",
+        email: err?.response?.data?.message || err?.message || "Operation failed.",
       }));
     } finally {
       setIsSubmitting(false);
@@ -206,13 +175,11 @@ export default function Receptionists() {
     try {
       setIsDeleting(true);
       await deleteReceptionist(deleteTarget.id);
-      setDeleteTarget(null);
-      await loadReceptionists();
     } catch (err) {
       console.error("Failed to delete receptionist:", err);
-      // Optionally surface an error to the user
     } finally {
       setIsDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -226,7 +193,7 @@ export default function Receptionists() {
           <p className="text-xs text-slate-500 mt-0.5">
             Manage staff access and credentials &middot;{" "}
             <span className="text-emerald-600 font-medium">
-              {staffList.length} total
+              {receptionistList.length} total
             </span>
           </p>
         </div>
@@ -245,7 +212,6 @@ export default function Receptionists() {
               <tr>
                 <th className="px-6 py-3">Staff ID</th>
                 <th className="px-6 py-3">Name</th>
-                <th className="px-6 py-3">Username</th>
                 <th className="px-6 py-3">Email</th>
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
@@ -253,68 +219,43 @@ export default function Receptionists() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-8 text-center text-slate-400 text-sm"
-                  >
+                  <td colSpan="4" className="px-6 py-8 text-center text-slate-400 text-sm">
                     Loading receptionists…
                   </td>
                 </tr>
               ) : loadError ? (
                 <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-8 text-center text-rose-500 text-sm"
-                  >
+                  <td colSpan="4" className="px-6 py-8 text-center text-rose-500 text-sm">
                     {loadError}
                   </td>
                 </tr>
-              ) : staffList.length === 0 ? (
+              ) : receptionistList.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-8 text-center text-slate-400 text-sm"
-                  >
-                    No receptionist accounts found. Click &ldquo;+ Add New
-                    Receptionist&rdquo; to create one.
+                  <td colSpan="4" className="px-6 py-8 text-center text-slate-400 text-sm">
+                    No receptionist accounts found. Click &ldquo;+ Add New Receptionist&rdquo; to create one.
                   </td>
                 </tr>
               ) : (
-                staffList.map((staff, index) => {
-                  const initials = getInitials(
-                    staff.firstName,
-                    staff.lastName
-                  );
+                receptionistList.map((staff, index) => {
+                  const initials = getInitials(staff.firstName, staff.lastName);
                   const avatarColor = colorFromString(
                     `${staff.firstName}${staff.lastName}${staff.id ?? ""}`
                   );
 
                   return (
-                    <tr
-                      key={staff.id ?? staff.email ?? index}
-                      className="hover:bg-slate-50/60 transition"
-                    >
+                    <tr key={staff.id ?? staff.email ?? index} className="hover:bg-slate-50/60 transition">
                       <td className="px-6 py-4 font-semibold text-slate-900">
                         REC-{staff.id ?? "—"}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`h-9 w-9 flex-shrink-0 rounded-full ${avatarColor} text-white text-xs font-bold flex items-center justify-center ring-2 ring-white shadow-sm`}
-                            aria-hidden="true"
-                          >
+                          <div className={`h-9 w-9 flex-shrink-0 rounded-full ${avatarColor} text-white text-xs font-bold flex items-center justify-center ring-2 ring-white shadow-sm`}>
                             {initials}
                           </div>
                           <p className="font-medium text-slate-800 truncate">
-                            {staff.name ||
-                              `${staff.firstName ?? ""} ${
-                                staff.lastName ?? ""
-                              }`.trim()}
+                            {`${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim()}
                           </p>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-xs font-medium text-slate-700">
-                        {staff.username ? `@${staff.username}` : "—"}
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-700">
                         {staff.email}
@@ -324,49 +265,16 @@ export default function Receptionists() {
                           <button
                             onClick={() => handleEditClick(staff)}
                             title="Edit receptionist"
-                            aria-label={`Edit ${staff.firstName ?? ""} ${
-                              staff.lastName ?? ""
-                            }`}
                             className="p-2 rounded-lg text-slate-500 hover:text-sky-600 hover:bg-sky-50 transition"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-4 w-4"
-                            >
-                              <path d="M12 20h9" />
-                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                            </svg>
+                            <FiEdit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteClick(staff)}
                             title="Delete receptionist"
-                            aria-label={`Delete ${staff.firstName ?? ""} ${
-                              staff.lastName ?? ""
-                            }`}
                             className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-4 w-4"
-                            >
-                              <path d="M3 6h18" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                              <line x1="10" y1="11" x2="10" y2="17" />
-                              <line x1="14" y1="11" x2="14" y2="17" />
-                            </svg>
+                            <FiTrash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -391,58 +299,23 @@ export default function Receptionists() {
         />
       )}
 
-      {/* Delete confirmation modal */}
       {deleteTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-          onClick={handleDeleteCancel}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-md p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-4">
-              <div className="h-11 w-11 flex-shrink-0 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h2 className="text-base font-bold text-slate-800">
-                  Delete receptionist?
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  Are you sure you want to delete{" "}
-                  <span className="font-semibold text-slate-700">
-                    {deleteTarget.name ||
-                      `${deleteTarget.firstName ?? ""} ${
-                        deleteTarget.lastName ?? ""
-                      }`.trim()}
-                  </span>
-                  ? This action cannot be undone.
-                </p>
-              </div>
-            </div>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-bold text-slate-800">Delete receptionist?</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-slate-700">
+                {`${deleteTarget.firstName ?? ""} ${deleteTarget.lastName ?? ""}`.trim()}
+              </span>
+              ? This action cannot be undone.
+            </p>
             <div className="flex justify-end gap-3 mt-6">
               <button
                 type="button"
                 onClick={handleDeleteCancel}
                 disabled={isDeleting}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
               >
                 Cancel
               </button>
@@ -450,7 +323,7 @@ export default function Receptionists() {
                 type="button"
                 onClick={handleDeleteConfirm}
                 disabled={isDeleting}
-                className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition"
               >
                 {isDeleting ? "Deleting…" : "Delete"}
               </button>
