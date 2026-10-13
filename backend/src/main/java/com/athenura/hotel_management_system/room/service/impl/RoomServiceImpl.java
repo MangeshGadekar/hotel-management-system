@@ -25,16 +25,15 @@ public class RoomServiceImpl implements RoomService {
     private final RoomMapper roomMapper;
     private final CloudinaryService cloudinaryService;
 
-
     @Override
     public RoomResponse createRoom(RoomRequest roomRequest) {
         return createRoom(roomRequest, null);
     }
 
     @Override
-    public RoomResponse createRoom(RoomRequest roomRequest , List<MultipartFile> files) {
+    public RoomResponse createRoom(RoomRequest roomRequest, List<MultipartFile> files) {
 
-        if(roomRepository.existsByRoomNumber(roomRequest.getRoomNumber()))
+        if (roomRepository.existsByRoomNumber(roomRequest.getRoomNumber()))
             throw new RuntimeException("Room Already Exists");
 
         Room room = roomMapper.toEntity(roomRequest);
@@ -54,20 +53,24 @@ public class RoomServiceImpl implements RoomService {
             }
         }
 
-
         Room savedRoom = roomRepository.save(room);
         return roomMapper.toResponse(savedRoom);
     }
 
     @Override
     public RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest) {
+        return updateRoom(roomNumber, roomRequest, null);
+    }
 
-        Room room = roomRepository.findByRoomNumber(roomNumber).orElseThrow(()-> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
+    @Override
+    public RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest, List<MultipartFile> files) {
+
+        Room room = roomRepository.findByRoomNumber(roomNumber)
+                .orElseThrow(() -> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
 
         if (roomRequest.getRoomNumber() != null &&
                 !room.getRoomNumber().equals(roomRequest.getRoomNumber()) &&
-                roomRepository.existsByRoomNumber(roomRequest.getRoomNumber()))
-        {
+                roomRepository.existsByRoomNumber(roomRequest.getRoomNumber())) {
             throw new RuntimeException("Room number already exists");
         }
 
@@ -91,8 +94,20 @@ public class RoomServiceImpl implements RoomService {
             room.setRoomStatus(roomRequest.getRoomStatus());
         }
 
+        List<String> updatedImages = new ArrayList<>();
         if (roomRequest.getImages() != null) {
-            room.setImages(roomRequest.getImages());
+            updatedImages.addAll(roomRequest.getImages());
+        }
+
+        if (files != null && !files.isEmpty()) {
+            List<MultipartFile> validFiles = files.stream()
+                    .filter(f -> f != null && !f.isEmpty())
+                    .toList();
+
+            if (!validFiles.isEmpty()) {
+                List<String> uploadedUrls = cloudinaryService.uploadImages(validFiles, "hotel_management/rooms");
+                updatedImages.addAll(uploadedUrls);
+            }
         }
 
 
@@ -102,18 +117,15 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public String deleteRoom(String roomNumber) {
-
         Room room = roomRepository.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
 
         roomRepository.delete(room);
-
         return "Room deleted successfully.";
     }
 
     @Override
     public RoomResponse getRoomByRoomNumber(String roomNumber) {
-
         Room room = roomRepository.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
 
@@ -122,7 +134,6 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomResponse> getRoomByRoomType(RoomType roomType) {
-
         return roomRepository.findByRoomType(roomType)
                 .stream()
                 .map(roomMapper::toResponse)
@@ -131,7 +142,6 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomResponse> getRoomByRoomStatus(RoomStatus roomStatus) {
-
         return roomRepository.findByRoomStatus(roomStatus)
                 .stream()
                 .map(roomMapper::toResponse)
@@ -140,7 +150,6 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomResponse> getAllRooms() {
-
         return roomRepository.findAll()
                 .stream()
                 .map(roomMapper::toResponse)
