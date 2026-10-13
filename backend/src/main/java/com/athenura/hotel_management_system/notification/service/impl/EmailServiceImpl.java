@@ -164,6 +164,11 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendBookingConfirmationWithReceipt(Booking booking, byte[] pdfBytes) {
+
+    }
+
+    @Override
     public void sendGuestRegistrationOtp(String toEmail, String otp) {
         String htmlContent = """
             <html>

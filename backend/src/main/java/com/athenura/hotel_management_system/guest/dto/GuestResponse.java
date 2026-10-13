@@ -25,4 +25,5 @@ public class GuestResponse {
     private String postalCode;
     private LocalDate dateOfBirth;
     private Boolean isVerified;
+    private String createdBy;
 }

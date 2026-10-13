@@ -10,6 +10,8 @@ import java.util.List;
 
 @Service
 public interface PaymentService {
+
+    List<PaymentDTO.ReceiptResponse> getAllPayments();
     PaymentDTO.ReceiptResponse processPayment(PaymentDTO.PaymentRequest request);
 
     PaymentDTO.ReceiptResponse getReceiptByNumber(String receiptNumber);

@@ -62,4 +62,6 @@ public interface GuestRepository extends JpaRepository<Guest, Long> {
           )
         """, nativeQuery = true)
     List<Guest> findUpcomingStayAnniversaries(@Param("daysAhead") int daysAhead);
+
+    Optional<Guest> findByEmail(String incomingEmail);
 }

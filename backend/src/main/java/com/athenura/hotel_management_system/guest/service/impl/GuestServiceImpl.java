@@ -1,5 +1,6 @@
 package com.athenura.hotel_management_system.guest.service.impl;
 
+import com.athenura.hotel_management_system.common.entity.Users;
 import com.athenura.hotel_management_system.guest.dto.GuestRequest;
 import com.athenura.hotel_management_system.guest.dto.GuestResponse;
 import com.athenura.hotel_management_system.guest.dto.VerifyOtpRequest;
@@ -11,6 +12,8 @@ import com.athenura.hotel_management_system.guest.repository.GuestRepository;
 import com.athenura.hotel_management_system.guest.service.GuestService;
 import com.athenura.hotel_management_system.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,31 @@ public class GuestServiceImpl implements GuestService {
     private final GuestMapper guestMapper;
     private final EmailService emailService;
     private final SecureRandom secureRandom = new SecureRandom();
+
+    private String getCreatedByName() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+
+            Object principal = authentication.getPrincipal();
+
+            if (principal instanceof Users user) {
+                String role = user.getRole() != null ? user.getRole().name() : "";
+
+                if ("ADMIN".equalsIgnoreCase(role)) {
+                    return "Admin";
+                } else if ("RECEPTIONIST".equalsIgnoreCase(role)) {
+                    String fullName = (user.getFirstName() != null ? user.getFirstName() : "")
+                            + (user.getLastName() != null ? " " + user.getLastName() : "");
+
+                    return fullName.isBlank() ? user.getEmail() : fullName.trim();
+                }
+            }
+        }
+
+        return "Online";
+    }
 
     @Override
     public boolean checkEmailExists(String email) {
@@ -57,7 +85,6 @@ public class GuestServiceImpl implements GuestService {
 
         String cleanEmail = email.trim().toLowerCase();
 
-        // Cryptographically strong 6-digit OTP generation
         int randomOtpNumber = 100000 + secureRandom.nextInt(900000);
         String otp = String.valueOf(randomOtpNumber);
 
@@ -135,6 +162,8 @@ public class GuestServiceImpl implements GuestService {
             Guest newGuest = guestMapper.toEntity(dto);
             newGuest.setEmail(cleanEmail);
             newGuest.setIsVerified(true);
+            newGuest.setCreatedBy(getCreatedByName());
+
             return guestMapper.toResponse(guestRepository.save(newGuest));
         }
     }
@@ -154,6 +183,8 @@ public class GuestServiceImpl implements GuestService {
 
         Guest guest = guestMapper.toEntity(request);
         guest.setEmail(cleanEmail);
+        guest.setCreatedBy(getCreatedByName());
+
         Guest savedGuest = guestRepository.save(guest);
 
         return guestMapper.toResponse(savedGuest);

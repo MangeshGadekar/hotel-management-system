@@ -22,6 +22,5 @@ public class RoomResponse {
     private Integer capacity;
     private RoomStatus roomStatus;
     private List<String> images;
-    private List<com.athenura.hotel_management_system.amenity.dto.AmenityResponse> amenities;
 }
 

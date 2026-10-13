@@ -37,4 +37,5 @@ public class GuestRequest {
     private String state;
     private String postalCode;
     private LocalDate dateOfBirth;
+    private String createdBy;
 }

@@ -2,6 +2,11 @@ spring:
   application:
     name: hotel-management-system
 
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 100MB
+
   datasource:
     url: jdbc:mysql://localhost:3306/Hotel_Managment?createDatabaseIfNotExist=true&useSSL=false
     username: root
@@ -24,9 +29,14 @@ spring:
       username: default
       password: ${REDIS_PASSWORD}
 
+cloudinary:
+  cloud-name: dwfqsavsx
+  api-key: 911959791416542
+  api-secret: IbfJ3lzDkXhYonTIAqxAe51tvQ8
+
 brevo:
   api:
-    key: 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
+    key:
   sender:
     email: marathevedant123@gmail.com
     name: Hotel Aatithya
@@ -44,4 +54,3 @@ twilio:
 app:
   security:
     admin-secret-key: Admin@123
-

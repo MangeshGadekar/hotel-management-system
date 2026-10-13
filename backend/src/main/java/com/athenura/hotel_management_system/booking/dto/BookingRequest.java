@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -13,7 +14,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class BookingRequest {
 
-//    private Long guestId;
+    private Long guestId;
 // Guest details will come together with booking
     private GuestRequest guest;
     private Long roomId;
@@ -22,5 +23,7 @@ public class BookingRequest {
     private String paymentType;
     private String paymentMethod;
     private BigDecimal amount;
-    private java.util.List<Long> amenityIds;
+    private List<Long> extraServiceIds;
+    private String transactionReference;
+    private String couponCode;
 }

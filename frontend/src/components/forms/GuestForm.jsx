@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  FiUser, FiPhone, FiMail, FiCreditCard, FiMapPin,
+  FiHome, FiMap, FiNavigation, FiHash, FiCheck, FiAward,
+} from "react-icons/fi";
 import useGuestStore from "../../app/useGuestStore";
 
-
-export default function GuestForm({ onSuccess, initialData = null, token, currentUserId }) {
+export default function GuestForm({ onSuccess, initialData = null, token, currentUserId, onClose }) {
   const {
     sendOtp,
     verifyOtpAndSave,
@@ -34,6 +37,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
   const [showDropdown, setShowDropdown] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
   const [isResending, setIsResending] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const dropdownRef = useRef(null);
 
@@ -126,31 +130,12 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const validateForm = () => {
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      return "First Name and Last Name are required.";
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email || !emailRegex.test(formData.email.trim())) {
-      return "Please enter a valid email address.";
-    }
-
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(formData.phone.trim())) {
-      return "Please enter a valid 10-digit mobile number.";
-    }
-
-    return null;
-  };
-
   const handleInitiateSubmit = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
+    e.preventDefault();
     setError("");
 
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
+    if (!formData.email || !formData.firstName) {
+      setError("Please fill in all required fields.");
       return;
     }
 
@@ -158,9 +143,8 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
       await sendOtp(formData.email.trim(), token);
       setShowOtpModal(true);
       setResendTimer(30);
-      setOtpError("");
     } catch (err) {
-      setError(err.message || "Failed to send OTP. Please check your email address and try again.");
+      setError(err.message || "Failed to send verification code. Please try again.");
     }
   };
 
@@ -173,7 +157,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
       setResendTimer(30);
       setOtp("");
     } catch (err) {
-      setOtpError(err.message || "Failed to resend OTP. Please try again.");
+      setOtpError(err.message || "Failed to resend verification code. Please try again.");
     } finally {
       setIsResending(false);
     }
@@ -181,35 +165,38 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setOtpError("");
 
     if (!otp || otp.trim().length !== 6) {
-      setOtpError("Please enter a valid 6-digit OTP.");
+      setOtpError("Please enter a valid 6-digit verification code.");
+      setIsSubmitting(false);
       return;
     }
 
-  
     const cleanedGuestData = {
       ...formData,
       email: formData.email.trim(),
       phone: formData.phone.trim(),
       dateOfBirth: formData.dateOfBirth ? formData.dateOfBirth : null,
-      createdBy: currentUserId || null, 
-    };
-
-    const payload = {
-      email: formData.email.trim(),
-      otp: otp.trim(),
-      guestData: cleanedGuestData,
+      createdBy: currentUserId || null,
     };
 
     try {
-      await verifyOtpAndSave(payload, token);
+      const result = await verifyOtpAndSave(cleanedGuestData, otp.trim(), token);
+
+      if (onSuccess) {
+        onSuccess(result);
+      }
+      if (onClose) {
+        onClose(result);
+      }
       setShowOtpModal(false);
-      setOtp("");
-      if (onSuccess) onSuccess();
     } catch (err) {
-      setOtpError(err.message || "Failed to create/update guest. Invalid OTP or verification failed.");
+      console.error("Failed to verify code:", err);
+      setOtpError(err.message || "Invalid verification code. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -225,7 +212,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
           </div>
         )}
 
-        
+        {/* Email */}
         <div className="relative" ref={dropdownRef}>
           <label className="block font-medium mb-1">
             Email <span className="text-red-500">*</span>
@@ -240,7 +227,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
             className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
           />
 
-          {showDropdown && searchResults.length > 0 && (
+          {showDropdown && searchResults?.length > 0 && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
               {searchResults.map((guest) => (
                 <div
@@ -269,7 +256,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
           </div>
         )}
 
-       
+        {/* Names */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-medium mb-1">
@@ -284,15 +271,11 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
             />
           </div>
-
           <div>
-            <label className="block font-medium mb-1">
-              Last Name <span className="text-red-500">*</span>
-            </label>
+            <label className="block font-medium mb-1">Last Name</label>
             <input
               type="text"
               name="lastName"
-              required
               value={formData.lastName}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
@@ -300,23 +283,18 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
           </div>
         </div>
 
+        {/* Phone & Date of Birth */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block font-medium mb-1">
-              Phone Number <span className="text-red-500">*</span>
-            </label>
+            <label className="block font-medium mb-1">Phone</label>
             <input
               type="tel"
               name="phone"
-              required
-              maxLength={10}
-              placeholder="10 digit mobile number"
               value={formData.phone}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
             />
           </div>
-
           <div>
             <label className="block font-medium mb-1">Date of Birth</label>
             <input
@@ -329,7 +307,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
           </div>
         </div>
 
-        
+        {/* ID Proof */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-medium mb-1">ID Proof Type</label>
@@ -358,7 +336,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
           </div>
         </div>
 
-       
+        {/* Address */}
         <div>
           <label className="block font-medium mb-1">Address</label>
           <input
@@ -370,7 +348,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
           />
         </div>
 
-        
+        {/* City, State, Postal Code */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block font-medium mb-1">City</label>
@@ -406,24 +384,24 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
           </div>
         </div>
 
-        
+        {/* Form Actions */}
         <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
           <button
             type="submit"
             disabled={loading}
             className="px-5 py-2 bg-[#D96B43] text-white font-semibold rounded-lg hover:bg-[#c55e39] transition-all disabled:opacity-50 cursor-pointer"
           >
-            {loading ? "Sending OTP..." : isExistingGuest ? "Update Guest (Send OTP)" : "Create Guest (Send OTP)"}
+            {loading ? "Sending Code..." : isExistingGuest ? "Update Guest (Send Code)" : "Create Guest (Send Code)"}
           </button>
         </div>
       </form>
 
-   
+      {/* Verification Modal */}
       {showOtpModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-bold text-slate-800">Enter OTP Code</h3>
+              <h3 className="text-lg font-bold text-slate-800">Enter Verification Code</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -433,28 +411,23 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
                 }}
                 className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                ✕
               </button>
             </div>
 
             <p className="text-xs text-slate-600">
-              OTP has been sent to <span className="font-semibold text-slate-800">{formData.email}</span>. Please verify to complete {isExistingGuest ? "update" : "registration"}.
+              A verification code has been sent to <span className="font-semibold text-slate-800">{formData.email}</span>.
             </p>
 
             {otpError && (
-              <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg font-medium flex items-center gap-2">
-                <svg className="w-4 h-4 shrink-0 fill-current text-red-500" viewBox="0 0 20 20">
-                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-9a1 1 0 012 0v3a1 1 0 11-2 0V9zm1-4a1 1 0 100 2 1 1 0 000-2z" />
-                </svg>
-                <span>{otpError}</span>
+              <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg font-medium">
+                {otpError}
               </div>
             )}
 
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">6-Digit Verification Code</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">6-Digit Code</label>
                 <input
                   type="text"
                   maxLength={6}
@@ -466,7 +439,7 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
               </div>
 
               <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-                <span className="text-slate-500">Didn't receive code or expired?</span>
+                <span className="text-slate-500">Didn't receive code?</span>
                 <button
                   type="button"
                   disabled={resendTimer > 0 || isResending}
@@ -474,14 +447,10 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
                   className={`font-semibold text-xs px-2.5 py-1 rounded transition-colors ${
                     resendTimer > 0 || isResending
                       ? "text-slate-400 bg-slate-100 cursor-not-allowed"
-                      : "text-[#D96B43] bg-orange-50 hover:bg-orange-100 cursor-pointer active:scale-95"
+                      : "text-[#D96B43] bg-orange-50 hover:bg-orange-100 cursor-pointer"
                   }`}
                 >
-                  {isResending
-                    ? "Sending..."
-                    : resendTimer > 0
-                    ? `Resend in ${resendTimer}s`
-                    : "Resend OTP"}
+                  {isResending ? "Sending..." : resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend Code"}
                 </button>
               </div>
 
@@ -498,14 +467,15 @@ export default function GuestForm({ onSuccess, initialData = null, token, curren
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  disabled={loading}
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleVerifyOtp}
                   className="px-4 py-2 bg-[#D96B43] text-white text-xs font-semibold rounded-lg hover:bg-[#c55e39] disabled:opacity-50 cursor-pointer"
                 >
-                  {loading ? "Verifying..." : "Verify & Save"}
+                  {isSubmitting ? "Verifying..." : "Verify & Save"}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
