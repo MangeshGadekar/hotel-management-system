@@ -5,6 +5,7 @@ import com.athenura.hotel_management_system.guest.dto.GuestResponse;
 import com.athenura.hotel_management_system.guest.entity.Guest;
 import org.springframework.stereotype.Component;
 
+
 @Component
 public class GuestMapper {
 
