@@ -7,8 +7,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,74 +30,49 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendBookingConfirmation(Booking booking) {
-        sendBookingConfirmationWithReceipt(booking, null);
-    }
 
-    @Override
-    public void sendBookingConfirmationWithReceipt(Booking booking, byte[] pdfBytes) {
         String guestName = booking.getGuest().getFirstName() + " " + booking.getGuest().getLastName();
-
-        String roomNum = booking.getRoom() != null ? booking.getRoom().getRoomNumber() : "-";
-        String roomType = booking.getRoom() != null && booking.getRoom().getRoomType() != null
-                ? booking.getRoom().getRoomType().name()
-                : "Standard";
 
         String htmlContent = """
                 <html>
-                <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                    <h2 style="color: #D96B43;">Hotel Aatithya - Check-In Invoice & Key Slip</h2>
+                <body>
+                    <h2>Booking Confirmed!</h2>
 
                     <p>Hello <b>%s</b>,</p>
 
-                    <p>Your hotel check-in has been successfully completed!</p>
+                    <p>Your hotel booking has been successfully confirmed.</p>
 
-                    <div style="background-color: #faf5f2; border-left: 4px solid #D96B43; padding: 12px; margin: 15px 0;">
-                        <b>Booking ID:</b> #%d<br>
-                        <b>Room Number:</b> %s (%s)<br>
+                    <p>
+                        <b>Booking ID:</b> %d<br>
+                        <b>Room Number:</b> %s<br>
                         <b>Check-in:</b> %s<br>
                         <b>Check-out:</b> %s<br>
-                        <b>Total Amount:</b> ₹%s<br>
-                        <b>Balance Due:</b> ₹%s
-                    </div>
+                        <b>Total Amount:</b> ₹%s
+                    </p>
 
-                    <p>Please find your official <b>Check-In Receipt & Key Pass</b> attached as a PDF to this email.</p>
-
-                    <p>Thank you for choosing Hotel Aatithya. We wish you a delightful stay!</p>
+                    <p>Thank you for choosing our hotel!</p>
                 </body>
                 </html>
                 """.formatted(
                 guestName,
                 booking.getId(),
-                roomNum,
-                roomType,
+                booking.getRoom().getRoomNumber(),
                 booking.getCheckInDate(),
                 booking.getCheckOutDate(),
-                booking.getTotalAmount(),
-                booking.getBalanceDue() != null ? booking.getBalanceDue() : 0
+                booking.getTotalAmount()
         );
-
-        List<Map<String, String>> attachments = null;
-        if (pdfBytes != null && pdfBytes.length > 0) {
-            String base64Content = Base64.getEncoder().encodeToString(pdfBytes);
-            attachments = List.of(
-                    Map.of(
-                            "name", "CheckIn_Receipt_INV-" + booking.getId() + ".pdf",
-                            "content", base64Content
-                    )
-            );
-        }
 
         sendEmailViaBrevo(
                 booking.getGuest().getEmail(),
                 guestName,
-                "Check-In Receipt & Key Slip - Booking #" + booking.getId(),
-                htmlContent,
-                attachments
+                "Booking Confirmation - #" + booking.getId(),
+                htmlContent
         );
     }
 
     @Override
     public void sendCheckInOtp(Booking booking, String otp) {
+
         String guestName = booking.getGuest().getFirstName() + " " + booking.getGuest().getLastName();
 
         String htmlContent = """
@@ -134,13 +107,13 @@ public class EmailServiceImpl implements EmailService {
                 booking.getGuest().getEmail(),
                 guestName,
                 "Hotel Check-in OTP - Booking #" + booking.getId(),
-                htmlContent,
-                null
+                htmlContent
         );
     }
 
     @Override
     public void sendCampaignEmail(String recipientEmail, String recipientName, String subject, String content) {
+
         String htmlContent = """
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -153,7 +126,7 @@ public class EmailServiceImpl implements EmailService {
             """.formatted(content.replace("\n", "<br>"));
 
         try {
-            sendEmailViaBrevo(recipientEmail, recipientName, subject, htmlContent, null);
+            sendEmailViaBrevo(recipientEmail, recipientName, subject, htmlContent);
         } catch (Exception e) {
             throw new RuntimeException("Brevo email dispatch failed for " + recipientEmail + ": " + e.getMessage(), e);
         }
@@ -184,36 +157,58 @@ public class EmailServiceImpl implements EmailService {
             """.formatted(recipientName, toEmail, rawPassword);
 
         try {
-            sendEmailViaBrevo(toEmail, recipientName, "Account Created - Hotel Management System", htmlContent, null);
+            sendEmailViaBrevo(toEmail, recipientName, "Account Created - Hotel Management System", htmlContent);
         } catch (Exception e) {
             throw new RuntimeException("Failed to send Receptionist credentials to " + toEmail + ": " + e.getMessage(), e);
         }
     }
 
-    private void sendEmailViaBrevo(
-            String recipientEmail,
-            String recipientName,
-            String subject,
-            String htmlContent,
-            List<Map<String, String>> attachments) {
+    @Override
+    public void sendBookingConfirmationWithReceipt(Booking booking, byte[] pdfBytes) {
 
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("sender", Map.of(
-                "name", senderName,
-                "email", senderEmail
-        ));
-        requestBody.put("to", List.of(
-                Map.of(
-                        "name", recipientName,
-                        "email", recipientEmail
-                )
-        ));
-        requestBody.put("subject", subject);
-        requestBody.put("htmlContent", htmlContent);
+    }
 
-        if (attachments != null && !attachments.isEmpty()) {
-            requestBody.put("attachment", attachments);
+    @Override
+    public void sendGuestRegistrationOtp(String toEmail, String otp) {
+        String htmlContent = """
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2>Hotel Guest Verification</h2>
+                <p>Hello,</p>
+                <p>Your OTP for Hotel Guest Verification is:</p>
+                
+                <h1 style="color: #2c3e50; letter-spacing: 2px;">%s</h1>
+                
+                <p>This OTP is valid for <b>5 minutes</b>.</p>
+                <p>If you did not request this OTP, please ignore this email.</p>
+                <br>
+                <p>Best Regards,<br><b>Hotel Management Team</b></p>
+            </body>
+            </html>
+            """.formatted(otp);
+
+        try {
+            sendEmailViaBrevo(toEmail, "Valued Guest", "Hotel Verification Code", htmlContent);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send verification OTP to " + toEmail + ": " + e.getMessage(), e);
         }
+    }
+
+    private void sendEmailViaBrevo(String recipientEmail, String recipientName, String subject, String htmlContent) {
+        Map<String, Object> requestBody = Map.of(
+                "sender", Map.of(
+                        "name", senderName,
+                        "email", senderEmail
+                ),
+                "to", List.of(
+                        Map.of(
+                                "name", recipientName,
+                                "email", recipientEmail
+                        )
+                ),
+                "subject", subject,
+                "htmlContent", htmlContent
+        );
 
         restClient.post()
                 .uri("https://api.brevo.com/v3/smtp/email")

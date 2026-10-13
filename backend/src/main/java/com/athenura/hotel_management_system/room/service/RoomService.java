@@ -25,4 +25,8 @@ public interface RoomService {
     List<RoomResponse> getRoomByRoomType(RoomType roomType);
 
     List<RoomResponse> getRoomByRoomStatus(RoomStatus roomStatus);
+
+    RoomResponse uploadRoomImages(String roomNumber, List<MultipartFile> files);
+
+    RoomResponse removeRoomImage(String roomNumber, String imageUrl);
 }
