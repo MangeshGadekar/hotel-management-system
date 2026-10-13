@@ -2,6 +2,7 @@ package com.athenura.hotel_management_system.reception.service.impl;
 
 import com.athenura.hotel_management_system.common.entity.Users;
 import com.athenura.hotel_management_system.common.enums.Role;
+import com.athenura.hotel_management_system.common.repository.RefreshTokenRepo;
 import com.athenura.hotel_management_system.common.repository.UserRepo;
 import com.athenura.hotel_management_system.notification.service.EmailService;
 import com.athenura.hotel_management_system.reception.dto.ReceptionistRequest;
@@ -11,14 +12,17 @@ import com.athenura.hotel_management_system.reception.service.ReceptionistServic
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ReceptionistServiceImpl implements ReceptionistService {
 
     private final UserRepo userRepo;
+    private final RefreshTokenRepo refreshTokenRepo;
     private final ReceptionistMapper receptionistMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
@@ -30,10 +34,6 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             throw new RuntimeException("Email already exists");
         }
 
-        if (request.getUsername() != null && !request.getUsername().isBlank() && userRepo.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
-        }
-
         if (request.getPassword() == null || request.getPassword().isBlank()) {
             throw new RuntimeException("Password is required for creating a Receptionist");
         }
@@ -41,12 +41,10 @@ public class ReceptionistServiceImpl implements ReceptionistService {
         Users receptionist = receptionistMapper.toEntity(request);
         receptionist.setRole(Role.RECEPTIONIST);
 
-
         String rawPassword = request.getPassword();
         receptionist.setPassword(passwordEncoder.encode(rawPassword));
 
         Users savedReceptionist = userRepo.save(receptionist);
-
 
         emailService.sendReceptionistCredentials(savedReceptionist.getEmail(), rawPassword, savedReceptionist.getFirstName());
 
@@ -65,23 +63,12 @@ public class ReceptionistServiceImpl implements ReceptionistService {
             throw new RuntimeException("Email already exists");
         }
 
-        if (request.getUsername() != null
-                && !receptionist.getUsername().equals(request.getUsername())
-                && userRepo.existsByUsername(request.getUsername())) {
-
-            throw new RuntimeException("Username already exists");
-        }
-
         if (request.getFirstName() != null) {
             receptionist.setFirstName(request.getFirstName());
         }
 
         if (request.getLastName() != null) {
             receptionist.setLastName(request.getLastName());
-        }
-
-        if (request.getUsername() != null) {
-            receptionist.setUsername(request.getUsername());
         }
 
         if (request.getEmail() != null) {
@@ -101,6 +88,8 @@ public class ReceptionistServiceImpl implements ReceptionistService {
     public String deleteReceptionist(Long id) {
         Users receptionist = userRepo.findByIdAndRole(id, Role.RECEPTIONIST)
                 .orElseThrow(() -> new RuntimeException("Receptionist not Found"));
+
+        refreshTokenRepo.findByUser(receptionist).ifPresent(refreshTokenRepo::delete);
 
         userRepo.delete(receptionist);
         return "Receptionist with id " + id + " is Deleted";
