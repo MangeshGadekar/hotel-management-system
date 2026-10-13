@@ -1,21 +1,5 @@
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
-
-
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
-  FiUser,
   FiCalendar,
   FiPlusCircle,
   FiCreditCard,
@@ -24,7 +8,6 @@ import {
   FiX,
   FiArrowRight,
   FiArrowLeft,
-  FiSearch,
   FiTag,
   FiFileText,
 } from "react-icons/fi";
@@ -39,11 +22,26 @@ import {
   verifyRazorpayPaymentApi,
 } from "../../apis/api";
 
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 export default function BookingForm({
   onSuccess = () => {},
   onCancel = () => {},
   className = "",
   preSelectedGuest = null,
+  currentUserId,
 }) {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,24 +57,44 @@ export default function BookingForm({
   const loadExtraServices = useBookingStore((state) => state.loadExtraServices);
   const getRoomsList = useRoomStore((state) => state.getRoomsList);
 
-  const guestList = useGuestStore((state) => state.guestList) || [];
-  const getGuestList = useGuestStore((state) => state.getGuestList);
+  // Exact guest store methods from GuestForm
+  const {
+    sendOtp,
+    verifyOtpAndSave,
+    searchGuests,
+    searchResults,
+    clearSearchResults,
+    loading: guestLoading,
+  } = useGuestStore();
 
-  // Guest Details
-  const [guest, setGuest] = useState({
-    guestId: preSelectedGuest?.id || null,
+  // Exact state from GuestForm
+  const [formData, setFormData] = useState({
     firstName: preSelectedGuest?.firstName || preSelectedGuest?.first_name || "",
     lastName: preSelectedGuest?.lastName || preSelectedGuest?.last_name || "",
     email: preSelectedGuest?.email || "",
     phone: preSelectedGuest?.phone || "",
+    dateOfBirth: preSelectedGuest?.dateOfBirth || "",
+    address: preSelectedGuest?.address || "",
+    city: preSelectedGuest?.city || "",
+    state: preSelectedGuest?.state || "",
+    postalCode: preSelectedGuest?.postalCode || "",
     idProofType: preSelectedGuest?.idProofType || preSelectedGuest?.id_proof_type || "AADHAR_CARD",
     idProofNumber: preSelectedGuest?.idProofNumber || preSelectedGuest?.id_proof_number || "",
   });
 
-  const [guestSearchQuery, setGuestSearchQuery] = useState("");
-  const [showGuestDropdown, setShowGuestDropdown] = useState(false);
+  const [verifiedGuestId, setVerifiedGuestId] = useState(preSelectedGuest?.id || null);
+  const [isExistingGuest, setIsExistingGuest] = useState(Boolean(preSelectedGuest));
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [error, setError] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [resendTimer, setResendTimer] = useState(30);
+  const [isResending, setIsResending] = useState(false);
 
-  // Stay Dates & Rooms
+  const dropdownRef = useRef(null);
+
+  // Step 2 & 3 State
   const [stayDates, setStayDates] = useState({
     checkInDate: new Date().toISOString().split("T")[0],
     checkOutDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
@@ -85,25 +103,22 @@ export default function BookingForm({
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedServiceIds, setSelectedServiceIds] = useState([]);
 
-  // Promotional Coupons
+  // Step 4 State
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
 
-  // Billing & Payment Selection
   const [paymentType, setPaymentType] = useState("FULL");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [cardMachineAuthCode, setCardMachineAuthCode] = useState("");
   const [completedBooking, setCompletedBooking] = useState(null);
 
-  // Fetch Rooms, Services, Guests & Coupons on mount
   useEffect(() => {
     const init = async () => {
       try {
-        const [roomsData, _, __, couponsData] = await Promise.all([
+        const [roomsData, _, couponsData] = await Promise.all([
           getRoomsList(),
           loadExtraServices ? loadExtraServices() : Promise.resolve([]),
-          getGuestList ? getGuestList(token) : Promise.resolve([]),
           fetchCouponsApi ? fetchCouponsApi().catch(() => []) : Promise.resolve([]),
         ]);
         setRooms(Array.isArray(roomsData) ? roomsData : []);
@@ -113,40 +128,183 @@ export default function BookingForm({
       }
     };
     init();
-  }, [getRoomsList, loadExtraServices, getGuestList, token]);
+  }, [getRoomsList, loadExtraServices]);
 
-  // Real-time Guest Autocomplete Filter
-  const filteredGuests = useMemo(() => {
-    const q = guestSearchQuery.trim().toLowerCase();
-    if (!q) return [];
-    return (guestList || []).filter((g) => {
-      const fullName = `${g.firstName || g.first_name || ""} ${g.lastName || g.last_name || ""}`.toLowerCase();
-      const email = (g.email || "").toLowerCase();
-      const phone = (g.phone || "").toString();
-      return fullName.includes(q) || email.includes(q) || phone.includes(q);
-    });
-  }, [guestList, guestSearchQuery]);
+  // Outside click handler for email search dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const handleSelectExistingGuest = (selected) => {
-    const guestId = selected.id || selected._id;
-    const fName = selected.firstName || selected.first_name || "";
-    const lName = selected.lastName || selected.last_name || "";
+  // OTP Countdown Timer
+  useEffect(() => {
+    let interval = null;
+    if (showOtpModal && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [showOtpModal, resendTimer]);
 
-    setGuest({
-      guestId: guestId,
-      firstName: fName,
-      lastName: lName,
-      email: selected.email || "",
-      phone: selected.phone || "",
-      idProofType: selected.idProofType || selected.id_proof_type || "AADHAR_CARD",
-      idProofNumber: selected.idProofNumber || selected.id_proof_number || "",
-    });
+  // Exact Handlers from GuestForm
+  const handleEmailChange = async (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, email: value }));
+    setIsExistingGuest(false);
+    setVerifiedGuestId(null);
 
-    setGuestSearchQuery(`${fName} ${lName}`.trim());
-    setShowGuestDropdown(false);
-    toast.success(`Guest profile loaded (#${guestId})`);
+    if (value.trim().length >= 2) {
+      await searchGuests(value, token);
+      setShowDropdown(true);
+    } else {
+      clearSearchResults();
+      setShowDropdown(false);
+    }
   };
 
+  const handleSelectExistingGuest = (guestItem) => {
+    setFormData({
+      firstName: guestItem.firstName || "",
+      lastName: guestItem.lastName || "",
+      email: guestItem.email || "",
+      phone: guestItem.phone || "",
+      dateOfBirth: guestItem.dateOfBirth || "",
+      address: guestItem.address || "",
+      city: guestItem.city || "",
+      state: guestItem.state || "",
+      postalCode: guestItem.postalCode || "",
+      idProofType: guestItem.idProofType || "AADHAR_CARD",
+      idProofNumber: guestItem.idProofNumber || "",
+    });
+    setVerifiedGuestId(guestItem.id || guestItem._id);
+    setIsExistingGuest(true);
+    setShowDropdown(false);
+    clearSearchResults();
+    toast.success(`Guest loaded: ${guestItem.firstName} ${guestItem.lastName}`);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setError("");
+
+    if (name === "phone") {
+      const sanitizedPhone = value.replace(/\D/g, "");
+      if (sanitizedPhone.length <= 10) {
+        setFormData((prev) => ({ ...prev, phone: sanitizedPhone }));
+      }
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const validateForm = () => {
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      return "First Name and Last Name are required.";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email || !emailRegex.test(formData.email.trim())) {
+      return "Please enter a valid email address.";
+    }
+
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(formData.phone.trim())) {
+      return "Please enter a valid 10-digit mobile number.";
+    }
+
+    return null;
+  };
+
+  const handleInitiateSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setError("");
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    // If an existing registered guest was picked without changes, go straight to Step 2
+    if (isExistingGuest && verifiedGuestId) {
+      setStep(2);
+      return;
+    }
+
+    try {
+      await sendOtp(formData.email.trim(), token);
+      setShowOtpModal(true);
+      setResendTimer(30);
+      setOtpError("");
+      setOtp("");
+    } catch (err) {
+      setError(err.message || "Failed to send OTP. Please check your email address and try again.");
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendTimer > 0 || isResending) return;
+    setIsResending(true);
+    setOtpError("");
+    try {
+      await sendOtp(formData.email.trim(), token);
+      setResendTimer(30);
+      setOtp("");
+      toast.success("New OTP sent!");
+    } catch (err) {
+      setOtpError(err.message || "Failed to resend OTP. Please try again.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setOtpError("");
+
+    if (!otp || otp.trim().length !== 6) {
+      setOtpError("Please enter a valid 6-digit OTP.");
+      return;
+    }
+
+    const cleanedGuestData = {
+      ...formData,
+      email: formData.email.trim(),
+      phone: formData.phone.trim(),
+      dateOfBirth: formData.dateOfBirth ? formData.dateOfBirth : null,
+      createdBy: currentUserId || null,
+    };
+
+    const payload = {
+      email: formData.email.trim(),
+      otp: otp.trim(),
+      guestData: cleanedGuestData,
+    };
+
+    try {
+      const savedGuest = await verifyOtpAndSave(payload, token);
+      const guestId = savedGuest.id || savedGuest._id;
+      setVerifiedGuestId(guestId);
+      setIsExistingGuest(true);
+      setShowOtpModal(false);
+      setOtp("");
+      toast.success("Guest verified and registered!");
+      setStep(2);
+    } catch (err) {
+      setOtpError(err.message || "Failed to create/update guest. Invalid OTP or verification failed.");
+    }
+  };
+
+  // Calculation logic for Steps 2 to 4
   const nights = useMemo(() => {
     const diff =
       (new Date(stayDates.checkOutDate) - new Date(stayDates.checkInDate)) /
@@ -173,7 +331,6 @@ export default function BookingForm({
 
   const subtotal = roomCharges + extraServicesTotal;
 
-  // Toggle Coupon Selection Card
   const handleToggleCoupon = (cpn) => {
     if (selectedCoupon?.id === cpn.id || selectedCoupon?.code === cpn.code) {
       setSelectedCoupon(null);
@@ -231,16 +388,16 @@ export default function BookingForm({
 
     try {
       const payload = {
-        guestId: guest.guestId || null,
-        guest: guest.guestId
+        guestId: verifiedGuestId || null,
+        guest: verifiedGuestId
           ? null
           : {
-              firstName: guest.firstName.trim(),
-              lastName: guest.lastName.trim(),
-              email: guest.email.trim(),
-              phone: guest.phone.trim(),
-              idProofType: guest.idProofType,
-              idProofNumber: guest.idProofNumber.trim(),
+              firstName: formData.firstName.trim(),
+              lastName: formData.lastName.trim(),
+              email: formData.email.trim(),
+              phone: formData.phone.trim(),
+              idProofType: formData.idProofType,
+              idProofNumber: formData.idProofNumber.trim(),
             },
         roomId: selectedRoom.id,
         checkInDate: stayDates.checkInDate,
@@ -254,8 +411,6 @@ export default function BookingForm({
       };
 
       const bookingRes = await addBooking(payload);
-
-      // Path A: Desk Direct Settlement (Cash or Physical EDC Machine)
       if (!isOnline) {
         let checkedInRes = bookingRes;
         try {
@@ -274,7 +429,6 @@ export default function BookingForm({
         return;
       }
 
-      // Path B: Online Razorpay Flow (UPI / QR / Web Cards)
       const isScriptLoaded = await loadRazorpayScript();
       if (!isScriptLoaded) {
         toast.error("Failed to load Razorpay SDK. Please check your internet connection.");
@@ -283,7 +437,7 @@ export default function BookingForm({
       }
 
       const order = await createRazorpayOrderApi(bookingRes.id, paymentType, token);
-      
+
       const options = {
         key: order.keyId,
         amount: order.amount * 100,
@@ -292,9 +446,9 @@ export default function BookingForm({
         description: `Desk Settlement - Booking #${bookingRes.id}`,
         order_id: order.orderId,
         prefill: {
-          name: `${guest.firstName} ${guest.lastName}`,
-          email: guest.email,
-          contact: guest.phone,
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          contact: formData.phone,
         },
         theme: {
           color: "#D96B43",
@@ -355,7 +509,7 @@ export default function BookingForm({
           <h2 className="text-xl font-bold text-slate-800">Desk Walk-In Booking & Check-In</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Step {step} of 5 —{" "}
-            {step === 1 && "Guest Registration & Search"}
+            {step === 1 && "Guest Registration & Verification"}
             {step === 2 && "Stay Dates & Available Room"}
             {step === 3 && "Extra Services & Available Promotions"}
             {step === 4 && "Live Billing Breakdown & Payment"}
@@ -373,110 +527,132 @@ export default function BookingForm({
       </div>
 
       <div className="flex-1 overflow-y-auto pr-1">
-        {/* STEP 1: Guest Identification (Clean, Green Line Removed) */}
+        {/* STEP 1: Exact GuestForm Implementation */}
         {step === 1 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <FiUser className="text-[#D96B43]" /> 1. Guest Identification
-            </h3>
-
-            <div className="relative">
-              <label className="text-xs font-medium text-slate-600 block mb-1">
-                Search Registered Guests (by Name, Email, or Phone)
-              </label>
-              <div className="relative">
-                <FiSearch className="absolute left-3 top-3 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Type to search existing customers..."
-                  value={guestSearchQuery}
-                  onChange={(e) => {
-                    setGuestSearchQuery(e.target.value);
-                    setShowGuestDropdown(true);
-                  }}
-                  onFocus={() => setShowGuestDropdown(true)}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
-                />
+          <form onSubmit={handleInitiateSubmit} className="space-y-4 text-sm text-slate-700">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-medium flex items-center gap-2">
+                <svg className="w-4 h-4 shrink-0 fill-current text-red-500" viewBox="0 0 20 20">
+                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-9a1 1 0 012 0v3a1 1 0 11-2 0V9zm1-4a1 1 0 100 2 1 1 0 000-2z" />
+                </svg>
+                <span>{error}</span>
               </div>
+            )}
 
-              {showGuestDropdown && filteredGuests.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-56 overflow-y-auto">
-                  {filteredGuests.map((g) => {
-                    const gId = g.id || g._id;
-                    const fName = g.firstName || g.first_name || "";
-                    const lName = g.lastName || g.last_name || "";
-                    return (
-                      <div
-                        key={gId}
-                        onClick={() => handleSelectExistingGuest(g)}
-                        className="p-3 hover:bg-orange-50/60 cursor-pointer border-b border-slate-100 last:border-b-0 transition"
-                      >
-                        <p className="text-sm font-semibold text-slate-800">
-                          {fName} {lName} <span className="text-xs font-normal text-slate-400">(#{gId})</span>
-                        </p>
-                        <p className="text-xs text-slate-500">{g.email} • {g.phone}</p>
-                      </div>
-                    );
-                  })}
+            {/* Email Search Field */}
+            <div className="relative" ref={dropdownRef}>
+              <label className="block font-medium mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                name="email"
+                required
+                placeholder="Type email to search or register..."
+                value={formData.email}
+                onChange={handleEmailChange}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+              />
+
+              {showDropdown && searchResults.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {searchResults.map((guestItem) => (
+                    <div
+                      key={guestItem.id || guestItem._id}
+                      onClick={() => handleSelectExistingGuest(guestItem)}
+                      className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                    >
+                      <p className="text-sm font-semibold text-slate-800">
+                        {guestItem.firstName} {guestItem.lastName}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {guestItem.email} | {guestItem.phone}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            {isExistingGuest && (
+              <div className="p-2.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs rounded-lg flex items-center gap-2">
+                <svg className="w-4 h-4 shrink-0 fill-current text-blue-500" viewBox="0 0 20 20">
+                  <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 100-2v-3a1 1 0 00-1-1H9z" />
+                </svg>
+                <span>Existing guest details auto-filled. Modify details below if required.</span>
+              </div>
+            )}
+
+            {/* First and Last Name */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">
+                <label className="block font-medium mb-1">
                   First Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
+                  name="firstName"
                   required
-                  value={guest.firstName}
-                  onChange={(e) => setGuest({ ...guest, firstName: e.target.value, guestId: null })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                 />
               </div>
+
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">
+                <label className="block font-medium mb-1">
                   Last Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
+                  name="lastName"
                   required
-                  value={guest.lastName}
-                  onChange={(e) => setGuest({ ...guest, lastName: e.target.value, guestId: null })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                 />
               </div>
+            </div>
+
+            {/* Phone and Date of Birth */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">
-                  Email Address <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={guest.email}
-                  onChange={(e) => setGuest({ ...guest, email: e.target.value, guestId: null })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">
+                <label className="block font-medium mb-1">
                   Phone Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
+                  name="phone"
                   required
-                  value={guest.phone}
-                  onChange={(e) => setGuest({ ...guest, phone: e.target.value, guestId: null })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                  maxLength={10}
+                  placeholder="10 digit mobile number"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                 />
               </div>
+
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">ID Proof Type</label>
+                <label className="block font-medium mb-1">Date of Birth</label>
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  value={formData.dateOfBirth}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+                />
+              </div>
+            </div>
+
+            {/* ID Proof Type & Number */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-medium mb-1">ID Proof Type</label>
                 <select
-                  value={guest.idProofType}
-                  onChange={(e) => setGuest({ ...guest, idProofType: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                  name="idProofType"
+                  value={formData.idProofType}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                 >
                   <option value="AADHAR_CARD">Aadhaar Card</option>
                   <option value="PASSPORT">Passport</option>
@@ -484,17 +660,67 @@ export default function BookingForm({
                   <option value="VOTER_ID">Voter ID</option>
                 </select>
               </div>
+
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">ID Proof Number</label>
+                <label className="block font-medium mb-1">ID Proof Number</label>
                 <input
                   type="text"
-                  value={guest.idProofNumber}
-                  onChange={(e) => setGuest({ ...guest, idProofNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                  name="idProofNumber"
+                  value={formData.idProofNumber}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                 />
               </div>
             </div>
-          </div>
+
+            {/* Address */}
+            <div>
+              <label className="block font-medium mb-1">Address</label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+              />
+            </div>
+
+            {/* City, State, Postal Code */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block font-medium mb-1">City</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1">State</label>
+                <input
+                  type="text"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1">Postal Code</label>
+                <input
+                  type="text"
+                  name="postalCode"
+                  value={formData.postalCode}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+                />
+              </div>
+            </div>
+          </form>
         )}
 
         {/* STEP 2: Dates & Room Inventory */}
@@ -541,7 +767,7 @@ export default function BookingForm({
                   >
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm">Room {room.roomNumber}</h4>
-                      <p className="text-xs text-slate-500">{room.roomType} • Capacity: {room.capacity}</p>
+                      <p className="text-xs text-slate-500">{room.roomType} | Capacity: {room.capacity}</p>
                     </div>
                     <span className="font-extrabold text-[#D96B43] text-sm">
                       ₹{room.pricePerNight}<span className="text-[10px] text-slate-400 font-normal">/nt</span>
@@ -553,7 +779,7 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* STEP 3: Extra Services & Selectable Promotion Cards */}
+        {/* STEP 3: Extra Services & Promotions */}
         {step === 3 && (
           <div className="space-y-6">
             <div>
@@ -643,7 +869,7 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* STEP 4: Live Billing & Payment Policy */}
+        {/* STEP 4: Billing Breakdown */}
         {step === 4 && (
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -715,7 +941,6 @@ export default function BookingForm({
               </div>
             </div>
 
-            {/* Input specifically restricted to CARD_MACHINE only */}
             {paymentMethod === "CARD_MACHINE" && (
               <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2">
                 <label className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
@@ -741,216 +966,200 @@ export default function BookingForm({
           </div>
         )}
 
-       {/* STEP 5: Professional Key Slip & Tax Invoice */}
-{step === 5 && completedBooking && (
-  <div className="space-y-6">
-    {/* Screen-only Success Notification */}
-    <div className="text-center py-2 print:hidden">
-      <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl mb-2">
-        <FiCheckCircle />
-      </div>
-      <h3 className="text-lg font-bold text-slate-800">Check-In Successful!</h3>
-      <p className="text-xs text-slate-500">
-        Room <strong>{selectedRoom?.roomNumber}</strong> is now marked as <strong>OCCUPIED</strong>.
-      </p>
-    </div>
-
-    {/* Printable Hotel Receipt Container */}
-    <div
-      id="printable-receipt"
-      className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 text-slate-800 font-sans shadow-xs max-w-2xl mx-auto"
-    >
-      {/* 1. Hotel Header */}
-      <div className="flex justify-between items-start border-b border-slate-200 pb-5">
-        <div>
-          <h2 className="text-2xl font-black tracking-tight text-slate-900">
-            HOTEL
-          </h2>
-      
-        </div>
-        <div className="text-right">
-          <span className="inline-block px-2.5 py-1 bg-slate-900 text-white rounded text-[11px] font-bold tracking-widest uppercase">
-            CHECK-IN RECEIPT
-          </span>
-          <p className="text-xs font-mono font-semibold text-slate-700 mt-2">
-            Invoice: INV-{completedBooking.id}-{new Date().getFullYear()}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Date: {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-          </p>
-        </div>
-      </div>
-
-      {/* 2. Guest & Reservation Information */}
-      <div className="grid grid-cols-2 gap-6 py-4 border-b border-slate-100 text-xs">
-        <div>
-          <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
-            Guest Details
-          </p>
-          <p className="font-bold text-slate-900 text-sm">
-            {guest.firstName} {guest.lastName}
-          </p>
-          <p className="text-slate-600 mt-0.5">Phone: {guest.phone}</p>
-          <p className="text-slate-600">Email: {guest.email}</p>
-          {guest.idProofNumber && (
-            <p className="text-slate-500 mt-1">
-              ID: {guest.idProofType.replace("_", " ")} ({guest.idProofNumber})
-            </p>
-          )}
-        </div>
-
-        <div>
-          <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
-            Reservation Particulars
-          </p>
-          <p className="font-bold text-slate-900 text-sm">
-            Room {selectedRoom?.roomNumber}{" "}
-            <span className="text-xs font-medium text-slate-500">
-              ({selectedRoom?.roomType})
-            </span>
-          </p>
-          <p className="text-slate-600 mt-0.5">
-            Check-In: <strong>{stayDates.checkInDate}</strong>
-          </p>
-          <p className="text-slate-600">
-            Check-Out: <strong>{stayDates.checkOutDate}</strong> ({nights} {nights === 1 ? "Night" : "Nights"})
-          </p>
-          <p className="text-slate-500 mt-1 font-mono">
-            Booking ID: #{completedBooking.id}
-          </p>
-        </div>
-      </div>
-
-      {/* 3. Itemized Charges Table */}
-      <div className="py-4">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-slate-200 text-slate-400 font-semibold uppercase text-[10px] text-left">
-              <th className="pb-2">Description</th>
-              <th className="pb-2 text-center">Qty / Duration</th>
-              <th className="pb-2 text-right">Rate</th>
-              <th className="pb-2 text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700">
-            <tr>
-              <td className="py-2.5 font-medium text-slate-800">
-                Room Stay ({selectedRoom?.roomType})
-              </td>
-              <td className="py-2.5 text-center">{nights} nights</td>
-              <td className="py-2.5 text-right font-mono">₹{Number(selectedRoom?.pricePerNight).toLocaleString()}</td>
-              <td className="py-2.5 text-right font-mono font-medium">₹{roomCharges.toLocaleString()}</td>
-            </tr>
-
-            {selectedServices.map((srv) => (
-              <tr key={srv.id}>
-                <td className="py-2.5">
-                  {srv.name}{" "}
-                  <span className="text-[10px] text-slate-400">({srv.taxRate}% GST)</span>
-                </td>
-                <td className="py-2.5 text-center">
-                  {srv.priceType === "PER_NIGHT" ? `${nights} nights` : "1 time"}
-                </td>
-                <td className="py-2.5 text-right font-mono">₹{Number(srv.price).toLocaleString()}</td>
-                <td className="py-2.5 text-right font-mono font-medium">
-                  ₹{(srv.priceType === "PER_NIGHT" ? srv.price * nights : srv.price).toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* 4. Financial Calculations & Settlement Details */}
-      <div className="grid grid-cols-2 gap-6 pt-3 border-t border-slate-200 text-xs">
-        {/* Payment Metadata */}
-        <div className="space-y-1.5 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-          <p className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">
-            Payment Record
-          </p>
-          <p className="text-slate-600">
-            Mode: <strong className="text-slate-800">{paymentMethod.replace("_", " ")}</strong>
-          </p>
-          <p className="text-slate-600">
-            Policy: <strong className="text-slate-800">{paymentType.replace("_", " ")}</strong>
-          </p>
-
-          {/* Machine Auth Code (Only for Card Swipe) */}
-          {paymentMethod === "CARD_MACHINE" && cardMachineAuthCode && (
-            <p className="text-blue-700 font-mono font-medium pt-1">
-              Slip Auth/RRN: <strong>{cardMachineAuthCode}</strong>
-            </p>
-          )}
-
-          {/* Razorpay Online Indicator */}
-          {paymentMethod === "RAZORPAY_ONLINE" && (
-            <p className="text-emerald-700 font-mono text-[11px] pt-1">
-              Gateway Status: Verified Online
-            </p>
-          )}
-        </div>
-
-        {/* Totals Summary */}
-        <div className="space-y-1.5 text-right">
-          <div className="flex justify-between text-slate-600">
-            <span>Subtotal:</span>
-            <span className="font-mono">₹{subtotal.toLocaleString()}</span>
-          </div>
-
-          {couponDiscount > 0 && (
-            <div className="flex justify-between text-emerald-600">
-              <span>Coupon Discount ({selectedCoupon?.code}):</span>
-              <span className="font-mono">-₹{couponDiscount.toLocaleString()}</span>
+        {/* STEP 5: Receipt */}
+        {step === 5 && completedBooking && (
+          <div className="space-y-6">
+            <div className="text-center py-2 print:hidden">
+              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl mb-2">
+                <FiCheckCircle />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">Check-In Successful!</h3>
+              <p className="text-xs text-slate-500">
+                Room <strong>{selectedRoom?.roomNumber}</strong> is now marked as <strong>OCCUPIED</strong>.
+              </p>
             </div>
-          )}
 
-          <div className="flex justify-between text-slate-600">
-            <span>Taxable Amount:</span>
-            <span className="font-mono">₹{taxableAmount.toLocaleString()}</span>
+            <div
+              id="printable-receipt"
+              className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 text-slate-800 font-sans shadow-xs max-w-2xl mx-auto"
+            >
+              <div className="flex justify-between items-start border-b border-slate-200 pb-5">
+                <div>
+                  <h2 className="text-2xl font-black tracking-tight text-slate-900">HOTEL</h2>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block px-2.5 py-1 bg-slate-900 text-white rounded text-[11px] font-bold tracking-widest uppercase">
+                    CHECK-IN RECEIPT
+                  </span>
+                  <p className="text-xs font-mono font-semibold text-slate-700 mt-2">
+                    Invoice: INV-{completedBooking.id}-{new Date().getFullYear()}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Date: {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 py-4 border-b border-slate-100 text-xs">
+                <div>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
+                    Guest Details
+                  </p>
+                  <p className="font-bold text-slate-900 text-sm">
+                    {formData.firstName} {formData.lastName}
+                  </p>
+                  <p className="text-slate-600 mt-0.5">Phone: {formData.phone}</p>
+                  <p className="text-slate-600">Email: {formData.email}</p>
+                  {formData.idProofNumber && (
+                    <p className="text-slate-500 mt-1">
+                      ID: {formData.idProofType.replace("_", " ")} ({formData.idProofNumber})
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
+                    Reservation Particulars
+                  </p>
+                  <p className="font-bold text-slate-900 text-sm">
+                    Room {selectedRoom?.roomNumber}{" "}
+                    <span className="text-xs font-medium text-slate-500">
+                      ({selectedRoom?.roomType})
+                    </span>
+                  </p>
+                  <p className="text-slate-600 mt-0.5">
+                    Check-In: <strong>{stayDates.checkInDate}</strong>
+                  </p>
+                  <p className="text-slate-600">
+                    Check-Out: <strong>{stayDates.checkOutDate}</strong> ({nights} {nights === 1 ? "Night" : "Nights"})
+                  </p>
+                  <p className="text-slate-500 mt-1 font-mono">
+                    Booking ID: #{completedBooking.id}
+                  </p>
+                </div>
+              </div>
+
+              <div className="py-4">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-400 font-semibold uppercase text-[10px] text-left">
+                      <th className="pb-2">Description</th>
+                      <th className="pb-2 text-center">Qty / Duration</th>
+                      <th className="pb-2 text-right">Rate</th>
+                      <th className="pb-2 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tr>
+                      <td className="py-2.5 font-medium text-slate-800">
+                        Room Stay ({selectedRoom?.roomType})
+                      </td>
+                      <td className="py-2.5 text-center">{nights} nights</td>
+                      <td className="py-2.5 text-right font-mono">₹{Number(selectedRoom?.pricePerNight).toLocaleString()}</td>
+                      <td className="py-2.5 text-right font-mono font-medium">₹{roomCharges.toLocaleString()}</td>
+                    </tr>
+
+                    {selectedServices.map((srv) => (
+                      <tr key={srv.id}>
+                        <td className="py-2.5">
+                          {srv.name}{" "}
+                          <span className="text-[10px] text-slate-400">({srv.taxRate}% GST)</span>
+                        </td>
+                        <td className="py-2.5 text-center">
+                          {srv.priceType === "PER_NIGHT" ? `${nights} nights` : "1 time"}
+                        </td>
+                        <td className="py-2.5 text-right font-mono">₹{Number(srv.price).toLocaleString()}</td>
+                        <td className="py-2.5 text-right font-mono font-medium">
+                          ₹{(srv.priceType === "PER_NIGHT" ? srv.price * nights : srv.price).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 pt-3 border-t border-slate-200 text-xs">
+                <div className="space-y-1.5 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                  <p className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                    Payment Record
+                  </p>
+                  <p className="text-slate-600">
+                    Mode: <strong className="text-slate-800">{paymentMethod.replace("_", " ")}</strong>
+                  </p>
+                  <p className="text-slate-600">
+                    Policy: <strong className="text-slate-800">{paymentType.replace("_", " ")}</strong>
+                  </p>
+
+                  {paymentMethod === "CARD_MACHINE" && cardMachineAuthCode && (
+                    <p className="text-blue-700 font-mono font-medium pt-1">
+                      Slip Auth/RRN: <strong>{cardMachineAuthCode}</strong>
+                    </p>
+                  )}
+
+                  {paymentMethod === "RAZORPAY_ONLINE" && (
+                    <p className="text-emerald-700 font-mono text-[11px] pt-1">
+                      Gateway Status: Verified Online
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 text-right">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Subtotal:</span>
+                    <span className="font-mono">₹{subtotal.toLocaleString()}</span>
+                  </div>
+
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-600">
+                      <span>Coupon Discount ({selectedCoupon?.code}):</span>
+                      <span className="font-mono">-₹{couponDiscount.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-slate-600">
+                    <span>Taxable Amount:</span>
+                    <span className="font-mono">₹{taxableAmount.toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-600">
+                    <span>Taxes & GST:</span>
+                    <span className="font-mono">₹{taxAmount.toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex justify-between border-t border-slate-200 pt-1 text-sm font-black text-slate-900">
+                    <span>Grand Total:</span>
+                    <span className="font-mono">₹{totalAmount.toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex justify-between font-bold text-emerald-700 pt-1">
+                    <span>Amount Paid:</span>
+                    <span className="font-mono">₹{amountToPayNow.toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex justify-between font-bold text-amber-700">
+                    <span>Balance Due:</span>
+                    <span className="font-mono">₹{balanceDue.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-200 text-center space-y-1">
+                <p className="text-xs font-semibold text-slate-800">
+                  Thank you for choosing Athenura Grand Hotel! We wish you a delightful stay.
+                </p>
+              </div>
+            </div>
+
+            <div className="text-center print:hidden">
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold cursor-pointer transition shadow-sm"
+              >
+                <FiPrinter /> Print Guest Key Slip / Bill
+              </button>
+            </div>
           </div>
-
-          <div className="flex justify-between text-slate-600">
-            <span>Taxes & GST:</span>
-            <span className="font-mono">₹{taxAmount.toLocaleString()}</span>
-          </div>
-
-          <div className="flex justify-between border-t border-slate-200 pt-1 text-sm font-black text-slate-900">
-            <span>Grand Total:</span>
-            <span className="font-mono">₹{totalAmount.toLocaleString()}</span>
-          </div>
-
-          <div className="flex justify-between font-bold text-emerald-700 pt-1">
-            <span>Amount Paid:</span>
-            <span className="font-mono">₹{amountToPayNow.toLocaleString()}</span>
-          </div>
-
-          <div className="flex justify-between font-bold text-amber-700">
-            <span>Balance Due:</span>
-            <span className="font-mono">₹{balanceDue.toLocaleString()}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Hotel Policies & Thank You Note */}
-      <div className="mt-6 pt-4 border-t border-slate-200 text-center space-y-1">
-        <p className="text-xs font-semibold text-slate-800">
-          Thank you for choosing Athenura Grand Hotel! We wish you a delightful stay.
-        </p>
-      
-      </div>
-    </div>
-
-    {/* Screen-only Print Trigger Button */}
-    <div className="text-center print:hidden">
-      <button
-        onClick={() => window.print()}
-        className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold cursor-pointer transition shadow-sm"
-      >
-        <FiPrinter /> Print Guest Key Slip / Bill
-      </button>
-    </div>
-  </div>
-)}
+        )}
       </div>
 
       {/* Footer Navigation */}
@@ -972,13 +1181,24 @@ export default function BookingForm({
             type="button"
             disabled={
               step === 1
-                ? !guest.firstName || !guest.email || !guest.phone
+                ? !formData.firstName || !formData.email || !formData.phone || guestLoading
                 : step === 2 && !selectedRoom
             }
-            onClick={() => setStep(step + 1)}
+            onClick={() => {
+              if (step === 1) {
+                handleInitiateSubmit();
+              } else {
+                setStep(step + 1);
+              }
+            }}
             className="inline-flex items-center gap-1.5 px-5 py-2 bg-[#D96B43] hover:bg-[#c95a34] text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition cursor-pointer"
           >
-            Next Step <FiArrowRight />
+            {step === 1 && guestLoading
+              ? "Sending OTP..."
+              : step === 1 && !isExistingGuest
+              ? "Verify Guest (Send OTP)"
+              : "Next Step"}{" "}
+            <FiArrowRight />
           </button>
         )}
 
@@ -1011,6 +1231,98 @@ export default function BookingForm({
           </button>
         )}
       </div>
+
+      {/* Exact OTP Modal from GuestForm */}
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 border border-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-bold text-slate-800">Enter OTP Code</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOtpModal(false);
+                  setOtpError("");
+                  setOtp("");
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              OTP has been sent to <span className="font-semibold text-slate-800">{formData.email}</span>. Please verify to complete {isExistingGuest ? "update" : "registration"}.
+            </p>
+
+            {otpError && (
+              <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg font-medium flex items-center gap-2">
+                <svg className="w-4 h-4 shrink-0 fill-current text-red-500" viewBox="0 0 20 20">
+                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-9a1 1 0 012 0v3a1 1 0 11-2 0V9zm1-4a1 1 0 100 2 1 1 0 000-2z" />
+                </svg>
+                <span>{otpError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">6-Digit Verification Code</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  className="w-full text-center tracking-widest text-lg font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                <span className="text-slate-500">Didn't receive code or expired?</span>
+                <button
+                  type="button"
+                  disabled={resendTimer > 0 || isResending}
+                  onClick={handleResendOtp}
+                  className={`font-semibold text-xs px-2.5 py-1 rounded transition-colors ${
+                    resendTimer > 0 || isResending
+                      ? "text-slate-400 bg-slate-100 cursor-not-allowed"
+                      : "text-[#D96B43] bg-orange-50 hover:bg-orange-100 cursor-pointer active:scale-95"
+                  }`}
+                >
+                  {isResending
+                    ? "Sending..."
+                    : resendTimer > 0
+                    ? `Resend in ${resendTimer}s`
+                    : "Resend OTP"}
+                </button>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowOtpModal(false);
+                    setOtpError("");
+                    setOtp("");
+                  }}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 text-xs font-medium hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={guestLoading}
+                  className="px-4 py-2 bg-[#D96B43] text-white text-xs font-semibold rounded-lg hover:bg-[#c55e39] disabled:opacity-50 cursor-pointer"
+                >
+                  {guestLoading ? "Verifying..." : "Verify & Save"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
