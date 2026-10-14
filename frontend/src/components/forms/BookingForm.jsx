@@ -17,10 +17,11 @@ import useGuestStore from "../../app/useGuestStore";
 import useRoomStore from "../../app/useRoomStore";
 import useAuthStore from "../../app/useAuthStore";
 import {
-  fetchCouponsApi,
   createRazorpayOrderApi,
   verifyRazorpayPaymentApi,
 } from "../../apis/api";
+
+import  useCuponesStore from '../../app/useCuponesStore'
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -56,6 +57,8 @@ export default function BookingForm({
   const extraServicesCatalog = useBookingStore((state) => state.extraServices) || [];
   const loadExtraServices = useBookingStore((state) => state.loadExtraServices);
   const getRoomsList = useRoomStore((state) => state.getRoomsList);
+  const  getAllCuponse = useCuponesStore((state) => state.getAllCuponse)
+
 
   // Exact guest store methods from GuestForm
   const {
@@ -119,7 +122,7 @@ export default function BookingForm({
         const [roomsData, _, couponsData] = await Promise.all([
           getRoomsList(),
           loadExtraServices ? loadExtraServices() : Promise.resolve([]),
-          fetchCouponsApi ? fetchCouponsApi().catch(() => []) : Promise.resolve([]),
+          getAllCuponse ? getAllCuponse().catch(() => []) : Promise.resolve([]),
         ]);
         setRooms(Array.isArray(roomsData) ? roomsData : []);
         setAvailableCoupons(Array.isArray(couponsData) ? couponsData : []);
