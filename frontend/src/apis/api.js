@@ -1,6 +1,5 @@
 import { apiClient } from "./apiClient";
 
-
 const getAuthHeaders = (token) => {
   if (!token) return {};
 
@@ -165,7 +164,8 @@ export const verifyGuestOtpAndSave = async (payload, token = null) => {
 /* =================================================== */
 
 export const createBooking = async (payload, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post(`/booking/create`, {
       headers: getAuthHeaders(authToken),
@@ -175,7 +175,8 @@ export const createBooking = async (payload, token = null) => {
 };
 
 export const patchBooking = async (id, payload, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .patch(`/booking/update/${id}`, {
       headers: getAuthHeaders(authToken),
@@ -187,7 +188,8 @@ export const patchBooking = async (id, payload, token = null) => {
 export const updateBookingApi = patchBooking;
 
 export const fetchBooking = async (id, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .get(`/booking/${id}`, {
       headers: getAuthHeaders(authToken),
@@ -196,7 +198,8 @@ export const fetchBooking = async (id, token = null) => {
 };
 
 export const fetchAllBooking = async (token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .get(`/booking`, {
       headers: getAuthHeaders(authToken),
@@ -205,7 +208,8 @@ export const fetchAllBooking = async (token = null) => {
 };
 
 export const cancelBooking = async (id, payload = {}, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .patch(`/booking/cancel/${id}`, {
       headers: getAuthHeaders(authToken),
@@ -219,7 +223,8 @@ export const cancelBooking = async (id, payload = {}, token = null) => {
 /* =================================================== */
 
 export const checkInGuestApi = async (bookingId, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .patch(`booking/${bookingId}/check-in`, {
       headers: getAuthHeaders(authToken),
@@ -228,7 +233,8 @@ export const checkInGuestApi = async (bookingId, token = null) => {
 };
 
 export const checkOutGuestApi = async (bookingId, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .patch(`booking/${bookingId}/check-out`, {
       headers: getAuthHeaders(authToken),
@@ -236,8 +242,13 @@ export const checkOutGuestApi = async (bookingId, token = null) => {
     .json();
 };
 
-export const settleBalancePaymentApi = async (bookingId, payload, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+export const settleBalancePaymentApi = async (
+  bookingId,
+  payload,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post(`booking/${bookingId}/settle-balance`, {
       headers: getAuthHeaders(authToken),
@@ -248,15 +259,17 @@ export const settleBalancePaymentApi = async (bookingId, payload, token = null) 
 
 export const downloadCheckInReceiptApi = async (bookingId) => {
   const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken");
+    localStorage.getItem("token") || localStorage.getItem("authToken");
 
-  const response = await fetch(`http://localhost:8080/booking/${bookingId}/receipt-pdf`, {
-    method: "GET",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  const response = await fetch(
+    `http://localhost:8080/booking/${bookingId}/receipt-pdf`,
+    {
+      method: "GET",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     },
-  });
+  );
 
   if (!response.ok) {
     throw new Error("Failed to download Check-In receipt PDF");
@@ -282,7 +295,8 @@ export const fetchActiveExtraServices = async () => {
 };
 
 export const createExtraServiceApi = async (payload, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post("api/extra-services", {
       headers: getAuthHeaders(authToken),
@@ -291,8 +305,13 @@ export const createExtraServiceApi = async (payload, token = null) => {
     .json();
 };
 
-export const addExtraServicesToBookingApi = async (bookingId, extraServiceIds, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+export const addExtraServicesToBookingApi = async (
+  bookingId,
+  extraServiceIds,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post(`booking/${bookingId}/add-services`, {
       headers: getAuthHeaders(authToken),
@@ -301,8 +320,13 @@ export const addExtraServicesToBookingApi = async (bookingId, extraServiceIds, t
     .json();
 };
 
-export const addCustomServiceToBookingApi = async (bookingId, payload, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+export const addCustomServiceToBookingApi = async (
+  bookingId,
+  payload,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post(`booking/${bookingId}/add-custom-service`, {
       headers: getAuthHeaders(authToken),
@@ -311,8 +335,13 @@ export const addCustomServiceToBookingApi = async (bookingId, payload, token = n
     .json();
 };
 
-export const removeExtraServiceFromBookingApi = async (bookingId, serviceId, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+export const removeExtraServiceFromBookingApi = async (
+  bookingId,
+  serviceId,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .delete(`booking/${bookingId}/remove-service/${serviceId}`, {
       headers: getAuthHeaders(authToken),
@@ -324,8 +353,31 @@ export const removeExtraServiceFromBookingApi = async (bookingId, serviceId, tok
 /* COUPONS */
 /* =================================================== */
 
-export const fetchCouponsApi = async () => {
-  return await apiClient.get("coupon").json();
+export const createCupone = async (payload, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient.post("/api/coupons/create", {
+    headers: getAuthHeaders(authToken),
+    json: payload,
+  });
+};
+
+export const fetchAllCupons = async (token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .get("/api/coupons", {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
+};
+
+export const deleteCupon = async (cuponId, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient.delete(`/api/coupons/${cuponId}`, {
+    headers: getAuthHeaders(authToken),
+  });
 };
 
 /* =================================================== */
@@ -333,7 +385,8 @@ export const fetchCouponsApi = async () => {
 /* =================================================== */
 
 export const processPaymentApi = async (payload, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post("api/payments/pay", {
       headers: getAuthHeaders(authToken),
@@ -342,8 +395,13 @@ export const processPaymentApi = async (payload, token = null) => {
     .json();
 };
 
-export const createRazorpayOrderApi = async (bookingId, paymentType, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+export const createRazorpayOrderApi = async (
+  bookingId,
+  paymentType,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post("api/payments/razorpay/order", {
       headers: getAuthHeaders(authToken),
@@ -353,7 +411,8 @@ export const createRazorpayOrderApi = async (bookingId, paymentType, token = nul
 };
 
 export const verifyRazorpayPaymentApi = async (payload, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post("api/payments/razorpay/verify", {
       headers: getAuthHeaders(authToken),
@@ -363,7 +422,8 @@ export const verifyRazorpayPaymentApi = async (payload, token = null) => {
 };
 
 export const fetchAllPaymentsApi = async (token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .get("api/payments", {
       headers: getAuthHeaders(authToken),
@@ -372,7 +432,8 @@ export const fetchAllPaymentsApi = async (token = null) => {
 };
 
 export const fetchPaymentsByBookingApi = async (bookingId, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .get(`api/payments/booking/${bookingId}`, {
       headers: getAuthHeaders(authToken),
