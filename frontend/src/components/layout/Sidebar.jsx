@@ -5,14 +5,27 @@ import {
   HiOutlineCreditCard,
   HiOutlineTicket,
   HiOutlineChartBar,
+  HiOutlineSpeakerphone,
   HiOutlineCog,
   HiOutlineUserGroup,
-  HiOutlineLogout,
-} from "react-icons/hi";
-import { MdDashboard } from "react-icons/md";
+  HiOutlineLogout
+} from 'react-icons/hi';
+import { MdDashboard } from 'react-icons/md';
 import { LuHotel } from "react-icons/lu";
-import { NavLink, useNavigate } from "react-router-dom";
-import useAuthStore from "../../app/useAuthStore";
+
+const navItems = [
+  { label: 'Dashboard', path: '/admin/dashboard', icon: MdDashboard },
+  { label: 'Rooms', path: '/admin/rooms', icon: LuHotel},
+  { label: 'Bookings', path: '/admin/bookings', icon: HiOutlineCalendar },
+  { label: 'Customers', path: '/admin/customers', icon: HiOutlineUsers },
+  { label: 'Payments', path: '/admin/payments', icon: HiOutlineCreditCard },
+  { label: 'Coupons', path: '/admin/coupons', icon: HiOutlineTicket },
+  { label: 'Campaigns', path: '/admin/campaigns', icon: HiOutlineSpeakerphone },
+  { label: 'Reports', path: '/admin/reports', icon: HiOutlineChartBar },
+  { label: 'Settings', path: '/admin/settings', icon: HiOutlineCog },
+  { label: 'Receptionists', path: '/admin/receptionists', icon: HiOutlineUserGroup },
+  { label: 'Home', path: '/', icon: HiOutlineHome },
+];
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
@@ -27,6 +40,7 @@ export default function Sidebar() {
     { label: "Customers", path: `/admin/customers`, icon: HiOutlineUsers },
     { label: "Payments", path: `/admin/payments`, icon: HiOutlineCreditCard },
     { label: "Coupons", path: `/admin/coupons`, icon: HiOutlineTicket },
+    { label: "Campaigns", path: `/admin/campaigns`, icon: HiOutlineSpeakerphone },
     { label: "Reports", path: `/admin/reports`, icon: HiOutlineChartBar },
     { label: "Settings", path: `/admin/settings`, icon: HiOutlineCog },
     {

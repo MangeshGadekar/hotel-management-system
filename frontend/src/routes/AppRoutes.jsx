@@ -12,6 +12,7 @@ const Receptionists = lazy(() => import("../pages/admin/Receptionists"));
 const Bookings = lazy(() => import("../pages/admin/Bookings"));
 const Payments = lazy(() => import("../pages/admin/Payments"));
 const Coupons = lazy(() => import("../pages/admin/Coupons"));
+const Campaigns = lazy(() => import("../pages/admin/Campaigns"));
 const Reports = lazy(() => import("../pages/admin/Reports"));
 const Settings = lazy(() => import("../pages/admin/Settings"));
 
@@ -69,6 +70,7 @@ export default function AppRoutes() {
           <Route path="customers" element={<Customers />} />
           <Route path="payments" element={<Payments />} />
           <Route path="coupons" element={<Coupons />} />
+          <Route path="campaigns" element={<Campaigns />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
         </Route>

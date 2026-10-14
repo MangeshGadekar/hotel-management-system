@@ -597,3 +597,23 @@ export const adminDashboard = async (token) => {
     })
     .json();
 };
+
+/*====================================================*/
+/* CAMPAIGNS */
+/*====================================================*/
+
+export const fetchAllCampaigns =async()=> {
+  return await apiClient.get(`/admin/campaigns`).json();
+};
+export const createCampaign =async(payload)=> {
+  return await apiClient.post(`/admin/campaigns`,{
+    json: payload
+  }).json();
+};
+export const sendCampaign = async (id) => {
+  return await apiClient.post(`/admin/campaigns/${id}/send`).json();
+};
+
+export const fetchCampaignAudience = async (id) => {
+  return await apiClient.get(`/admin/campaigns/${id}/audience`).json();
+};
