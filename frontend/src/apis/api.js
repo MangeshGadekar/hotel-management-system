@@ -72,7 +72,7 @@ export const removeReceptionist = async (id, token) => {
     .delete(`/admin/receptionist/delete/${id}`, {
       headers: getAuthHeaders(token),
     })
-    .json();
+    .text();
 };
 
 /* =================================================== */
