@@ -6,7 +6,6 @@ import com.athenura.hotel_management_system.reception.dto.ReceptionistRequest;
 import com.athenura.hotel_management_system.reception.dto.ReceptionistResponse;
 import org.springframework.stereotype.Component;
 
-
 @Component
 public class ReceptionistMapper {
     public Users toEntity(ReceptionistRequest request)
@@ -14,7 +13,6 @@ public class ReceptionistMapper {
         return Users.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .username(request.getUsername())
                 .email(request.getEmail())
                 .password(request.getPassword())
                 .role(Role.RECEPTIONIST)
@@ -27,7 +25,6 @@ public class ReceptionistMapper {
                 .id(user.getId())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
-                .username(user.getUsername())
                 .email(user.getEmail())
                 .role(user.getRole())
                 .build();
