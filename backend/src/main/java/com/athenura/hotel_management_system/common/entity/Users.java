@@ -39,6 +39,9 @@ public class Users implements UserDetails {
 
     private String secretKey;
 
+    private String resetPasswordToken;
+    private java.time.LocalDateTime resetPasswordExpires;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

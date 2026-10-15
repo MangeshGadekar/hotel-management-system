@@ -1,8 +1,10 @@
 package com.athenura.hotel_management_system.common.services;
 
+import com.athenura.hotel_management_system.common.dto.ForgotPasswordRequest;
 import com.athenura.hotel_management_system.common.dto.LoginRequestDto;
 import com.athenura.hotel_management_system.common.dto.LoginResponse;
 import com.athenura.hotel_management_system.common.dto.RefreshTokenRequest;
+import com.athenura.hotel_management_system.common.dto.ResetPasswordRequest;
 import com.athenura.hotel_management_system.common.dto.UserRequestDto;
 import com.athenura.hotel_management_system.common.dto.UserResponseDto;
 import com.athenura.hotel_management_system.common.entity.RefreshToken;
@@ -10,12 +12,16 @@ import com.athenura.hotel_management_system.common.entity.Users;
 import com.athenura.hotel_management_system.common.enums.Role;
 import com.athenura.hotel_management_system.common.repository.UserRepo;
 import com.athenura.hotel_management_system.jwt.JwtService;
+import com.athenura.hotel_management_system.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +32,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final EmailService emailService;
 
     @Value("${app.security.admin-secret-key}")
     private String configuredAdminSecretKey;
@@ -105,6 +112,33 @@ public class AuthService {
 
     public void logout(String refreshToken) {
         refreshTokenService.deleteByToken(refreshToken);
+    }
+
+    public void forgotPassword(ForgotPasswordRequest request) {
+        Users user = userRepo.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + request.getEmail()));
+
+        String token = UUID.randomUUID().toString();
+        user.setResetPasswordToken(token);
+        user.setResetPasswordExpires(LocalDateTime.now().plusMinutes(15));
+        userRepo.save(user);
+
+        // Brevo email service call
+        emailService.sendPasswordResetEmail(user.getEmail(), token, user.getFirstName());
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        Users user = userRepo.findByResetPasswordToken(request.getToken())
+                .orElseThrow(() -> new RuntimeException("Invalid or expired password reset token!"));
+
+        if (user.getResetPasswordExpires().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Password reset token has expired!");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordExpires(null);
+        userRepo.save(user);
     }
 
     private UserResponseDto mapToUserResponseDto(Users user) {
