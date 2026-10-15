@@ -1,11 +1,6 @@
 package com.athenura.hotel_management_system.common.controller;
 
-import com.athenura.hotel_management_system.common.dto.ApiResponse;
-import com.athenura.hotel_management_system.common.dto.LoginRequestDto;
-import com.athenura.hotel_management_system.common.dto.LoginResponse;
-import com.athenura.hotel_management_system.common.dto.RefreshTokenRequest;
-import com.athenura.hotel_management_system.common.dto.UserRequestDto;
-import com.athenura.hotel_management_system.common.dto.UserResponseDto;
+import com.athenura.hotel_management_system.common.dto.*;
 import com.athenura.hotel_management_system.common.services.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,4 +46,18 @@ public class AuthController {
         authService.logout(request.getRefreshToken());
         return ResponseEntity.ok(new ApiResponse<>(true, "Logout successful!"));
     }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Password reset link sent to your email!"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Password reset successfully! You can now login."));
+    }
 }
+
