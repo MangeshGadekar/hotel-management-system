@@ -1,5 +1,5 @@
 services:
-  my-sql:
+  mysql:
     image: mysql:latest
     container_name: hotel-managment-system
     ports:
@@ -10,5 +10,16 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  redis:
+    image: redis:7-alpine
+    container_name: caffine_and_redis
+    ports:
+      - "6379:6379"
+      - "8001:8001"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
 volumes:
   mysql_data:
+  redis_data:

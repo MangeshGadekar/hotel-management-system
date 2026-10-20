@@ -85,11 +85,23 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException("Amount can not exceed the remaining balance: " + currentBalance);
         }
 
+
+        String paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod().toUpperCase() : "CASH";
+
+        if ("CARD_MACHINE".equals(paymentMethod)) {
+            if (request.getTransactionReference() == null || request.getTransactionReference().trim().isEmpty()) {
+                throw new IllegalArgumentException("Card Machine Auth/Slip Reference is required for card payments.");
+            }
+        }
+
+
+
         Payment payment = Payment.builder()
                 .booking(booking)
                 .amount(amountToPay)
                 .paymentType(request.getPaymentType() != null ? request.getPaymentType().toUpperCase() : "PARTIAL")
                 .paymentMethod(request.getPaymentMethod().toUpperCase())
+                .transactionReference("CARD_MACHINE".equals(paymentMethod) ? request.getTransactionReference().trim().toUpperCase() : null)
                 .paymentStatus("SUCCESS")
                 .receiptNumber("REC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .paymentDate(LocalDateTime.now())
@@ -97,16 +109,19 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        //calculate the balance
+        // calculate the balance
         BigDecimal totalPaidSoFar = alreadyPaid.add(amountToPay);
-        BigDecimal remainingBalance = totalAmount.subtract(totalPaidSoFar);
+        BigDecimal remainingBalance = totalAmount.subtract(totalPaidSoFar).max(BigDecimal.ZERO);
 
+        // SYNC BOOKING BALANCE DUE
+        booking.setBalanceDue(remainingBalance);
+        bookingRepository.save(booking);
 
-        //receipt check (if less than equal to zero then full receipt else advance receipt)
+        // receipt check (if less than equal to zero then full receipt else advance receipt)
         String receiptType;
-        if(remainingBalance.compareTo(BigDecimal.ZERO) <=0){
+        if(remainingBalance.compareTo(BigDecimal.ZERO) <= 0){
             receiptType = "FULL_PAYMENT_RECEIPT";
-        }else {
+        } else {
             receiptType = "ADVANCE_PAYMENT_RECEIPT";
         }
 
@@ -260,13 +275,18 @@ public class PaymentServiceImpl implements PaymentService {
                     .paymentDate(LocalDateTime.now())
                     .razorpayOrderId(request.getRazorpayOrderId())
                     .razorpayPaymentId(request.getRazorpayPaymentId())
+                    .transactionReference(request.getRazorpayOrderId())
                     .build();
 
             Payment savedPayment = paymentRepository.save(payment);
 
             // calculate remaining balance
             BigDecimal totalPaidSoFar = alreadyPaid.add(amountToPay);
-            BigDecimal remainingBalance = totalAmount.subtract(totalPaidSoFar);
+            BigDecimal remainingBalance = totalAmount.subtract(totalPaidSoFar).max(BigDecimal.ZERO);
+
+            // SYNC BOOKING BALANCE DUE
+            booking.setBalanceDue(remainingBalance);
+            bookingRepository.save(booking);
 
             // determine receipt type
             String receiptType;
@@ -275,7 +295,6 @@ public class PaymentServiceImpl implements PaymentService {
             } else {
                 receiptType = "ADVANCE_PAYMENT_RECEIPT";
             }
-
             // return receipt response
             return paymentMapper.toReceiptResponse(
                     savedPayment,
@@ -288,6 +307,38 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (Exception e) {
             throw new RuntimeException("Razorpay Verification Error: " + e.getMessage());
         }
+    }
+
+    @Override
+    public List<PaymentDTO.ReceiptResponse> getAllPayments() {
+        return paymentRepository.findAll()
+                .stream()
+                .map(payment -> {
+                    Booking booking = payment.getBooking();
+                    BigDecimal totalPaidSoFar = paymentRepository.sumPaidByBookingId(booking.getId());
+                    if (totalPaidSoFar == null) {
+                        totalPaidSoFar = BigDecimal.ZERO;
+                    }
+
+                    BigDecimal bookingTotal = booking.getTotalAmount() != null
+                            ? booking.getTotalAmount()
+                            : BigDecimal.ZERO;
+
+                    BigDecimal remainingBalance = bookingTotal.subtract(totalPaidSoFar).max(BigDecimal.ZERO);
+
+                    String receiptType = (remainingBalance.compareTo(BigDecimal.ZERO) <= 0)
+                            ? "FULL_PAYMENT_RECEIPT"
+                            : "ADVANCE_PAYMENT_RECEIPT";
+
+                    return paymentMapper.toReceiptResponse(
+                            payment,
+                            booking,
+                            totalPaidSoFar,
+                            remainingBalance,
+                            receiptType
+                    );
+                })
+                .toList();
     }
 
 

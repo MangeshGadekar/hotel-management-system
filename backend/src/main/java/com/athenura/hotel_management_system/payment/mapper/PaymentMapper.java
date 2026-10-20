@@ -29,6 +29,7 @@ public class PaymentMapper {
                 .remainingBalance(remainingBalance.compareTo(BigDecimal.ZERO)<0 ? BigDecimal.ZERO : remainingBalance)
                 .paymentType(payment.getPaymentType())
                 .paymentMethod(payment.getPaymentMethod())
+                .transactionReference(payment.getTransactionReference())
                 .receiptType(receiptType)
                 .transactionTime(payment.getPaymentDate())
                 .build();

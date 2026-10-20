@@ -83,7 +83,7 @@ const Navbar = () => {
             <NavLink to="/" className="flex items-center gap-2 flex-shrink-0">
               <MdOutlineLocalHotel className="text-amber-600 text-2xl md:text-3xl" />
               <span className="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap">
-                Hotel<span className="text-amber-600">Manager</span>
+                Hotel<span className="text-amber-600">Paradise</span>
               </span>
             </NavLink>
 

@@ -11,10 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/guest")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class GuestController {
 
     private final GuestService guestService;
@@ -30,8 +32,8 @@ public class GuestController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<GuestResponse> verifyOtpAndGetGuest(@Valid @RequestBody VerifyOtpRequest request) {
-        return ResponseEntity.ok(guestService.verifyOtpAndGetGuest(request));
+    public ResponseEntity<GuestResponse> verifyOtpAndSaveOrUpdateGuest(@Valid @RequestBody VerifyOtpRequest request) {
+        return ResponseEntity.ok(guestService.verifyOtpAndSaveOrUpdateGuest(request));
     }
 
     @PostMapping("/create")
@@ -45,11 +47,15 @@ public class GuestController {
         return ResponseEntity.ok(guestService.getGuestByEmail(email));
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<GuestResponse>> searchGuestsByEmail(@RequestParam String query) {
+        return ResponseEntity.ok(guestService.searchGuestsByEmail(query));
+    }
+
     @PatchMapping("/update/{id}")
     public ResponseEntity<GuestResponse> updateGuest(
             @PathVariable Long id,
             @RequestBody GuestRequest request) {
-
         return ResponseEntity.ok(guestService.updateGuest(id, request));
     }
 
@@ -64,7 +70,8 @@ public class GuestController {
     }
 
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> deleteGuest(@PathVariable Long id) {
-        return ResponseEntity.ok(guestService.deleteGuest(id));
+    public ResponseEntity<Map<String, String>> deleteGuest(@PathVariable Long id) {
+        String message = guestService.deleteGuest(id);
+        return ResponseEntity.ok(Map.of("message", message));
     }
 }

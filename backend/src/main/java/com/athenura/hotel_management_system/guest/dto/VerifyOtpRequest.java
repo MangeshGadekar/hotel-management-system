@@ -1,5 +1,6 @@
 package com.athenura.hotel_management_system.guest.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
@@ -17,4 +18,7 @@ public class VerifyOtpRequest {
 
     @NotBlank(message = "OTP is required")
     private String otp;
+
+    @Valid
+    private GuestRequest guestData;
 }

@@ -162,6 +162,44 @@ public class EmailServiceImpl implements EmailService {
             throw new RuntimeException("Failed to send Receptionist credentials to " + toEmail + ": " + e.getMessage(), e);
         }
     }
+    @Override
+    public void sendPasswordResetEmail(String toEmail, String resetToken, String firstName) {
+        String recipientName = (firstName != null && !firstName.isBlank()) ? firstName : "User";
+        String resetUrl = "http://localhost:3000/reset-password?token=" + resetToken; // तुमची Frontend लिंक
+
+        String htmlContent = """
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2>Password Reset Request</h2>
+                <p>Hello <b>%s</b>,</p>
+                <p>You have requested to reset your password. Click the button below to reset it:</p>
+                
+                <div style="margin: 20px 0;">
+                    <a href="%s" style="background-color: #2c3e50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+                </div>
+                
+                <p>Or copy and paste this link in your browser:</p>
+                <p><a href="%s">%s</a></p>
+                
+                <p>This link is valid for <b>15 minutes</b>.</p>
+                <p>If you did not request this, please ignore this email.</p>
+                <br>
+                <p>Best Regards,<br><b>Hotel Management Team</b></p>
+            </body>
+            </html>
+            """.formatted(recipientName, resetUrl, resetUrl, resetUrl);
+
+        try {
+            sendEmailViaBrevo(toEmail, recipientName, "Password Reset Request - Hotel Management System", htmlContent);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send password reset email to " + toEmail + ": " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void sendBookingConfirmationWithReceipt(Booking booking, byte[] pdfBytes) {
+
+    }
 
     @Override
     public void sendGuestRegistrationOtp(String toEmail, String otp) {

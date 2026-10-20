@@ -47,4 +47,6 @@ public class Guest {
 
     @Builder.Default
     private Boolean isVerified = false;
+
+    private String createdBy;
 }

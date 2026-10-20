@@ -8,79 +8,85 @@ import {
   removeReceptionist,
 } from "../apis/api";
 
-const token = `Bearer ${localStorage.getItem("token")}`;
+const getCurrentToken = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  return token.replace(/^"|"$/g, "").trim();
+};
 
-const receptionistStore = (set) => ({
+const receptionistStore = (set, get) => ({
   receptionistList: [],
   receptionist: {},
+
   addReceptionist: async (data) => {
-    console.log("reception create : ", data);
     try {
+      const token = getCurrentToken();
       const res = await createReceptionist(data, token);
-      const _receptionist = res;
+
       set((state) => ({
-        receptionist: [_receptionist, ...state.receptionist],
+        receptionistList: [res, ...state.receptionistList],
+        receptionist: res,
       }));
-      console.log("_receptionist", _receptionist);
       return res;
     } catch (error) {
-      return error;
+      throw error;
     }
   },
+
   updateReceptionist: async (id, data) => {
     try {
+      const token = getCurrentToken();
       const res = await patchReceptionist(id, data, token);
-      const _receptionist = res;
+
       set((state) => ({
-        receptionist: state.receptionistList.map((receptionist) => {
-          receptionist.id === id ? _receptionist : receptionist;
-        }),
+        receptionistList: state.receptionistList.map((item) =>
+          String(item.id) === String(id) ? res : item
+        ),
+        receptionist: res,
       }));
-      console.log("_receptionist", _receptionist);
       return res;
     } catch (error) {
-      return error;
+      throw error;
     }
   },
+
   getReceptionist: async (id) => {
     try {
+      const token = getCurrentToken();
       const res = await fetchReceptionist(id, token);
-      const _receptionist = res;
-      set({
-        receptionist: _receptionist,
-      });
-      console.log("_receptionist", _receptionist);
+      set({ receptionist: res });
       return res;
     } catch (error) {
-      console.log("error : ", error);
-      return error;
+      throw error;
     }
   },
+
   getAllReceptionist: async () => {
     try {
+      const token = getCurrentToken();
       const res = await fetchAllReceptionist(token);
-      const _receptionistlist = res;
-      console.log("_receptionistlist", res);
-      set({
-        receptionistList: _receptionistlist,
-      });
-      console.log("_receptionistlist", _receptionistlist);
-      return res;
+      const list = Array.isArray(res) ? res : [];
+      set({ receptionistList: list });
+      return list;
     } catch (error) {
-      return error;
+      throw error;
     }
   },
+
   deleteReceptionist: async (id) => {
     try {
-      const res = await removeReceptionist(id, token);
-      set((state) => ({
-        receptionist: state.receptionistList.filter((receptionist) => {
-          receptionist.id !== id;
-        }),
-      }));
-      return res;
+      const token = getCurrentToken();
+      await removeReceptionist(id, token);
+
+      
+      set((state) => {
+        const filteredList = state.receptionistList.filter(
+          (item) => String(item.id) !== String(id)
+        );
+        return { receptionistList: [...filteredList] };
+      });
     } catch (error) {
-      return error;
+      throw error;
     }
   },
 });
@@ -89,8 +95,8 @@ const useReceptionistStore = create(
   devtools(
     persist(receptionistStore, {
       name: "receptionist",
-    }),
-  ),
+    })
+  )
 );
 
 export default useReceptionistStore;
