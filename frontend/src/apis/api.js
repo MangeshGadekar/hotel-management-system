@@ -25,7 +25,11 @@ export const userLogin = async (payload) => {
 };
 
 export const userLogout = async () => {
-  return await apiClient.get("/auth/logout").json();
+  return await apiClient.post("/auth/logout", {
+    headers : {
+       headers: getAuthHeaders(token),
+    }
+  }).json();
 };
 
 /* =================================================== */

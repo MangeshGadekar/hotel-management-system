@@ -11,13 +11,14 @@ import {
 } from "react-icons/hi";
 import { MdDashboard } from "react-icons/md";
 import { LuHotel } from "react-icons/lu";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import useAuthStore from "../../app/useAuthStore";
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const role = user?.role?.toLowerCase() ?? "guest";
+  const navigate = useNavigate()
 
   const adminNavItems = [
     { label: "Dashboard", path: `/admin/dashboard`, icon: MdDashboard },
@@ -57,6 +58,15 @@ export default function Sidebar() {
     { label: "Coupons", path: `/receptionist/coupons`, icon: HiOutlineTicket },
     { label: "Home", path: "/", icon: HiOutlineHome },
   ];
+
+  const handleLogout = async() => {
+    try {
+        await logout()
+        navigate('/login')
+    } catch (error) {
+        console.log("ERROR", error)
+    }
+  }
 
   const navItems =
     role === "admin"
@@ -196,7 +206,7 @@ export default function Sidebar() {
       >
         <button
           type="button"
-          onClick={() => logout?.()}
+          onClick={() => handleLogout()}
           className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-500 transition-all duration-200 rounded-lg hover:translate-x-1 group ${theme.footerHover}`}
         >
           <HiOutlineLogout
