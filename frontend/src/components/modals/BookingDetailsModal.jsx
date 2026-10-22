@@ -23,7 +23,6 @@ import MasterFolioModal from "./MasterFolioModal";
 import { FiDownload } from "react-icons/fi";
 import { downloadCheckInReceiptApi } from "../../apis/api";
 
-
 export default function BookingDetailsModal({ bookingId, onClose, onUpdated }) {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(null);
@@ -95,7 +94,7 @@ export default function BookingDetailsModal({ bookingId, onClose, onUpdated }) {
         }
 
         const chosen = availableServices.find(
-          (s) => String(s.id) === String(selectedCatalogId)
+          (s) => String(s.id) === String(selectedCatalogId),
         );
 
         if (!chosen) {
@@ -146,7 +145,7 @@ export default function BookingDetailsModal({ bookingId, onClose, onUpdated }) {
   const handleRemoveService = async (serviceId, serviceName) => {
     if (
       !window.confirm(
-        `Are you sure you want to remove "${serviceName}" from this booking?`
+        `Are you sure you want to remove "${serviceName}" from this booking?`,
       )
     ) {
       return;
@@ -200,15 +199,15 @@ export default function BookingDetailsModal({ bookingId, onClose, onUpdated }) {
   const paidStatusMap = getPaidServiceStatusMap();
 
   const handleDownloadCheckInPdf = async () => {
-  const toastId = toast.loading("Downloading Check-In Receipt...");
-  try {
-    await downloadCheckInReceiptApi(booking.id);
-    toast.success("Receipt downloaded!", { id: toastId });
-  } catch (error) {
-    console.error(error);
-    toast.error("Could not download receipt.", { id: toastId });
-  }
-};
+    const toastId = toast.loading("Downloading Check-In Receipt...");
+    try {
+      await downloadCheckInReceiptApi(booking.id);
+      toast.success("Receipt downloaded!", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not download receipt.", { id: toastId });
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
@@ -279,8 +278,7 @@ export default function BookingDetailsModal({ bookingId, onClose, onUpdated }) {
                     <p>Email: {booking?.guestEmail || "—"}</p>
                     <p>Phone: {booking?.guestPhone || "—"}</p>
                     <p>
-                      Desk Staff:{" "}
-                      {booking?.receptionistName || "Front Desk"}
+                      Desk Staff: {booking?.receptionistName || "Front Desk"}
                     </p>
                   </div>
                 </div>
@@ -430,54 +428,58 @@ export default function BookingDetailsModal({ bookingId, onClose, onUpdated }) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {(booking?.selectedExtraServices || []).map((srv, idx) => {
-                          const isPaid = paidStatusMap[idx];
-                          return (
-                            <tr
-                              key={srv.id ? `${srv.id}-${idx}` : idx}
-                              className="hover:bg-slate-50/50 transition"
-                            >
-                              <td className="px-4 py-2.5 font-semibold text-slate-800">
-                                {srv.name}
-                              </td>
-                              <td className="px-4 py-2.5 text-slate-500 font-mono text-[11px]">
-                                {srv.createdAt
-                                  ? new Date(srv.createdAt).toLocaleDateString(
-                                      "en-IN",
-                                      { day: "2-digit", month: "short" }
-                                    )
-                                  : "Stay Add-on"}
-                              </td>
-                              <td className="px-4 py-2.5 text-slate-600 font-mono">
-                                {srv.taxRate || 18}%
-                              </td>
-                              <td className="px-4 py-2.5 font-bold text-slate-900">
-                                ₹{Number(srv.price).toLocaleString("en-IN")}
-                              </td>
+                        {(booking?.selectedExtraServices || []).map(
+                          (srv, idx) => {
+                            const isPaid = paidStatusMap[idx];
+                            return (
+                              <tr
+                                key={srv.id ? `${srv.id}-${idx}` : idx}
+                                className="hover:bg-slate-50/50 transition"
+                              >
+                                <td className="px-4 py-2.5 font-semibold text-slate-800">
+                                  {srv.name}
+                                </td>
+                                <td className="px-4 py-2.5 text-slate-500 font-mono text-[11px]">
+                                  {srv.createdAt
+                                    ? new Date(
+                                        srv.createdAt,
+                                      ).toLocaleDateString("en-IN", {
+                                        day: "2-digit",
+                                        month: "short",
+                                      })
+                                    : "Stay Add-on"}
+                                </td>
+                                <td className="px-4 py-2.5 text-slate-600 font-mono">
+                                  {srv.taxRate || 18}%
+                                </td>
+                                <td className="px-4 py-2.5 font-bold text-slate-900">
+                                  ₹{Number(srv.price).toLocaleString("en-IN")}
+                                </td>
 
-                              <td className="px-4 py-2.5 text-right">
-                                {isPaid ? (
-                                  <span
-                                    className="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-medium bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 cursor-not-allowed"
-                                    title="Already settled via receipt - Cannot be removed"
-                                  >
-                                    <FiLock size={11} /> Paid
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={() =>
-                                      handleRemoveService(srv.id, srv.name)
-                                    }
-                                    className="inline-flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-md border border-rose-200 cursor-pointer transition font-medium"
-                                    title="Remove this pending unpaid service"
-                                  >
-                                    <FiTrash2 size={11} /> Remove
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                                <td className="px-4 py-2.5 text-right">
+                                  {isPaid ? (
+                                    <span
+                                      className="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-medium bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 cursor-not-allowed"
+                                      title="Already settled via receipt - Cannot be removed"
+                                    >
+                                      <FiLock size={11} /> Paid
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() =>
+                                        handleRemoveService(srv.id, srv.name)
+                                      }
+                                      className="inline-flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-md border border-rose-200 cursor-pointer transition font-medium"
+                                      title="Remove this pending unpaid service"
+                                    >
+                                      <FiTrash2 size={11} /> Remove
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          },
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -519,30 +521,30 @@ export default function BookingDetailsModal({ bookingId, onClose, onUpdated }) {
             </>
           )}
         </div>
-      
 
-<div className="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50">
-  <div className="flex items-center gap-2">
-    {/* 1. Official Check-In PDF stored in backend */}
-    <button
-      type="button"
-      onClick={handleDownloadCheckInPdf}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-xs transition cursor-pointer shadow-xs"
-      title="Download the official Check-in receipt stored on the server"
-    >
-      <FiDownload size={13} className="text-[#D96B43]" /> Check-In Receipt PDF
-    </button>
+        <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            {/* 1. Official Check-In PDF stored in backend */}
+            <button
+              type="button"
+              onClick={handleDownloadCheckInPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-semibold text-xs transition cursor-pointer shadow-xs"
+              title="Download the official Check-in receipt stored on the server"
+            >
+              <FiDownload size={13} className="text-[#D96B43]" /> Check-In
+              Receipt PDF
+            </button>
 
-    {/* 2. Master Folio Receipt Modal */}
-    <button
-      type="button"
-      onClick={() => setShowMasterFolio(true)}
-      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-semibold text-xs transition cursor-pointer"
-    >
-      <FiFileText size={13} /> Master Folio Receipt
-    </button>
-  </div>
-</div>
+            {/* 2. Master Folio Receipt Modal */}
+            <button
+              type="button"
+              onClick={() => setShowMasterFolio(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-semibold text-xs transition cursor-pointer"
+            >
+              <FiFileText size={13} /> Master Folio Receipt
+            </button>
+          </div>
+        </div>
 
         <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
           <button
@@ -553,17 +555,14 @@ export default function BookingDetailsModal({ bookingId, onClose, onUpdated }) {
           </button>
         </div>
 
-
         {showMasterFolio && (
-  <MasterFolioModal
-    booking={booking}
-    payments={payments}
-    onClose={() => setShowMasterFolio(false)}
-  />
-)}
+          <MasterFolioModal
+            booking={booking}
+            payments={payments}
+            onClose={() => setShowMasterFolio(false)}
+          />
+        )}
       </div>
     </div>
   );
-
-  
 }

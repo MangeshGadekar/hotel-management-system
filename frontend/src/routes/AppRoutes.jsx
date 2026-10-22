@@ -78,7 +78,7 @@ export default function AppRoutes() {
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/rooms" element={<Rooms />} />
-        <Route path="/rooms/:id" element={<Room />} />
+        <Route path="/rooms/:roomNumber" element={<Room />} />
         <Route path="/booking/:id" element={<RoomBooking />} />
         <Route path="/rooms-suites" element={<RoomsAndSuits />} />
         <Route path="/about" element={<About />} />
