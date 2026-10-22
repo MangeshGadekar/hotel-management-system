@@ -24,6 +24,29 @@ export const userLogin = async (payload) => {
   return await apiClient.post("/auth/login", { json: payload }).json();
 };
 
+export const requestPasswordReset = async (email) => {
+  return await apiClient.post("/auth/forgot-password", { json: { email } }).json();
+};
+
+export const resetPassword = async (payload) => {
+  return await apiClient.post("/auth/reset-password", { json: payload }).json();
+};
+
+export const fetchProfile = async (token) => {
+  return await apiClient
+    .get("/user/profile", { headers: getAuthHeaders(token) })
+    .json();
+};
+
+export const updateProfile = async (payload, token) => {
+  return await apiClient
+    .patch("/user/profile/edit", {
+      headers: getAuthHeaders(token),
+      json: payload,
+    })
+    .json();
+};
+
 export const userLogout = async () => {
   return await apiClient.get("/auth/logout").json();
 };

@@ -1,22 +1,47 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { FiLock, FiCheckCircle, FiArrowLeft, FiEye, FiEyeOff } from "react-icons/fi";
 import { Athenura_Circle_Logo, Bedroom_image_login_Register } from "../../assets";
 import { useState } from "react";
+import { resetPassword as submitPasswordReset } from "../../apis/api";
 
 const ResetPassword = () => {
   const { token } = useParams(); // If you're using token in URL
+  const [searchParams] = useSearchParams();
+  const resetToken = token || searchParams.get("token") || "";
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle password reset logic here
-    if (password === confirmPassword && password.length >= 8) {
+    setError("");
+    if (!resetToken) {
+      setError("Reset token is missing. Please use the reset link from your email.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    try {
+      setLoading(true);
+      await submitPasswordReset({ token: resetToken, newPassword: password });
       setIsSubmitted(true);
-      // API call to reset password with token
+    } catch (requestError) {
+      let responseMessage = "Could not reset your password. The link may be expired.";
+      try {
+        const body = await requestError.response.json();
+        responseMessage = body?.message || responseMessage;
+      } catch {
+        // Keep the friendly fallback when the server response isn't JSON.
+      }
+      setError(responseMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -194,14 +219,16 @@ const ResetPassword = () => {
                     )}
                   </div>
 
+                  {error && <p role="alert" className="text-red-300 text-sm">{error}</p>}
+
                   <button
                     type="submit"
-                    disabled={password !== confirmPassword || password.length < 8}
+                    disabled={loading || password !== confirmPassword || password.length < 8}
                     className="w-full py-3 sm:py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     <span className="flex items-center justify-center gap-2">
                       <FiCheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                      Reset Password
+                      {loading ? "Updating…" : "Reset Password"}
                     </span>
                   </button>
                 </form>

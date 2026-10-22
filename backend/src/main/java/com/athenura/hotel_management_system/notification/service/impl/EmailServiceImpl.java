@@ -22,6 +22,9 @@ public class EmailServiceImpl implements EmailService {
     @Value("${brevo.sender.name}")
     private String senderName;
 
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
     private final RestClient restClient;
 
     public EmailServiceImpl(RestClient.Builder restClientBuilder) {
@@ -165,7 +168,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendPasswordResetEmail(String toEmail, String resetToken, String firstName) {
         String recipientName = (firstName != null && !firstName.isBlank()) ? firstName : "User";
-        String resetUrl = "http://localhost:3000/reset-password?token=" + resetToken; // तुमची Frontend लिंक
+        String resetUrl = frontendUrl.replaceAll("/+$", "") + "/reset-password?token=" + resetToken;
 
         String htmlContent = """
             <html>

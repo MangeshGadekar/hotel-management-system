@@ -1,8 +1,37 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FiMail, FiArrowLeft, FiSend } from "react-icons/fi";
 import { Athenura_Circle_Logo, Bedroom_image_login_Register } from "../../assets";
+import { requestPasswordReset } from "../../apis/api";
 
 const ForgetPassword = () => {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setMessage("");
+    setError("");
+    setLoading(true);
+    try {
+      const response = await requestPasswordReset(email.trim());
+      setMessage(response?.message || "If an account exists for this email, reset instructions have been sent.");
+    } catch (requestError) {
+      let responseMessage = "Could not send reset instructions. Please try again.";
+      try {
+        const body = await requestError.response.json();
+        responseMessage = body?.message || responseMessage;
+      } catch {
+        // Keep the friendly fallback when the server response isn't JSON.
+      }
+      setError(responseMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-3 md:p-4 relative overflow-hidden">
       <div
@@ -111,7 +140,7 @@ const ForgetPassword = () => {
               </p>
             </div>
 
-            <form className="w-full max-w-sm mx-auto space-y-4 sm:space-y-5">
+            <form onSubmit={handleSubmit} className="w-full max-w-sm mx-auto space-y-4 sm:space-y-5">
               <div className="space-y-1.5">
                 <label className="text-white/80 text-xs sm:text-sm font-medium block text-left">
                   Email Address
@@ -120,7 +149,11 @@ const ForgetPassword = () => {
                   <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
                   <input
                     type="email"
+                    name="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                     placeholder="guest@luxestay.com"
+                    required
                     className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder-white/30 text-sm sm:text-base focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 transition-all"
                   />
                 </div>
@@ -129,13 +162,17 @@ const ForgetPassword = () => {
                 </p>
               </div>
 
+              {message && <p role="status" className="text-emerald-300 text-sm">{message}</p>}
+              {error && <p role="alert" className="text-red-300 text-sm">{error}</p>}
+
               <button
                 type="submit"
-                className="w-full py-3 sm:py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base"
+                disabled={loading}
+                className="w-full py-3 sm:py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <span className="flex items-center justify-center gap-2">
                   <FiSend className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Send Reset Link
+                  {loading ? "Sending…" : "Send Reset Link"}
                 </span>
               </button>
             </form>
