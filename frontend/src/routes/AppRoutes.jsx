@@ -22,7 +22,15 @@ const ForgetPassword = lazy(() => import("../pages/auth/ForgetPassword"));
 const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 
 // Receptionist Pages
-const ReceptionistDashboard = lazy(() => import("../pages/receptionist/Dashboard"));
+const ReceptionistDashboard = lazy(
+  () => import("../pages/receptionist/ReceptionistDashboard"),
+);
+const ReceptionistBookings = lazy(() => import("../pages/admin/Bookings"));
+const ReceptionistCustomer = lazy(() => import("../pages/admin/Customers"));
+const ReceptionistRooms = lazy(() => import("../pages/admin/Rooms"));
+const ReceptionistCustomers = lazy(() => import("../pages/admin/Customers"));
+const ReceptionistPayments = lazy(() => import("../pages/admin/Payments"));
+const ReceptionistCoupons = lazy(() => import("../pages/admin/Coupons"));
 
 // Common Pages
 const RoomsAndSuits = lazy(() => import("../pages/common/RoomsAndSuits"));
@@ -44,7 +52,9 @@ export default function AppRoutes() {
   const hideHeaderFooter =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/receptionist") ||
-    ["/login", "/register", "/forgot-password", "/reset-password"].includes(location.pathname);
+    ["/login", "/register", "/forgot-password", "/reset-password"].includes(
+      location.pathname,
+    );
 
   return (
     <div>
@@ -67,6 +77,11 @@ export default function AppRoutes() {
         <Route path="/receptionist" element={<ReceptionistLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ReceptionistDashboard />} />
+          <Route path="bookings" element={<ReceptionistBookings />} />
+          <Route path="rooms" element={<ReceptionistRooms />} />
+          <Route path="customers" element={<ReceptionistCustomers />} />
+          <Route path="payments" element={<ReceptionistPayments />} />
+          <Route path="coupons" element={<ReceptionistCoupons />} />
         </Route>
 
         {/* Auth Routes */}
