@@ -83,14 +83,15 @@ const toDateInputValue = (date) => {
 };
 
 const nightsBetween = (checkIn, checkOut) => {
-  const diff =
-    (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
-    (1000 * 60 * 60 * 24);
+  const inDate = new Date(checkIn);
+  const outDate = new Date(checkOut);
+  if (isNaN(inDate.getTime()) || isNaN(outDate.getTime())) return 1;
+  const diff = (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24);
   return Math.max(1, Math.round(diff) || 1);
 };
 
 const guestToForm = (guest) => {
-  if (!guest) return emptyGuestForm;
+  if (!guest) return { ...emptyGuestForm };
   return {
     firstName: guest.firstName || guest.first_name || "",
     lastName: guest.lastName || guest.last_name || "",
@@ -126,15 +127,13 @@ const calculateCouponDiscount = (coupon, subtotal) => {
   );
   if (!Number.isFinite(value) || value <= 0) return 0;
 
-  const type = String(
-    coupon.discountType || coupon.type || "",
-  ).toUpperCase();
+  const type = String(coupon.discountType || coupon.type || "").toUpperCase();
 
   if (type === "PERCENTAGE") {
     return Math.min(Math.round((subtotal * value) / 100), subtotal);
   }
   // default to flat amount
-  return Math.min(value, subtotal);
+  return Math.min(Math.round(value), subtotal);
 };
 
 // ---------------- Receipt Sub-component ----------------
@@ -158,6 +157,9 @@ function ReceiptView({
   paymentType,
   cardMachineAuthCode,
 }) {
+  const safePaymentMethod = paymentMethod || PAYMENT_METHODS.CASH;
+  const safePaymentType = paymentType || PAYMENT_TYPES.FULL;
+
   return (
     <div
       id="printable-receipt"
@@ -260,7 +262,7 @@ function ReceiptView({
                   ? Number(srv.price) * nights
                   : Number(srv.price);
               return (
-                <tr key={srv.id}>
+                <tr key={srv.id || srv.name}>
                   <td className="py-2.5">
                     {srv.name}{" "}
                     <span className="text-[10px] text-slate-400">
@@ -291,24 +293,24 @@ function ReceiptView({
           <p className="text-slate-600">
             Mode:{" "}
             <strong className="text-slate-800">
-              {paymentMethod.replace("_", " ")}
+              {safePaymentMethod.replace(/_/g, " ")}
             </strong>
           </p>
           <p className="text-slate-600">
             Policy:{" "}
             <strong className="text-slate-800">
-              {paymentType.replace("_", " ")}
+              {safePaymentType.replace(/_/g, " ")}
             </strong>
           </p>
 
-          {paymentMethod === PAYMENT_METHODS.CARD_MACHINE &&
+          {safePaymentMethod === PAYMENT_METHODS.CARD_MACHINE &&
             cardMachineAuthCode && (
               <p className="text-blue-700 font-mono font-medium pt-1">
                 Slip Auth/RRN: <strong>{cardMachineAuthCode}</strong>
               </p>
             )}
 
-          {paymentMethod === PAYMENT_METHODS.RAZORPAY_ONLINE && (
+          {safePaymentMethod === PAYMENT_METHODS.RAZORPAY_ONLINE && (
             <p className="text-emerald-700 font-mono text-[11px] pt-1">
               Gateway Status: Verified Online
             </p>
@@ -388,8 +390,7 @@ export default function BookingForm({
   const token =
     useAuthStore((state) => state.token) ||
     (typeof localStorage !== "undefined" &&
-      (localStorage.getItem("token") ||
-        localStorage.getItem("authToken")));
+      (localStorage.getItem("token") || localStorage.getItem("authToken")));
 
   // Stores
   const addBooking = useBookingStore((state) => state.addBooking);
@@ -406,9 +407,9 @@ export default function BookingForm({
     sendOtp,
     verifyOtpAndSave,
     searchGuests,
-    searchResults,
-    clearSearchResults,
-    loading: guestLoading,
+    searchResults = [],
+    clearSearchResults = () => {},
+    loading: guestLoading = false,
   } = useGuestStore();
 
   // Step 1 — guest form
@@ -429,6 +430,7 @@ export default function BookingForm({
 
   const dropdownRef = useRef(null);
   const otpInputRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
   // Step 2 — dates & rooms
   const [stayDates, setStayDates] = useState(() => ({
@@ -445,9 +447,20 @@ export default function BookingForm({
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [paymentType, setPaymentType] = useState(PAYMENT_TYPES.FULL);
-  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS.CASH);
+  const [paymentMethod, setPaymentMethod] = useState(
+    guestMode ? PAYMENT_METHODS.RAZORPAY_ONLINE : PAYMENT_METHODS.CASH,
+  );
   const [cardMachineAuthCode, setCardMachineAuthCode] = useState("");
   const [completedBooking, setCompletedBooking] = useState(null);
+
+  // Sync preSelectedGuest prop changes
+  useEffect(() => {
+    if (preSelectedGuest) {
+      setFormData(guestToForm(preSelectedGuest));
+      setVerifiedGuestId(preSelectedGuest.id || preSelectedGuest._id || null);
+      setIsExistingGuest(true);
+    }
+  }, [preSelectedGuest]);
 
   // ---------------- Initialization ----------------
   useEffect(() => {
@@ -537,25 +550,44 @@ export default function BookingForm({
   // Auto-focus OTP input when modal opens
   useEffect(() => {
     if (showOtpModal) {
-      setTimeout(() => otpInputRef.current?.focus(), 100);
+      const raf = requestAnimationFrame(() => {
+        otpInputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(raf);
     }
   }, [showOtpModal]);
 
+  // Cleanup search timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // ---------------- Guest handlers ----------------
   const handleEmailChange = useCallback(
-    async (e) => {
+    (e) => {
       const value = e.target.value;
       setFormData((prev) => ({ ...prev, email: value }));
       setIsExistingGuest(false);
       setVerifiedGuestId(null);
 
+      // Debounce search
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
       if (value.trim().length >= 2) {
-        try {
-          await searchGuests(value, token);
-          setShowDropdown(true);
-        } catch {
-          setShowDropdown(false);
-        }
+        searchTimeoutRef.current = setTimeout(async () => {
+          try {
+            await searchGuests(value, token);
+            setShowDropdown(true);
+          } catch {
+            setShowDropdown(false);
+          }
+        }, 400);
       } else {
         clearSearchResults();
         setShowDropdown(false);
@@ -685,7 +717,7 @@ export default function BookingForm({
   // ---------------- Calculations ----------------
   const nights = useMemo(
     () => nightsBetween(stayDates.checkInDate, stayDates.checkOutDate),
-    [stayDates],
+    [stayDates.checkInDate, stayDates.checkOutDate],
   );
 
   const availableRooms = useMemo(
@@ -752,7 +784,7 @@ export default function BookingForm({
   const handleToggleCoupon = useCallback(
     (cpn) => {
       const isSame =
-        selectedCoupon?.id === cpn.id ||
+        (selectedCoupon?.id && selectedCoupon.id === cpn.id) ||
         (selectedCoupon?.code && selectedCoupon.code === cpn.code);
 
       if (isSame) {
@@ -771,6 +803,11 @@ export default function BookingForm({
 
   // ---------------- Finalize booking ----------------
   const handleFinalizeBooking = useCallback(async () => {
+    if (!paymentMethod) {
+      toast.error("Please select a payment method.");
+      return;
+    }
+
     if (
       paymentMethod === PAYMENT_METHODS.CARD_MACHINE &&
       !cardMachineAuthCode.trim()
@@ -850,7 +887,7 @@ export default function BookingForm({
 
       const options = {
         key: order.keyId,
-        amount: order.amount * 100,
+        amount: order.amount, // API already returns paise
         currency: order.currency || "INR",
         name: "Athenura Grand Hotel",
         description: `Desk Settlement - Booking #${bookingRes.id}`,
@@ -918,7 +955,8 @@ export default function BookingForm({
     selectedRoom,
     verifiedGuestId,
     formData,
-    stayDates,
+    stayDates.checkInDate,
+    stayDates.checkOutDate,
     selectedServiceIds,
     selectedCoupon,
     paymentType,
@@ -930,9 +968,17 @@ export default function BookingForm({
 
   // Validation for step 1 next button
   const canSubmitStep1 = useMemo(() => {
-    if (!formData.firstName || !formData.email || !formData.phone) return false;
+    if (!formData.firstName?.trim() || !formData.lastName?.trim()) return false;
+    if (!formData.email?.trim()) return false;
+    if (!PHONE_REGEX.test(formData.phone?.trim() || "")) return false;
     return !guestLoading;
-  }, [formData.firstName, formData.email, formData.phone, guestLoading]);
+  }, [
+    formData.firstName,
+    formData.lastName,
+    formData.email,
+    formData.phone,
+    guestLoading,
+  ]);
 
   const canProceedFromStep2 = Boolean(roomId || selectedRoom) && !roomLoading;
 
@@ -1344,8 +1390,9 @@ export default function BookingForm({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-56 overflow-y-auto">
                   {availableCoupons.map((cpn) => {
                     const isSelected =
-                      selectedCoupon?.code === cpn.code ||
-                      selectedCoupon?.id === cpn.id;
+                      (selectedCoupon?.code &&
+                        selectedCoupon.code === cpn.code) ||
+                      (selectedCoupon?.id && selectedCoupon.id === cpn.id);
                     const type = String(
                       cpn.discountType || cpn.type || "",
                     ).toUpperCase();
@@ -1727,7 +1774,9 @@ export default function BookingForm({
                   placeholder="123456"
                   value={otp}
                   onChange={(e) =>
-                    setOtp(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH))
+                    setOtp(
+                      e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH),
+                    )
                   }
                   className="w-full text-center tracking-widest text-lg font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
                 />
