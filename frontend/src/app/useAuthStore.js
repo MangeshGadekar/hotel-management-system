@@ -48,7 +48,8 @@ const authStore = (set) => ({
   },
   logout: async () => {
     try {
-      const res = await userLogout();
+      const token = localStorage.getItem("token")
+      const res = await userLogout(token);
       set({
         user: {},
         token: "",

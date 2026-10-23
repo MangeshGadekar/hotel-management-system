@@ -48,7 +48,11 @@ export const updateProfile = async (payload, token) => {
 };
 
 export const userLogout = async () => {
-  return await apiClient.get("/auth/logout").json();
+  return await apiClient.post("/auth/logout", {
+    headers : {
+       headers: getAuthHeaders(token),
+    }
+  }).json();
 };
 
 /* =================================================== */
@@ -615,4 +619,24 @@ export const adminDashboard = async (token) => {
       headers: getAuthHeaders(token),
     })
     .json();
+};
+
+/*====================================================*/
+/* CAMPAIGNS */
+/*====================================================*/
+
+export const fetchAllCampaigns =async()=> {
+  return await apiClient.get(`/admin/campaigns`).json();
+};
+export const createCampaign =async(payload)=> {
+  return await apiClient.post(`/admin/campaigns`,{
+    json: payload
+  }).json();
+};
+export const sendCampaign = async (id) => {
+  return await apiClient.post(`/admin/campaigns/${id}/send`).json();
+};
+
+export const fetchCampaignAudience = async (id) => {
+  return await apiClient.get(`/admin/campaigns/${id}/audience`).json();
 };
