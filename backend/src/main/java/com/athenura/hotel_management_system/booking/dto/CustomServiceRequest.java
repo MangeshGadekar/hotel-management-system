@@ -11,5 +11,5 @@ import java.math.BigDecimal;
 public class CustomServiceRequest {
     private String serviceName;
     private BigDecimal price;
-    private BigDecimal taxRate; // Optional, defaults to 18% if null
+    private BigDecimal taxRate;
 }

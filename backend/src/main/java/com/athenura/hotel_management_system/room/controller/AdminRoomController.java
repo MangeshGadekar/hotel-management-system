@@ -132,4 +132,11 @@ public class AdminRoomController {
     public ResponseEntity<List<RoomResponse>> getRoomByRoomStatus(@PathVariable RoomStatus roomStatus) {
         return ResponseEntity.ok(roomService.getRoomByRoomStatus(roomStatus));
     }
+
+    @PatchMapping("/{roomNumber}/status")
+    public ResponseEntity<RoomResponse> updateRoomStatus(
+            @PathVariable String roomNumber,
+            @RequestParam RoomStatus status) {
+        return ResponseEntity.ok(roomService.updateRoomStatus(roomNumber, status));
+    }
 }

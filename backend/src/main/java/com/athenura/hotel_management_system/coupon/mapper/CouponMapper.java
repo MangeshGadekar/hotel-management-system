@@ -3,6 +3,7 @@ package com.athenura.hotel_management_system.coupon.mapper;
 import com.athenura.hotel_management_system.coupon.dto.CouponRequest;
 import com.athenura.hotel_management_system.coupon.dto.CouponResponse;
 import com.athenura.hotel_management_system.coupon.entity.Coupon;
+import com.athenura.hotel_management_system.coupon.enums.CouponAudience;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -10,8 +11,9 @@ import java.util.HashSet;
 
 @Component
 public class CouponMapper {
-    public Coupon toEntity(CouponRequest request){
-        if(request == null){
+
+    public Coupon toEntity(CouponRequest request) {
+        if (request == null) {
             return null;
         }
 
@@ -26,8 +28,8 @@ public class CouponMapper {
                 .timesUsed(0)
                 .active(request.getActive() != null ? request.getActive() : true)
                 .applicableRoomTypes(request.getApplicableRoomTypes() != null ? request.getApplicableRoomTypes() : new HashSet<>())
+                .targetAudience(request.getTargetAudience() != null ? request.getTargetAudience() : CouponAudience.ALL)
                 .build();
-
     }
 
     public CouponResponse toResponse(Coupon entity) {
@@ -47,11 +49,9 @@ public class CouponMapper {
                 .timesUsed(entity.getTimesUsed())
                 .active(entity.getActive())
                 .applicableRoomTypes(entity.getApplicableRoomTypes())
+                .targetAudience(entity.getTargetAudience())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
-
-
-
 }

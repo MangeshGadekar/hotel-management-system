@@ -4,16 +4,19 @@ import com.athenura.hotel_management_system.campaign.dto.CampaignRequestDto;
 import com.athenura.hotel_management_system.campaign.dto.CampaignResponseDto;
 import com.athenura.hotel_management_system.campaign.entity.Campaign;
 import com.athenura.hotel_management_system.campaign.enums.CampaignStatus;
+import com.athenura.hotel_management_system.campaign.enums.CampaignType;
 import com.athenura.hotel_management_system.campaign.mapper.CampaignMapper;
 import com.athenura.hotel_management_system.campaign.repository.CampaignRepository;
 import com.athenura.hotel_management_system.campaign.service.CampaignService;
+import com.athenura.hotel_management_system.guest.dto.GuestResponse;
 import com.athenura.hotel_management_system.guest.entity.Guest;
+import com.athenura.hotel_management_system.guest.mapper.GuestMapper;
 import com.athenura.hotel_management_system.guest.repository.GuestRepository;
 import com.athenura.hotel_management_system.notification.service.EmailService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -27,12 +30,30 @@ public class CampaignServiceImpl implements CampaignService {
     private final CampaignRepository campaignRepository;
     private final CampaignMapper campaignMapper;
     private final GuestRepository guestRepository;
+    private final GuestMapper guestMapper;
     private final EmailService emailService;
 
     @Override
+    @Transactional
     public CampaignResponseDto createCampaign(CampaignRequestDto dto) {
         Campaign campaign = campaignMapper.toEntity(dto);
-        return campaignMapper.toDto(campaignRepository.save(campaign));
+
+        if (campaign.getStatus() == null) {
+            campaign.setStatus(campaign.getSchedule() != null && campaign.getSchedule().isAfter(LocalDateTime.now())
+                    ? CampaignStatus.SCHEDULED
+                    : CampaignStatus.DRAFT);
+        }
+
+        if (campaign.getCreatedAt() == null) {
+            campaign.setCreatedAt(LocalDateTime.now());
+        }
+
+        if (campaign.getCampaignType() == null) {
+            campaign.setCampaignType(CampaignType.FESTIVAL_OFFERS);
+        }
+
+        Campaign savedCampaign = campaignRepository.save(campaign);
+        return campaignMapper.toDto(savedCampaign);
     }
 
     @Override
@@ -46,6 +67,13 @@ public class CampaignServiceImpl implements CampaignService {
     public List<CampaignResponseDto> getAllCampaigns() {
         return campaignRepository.findAll().stream()
                 .map(campaignMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    public List<GuestResponse> resolveAudienceDto(Long campaignId) {
+        return resolveAudience(campaignId).stream()
+                .map(guestMapper::toResponse)
                 .toList();
     }
 
@@ -82,9 +110,6 @@ public class CampaignServiceImpl implements CampaignService {
                 }
                 return Collections.emptyList();
 
-            case UPCOMING_BIRTHDAYS:
-                return guestRepository.findUpcomingBirthdays(7);
-
             case STAY_ANNIVERSARIES:
                 return guestRepository.findUpcomingStayAnniversaries(7);
 
@@ -103,7 +128,6 @@ public class CampaignServiceImpl implements CampaignService {
         log.info("Campaign ID {} resolved audience count: {}", campaignId, audience.size());
 
         for (Guest guest : audience) {
-            log.info("Processing guest ID: {}, email: {}", guest.getId(), guest.getEmail());
             if (guest.getEmail() != null && !guest.getEmail().isBlank()) {
                 String recipientName = (guest.getFirstName() != null) ? guest.getFirstName() : "Valued Guest";
                 String personalizedBody = campaign.getEmailContent().replace("{name}", recipientName);
@@ -122,32 +146,29 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional
     public void deleteCampaign(Long id) {
         Campaign campaign = campaignRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Campaign not found with id: "+ id));
+                .orElseThrow(() -> new RuntimeException("Campaign not found with id: " + id));
 
-        campaign.setIsDeleted(true);
-        campaignRepository.save(campaign);
-        log.info("Campaign with id {} soft-deleted successfully", id);
-
+        campaignRepository.delete(campaign);
+        log.info("Campaign with id {} permanently deleted from database", id);
     }
 
     @Override
     public List<CampaignResponseDto> getCampaignHistory() {
-        return campaignRepository.findByIsDeletedTrue().stream()
+        return campaignRepository.findByStatus(CampaignStatus.SENT).stream()
                 .map(campaignMapper::toDto)
                 .toList();
     }
 
-
     @Override
     @Transactional
     public void processScheduledCampaigns() {
-        List<Campaign> dueCampaigns = campaignRepository
-                .findByStatusAndScheduleLessThanEqualAndIsDeletedFalse(
-                        CampaignStatus.SCHEDULED,
-                        LocalDateTime.now()
-                );
+        List<Campaign> dueCampaigns = campaignRepository.findByStatusAndScheduleLessThanEqual(
+                CampaignStatus.SCHEDULED,
+                LocalDateTime.now()
+        );
 
         if (!dueCampaigns.isEmpty()) {
             log.info("Found {} scheduled campaign(s) to process", dueCampaigns.size());
@@ -162,6 +183,4 @@ public class CampaignServiceImpl implements CampaignService {
             }
         }
     }
-
-
 }

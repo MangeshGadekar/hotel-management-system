@@ -18,8 +18,9 @@ public class CloudinaryServiceImpl implements CloudinaryService {
 
     private final Cloudinary cloudinary;
 
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif", "image/avif", "image/svg+xml", "image/bmp", "image/jfif", "application/octet-stream"
+    private static final Set<String> ALLOWED_IMAGE_MIMES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/jpg",
+            "image/gif", "image/avif", "image/svg+xml", "image/bmp", "image/jfif"
     );
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
@@ -32,25 +33,10 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             throw new IllegalArgumentException("File cannot be null or empty");
         }
 
-        String contentType = file.getContentType();
-        String originalFilename = file.getOriginalFilename();
-
-        boolean validContentType = contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase().trim());
-        boolean validExtension = false;
-        if (originalFilename != null && originalFilename.contains(".")) {
-            String ext = originalFilename.substring(originalFilename.lastIndexOf('.')).toLowerCase().trim();
-            validExtension = ALLOWED_EXTENSIONS.contains(ext);
-        }
-
-        // Allow if extension matches an image OR content type starts with image/
-        boolean isImage = (contentType != null && contentType.toLowerCase().startsWith("image/")) || validExtension;
-
-        if (!isImage && !validContentType) {
-            throw new IllegalArgumentException("Invalid file type. Only image files (JPEG, PNG, WEBP, GIF, etc.) are allowed.");
-        }
+        validateImageFile(file);
 
         try {
-            String targetFolder = (folder != null && !folder.isBlank()) ? folder : "hotel_management/rooms";
+            String targetFolder = (folder != null && !folder.isBlank()) ? folder.trim() : "hotel_management/rooms";
             Map<?, ?> uploadResult = cloudinary.uploader().upload(
                     file.getBytes(),
                     ObjectUtils.asMap(
@@ -92,13 +78,18 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> deleteImage(String publicId) {
+    public boolean deleteImage(String publicId) {
         if (publicId == null || publicId.isBlank()) {
             throw new IllegalArgumentException("Public ID cannot be blank");
         }
         try {
-            return (Map<String, Object>) cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            Map<?, ?> result = cloudinary.uploader().destroy(publicId.trim(), ObjectUtils.emptyMap());
+            String status = String.valueOf(result.get("result"));
+            boolean isSuccess = "ok".equalsIgnoreCase(status);
+            if (!isSuccess) {
+                log.warn("Cloudinary delete response for publicId '{}': {}", publicId, status);
+            }
+            return isSuccess;
         } catch (Exception e) {
             log.error("Failed to delete image with publicId {}: {}", publicId, e.getMessage(), e);
             throw new RuntimeException("Cloudinary image deletion failed: " + e.getMessage(), e);
@@ -111,19 +102,36 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             return null;
         }
         try {
-            // Cloudinary URLs typically look like:
-            // https://res.cloudinary.com/<cloud_name>/image/upload/v1234567890/folder/subfolder/public_id.jpg
             String[] parts = imageUrl.split("/upload/");
             if (parts.length < 2) return null;
             String pathAfterUpload = parts[1];
-            // Remove version prefix (v1234567890/) if present
-            String withoutVersion = pathAfterUpload.replaceFirst("^v\\d+/", "");
-            // Strip extension (.jpg, .png, etc.)
-            int dotIndex = withoutVersion.lastIndexOf('.');
-            return (dotIndex != -1) ? withoutVersion.substring(0, dotIndex) : withoutVersion;
+
+            // Strip version prefix (e.g. v1234567890/) or transformation prefixes before version
+            String sanitized = pathAfterUpload.replaceFirst("^(?:[a-zA-Z0-9_,]+/)*v\\d+/", "");
+
+            // Strip file extension (.jpg, .png, etc.)
+            int dotIndex = sanitized.lastIndexOf('.');
+            return (dotIndex != -1) ? sanitized.substring(0, dotIndex) : sanitized;
         } catch (Exception e) {
             log.warn("Could not extract public ID from URL: {}", imageUrl);
             return null;
+        }
+    }
+
+    private void validateImageFile(MultipartFile file) {
+        String contentType = file.getContentType();
+        String originalFilename = file.getOriginalFilename();
+
+        boolean validExtension = false;
+        if (originalFilename != null && originalFilename.contains(".")) {
+            String ext = originalFilename.substring(originalFilename.lastIndexOf('.')).toLowerCase().trim();
+            validExtension = ALLOWED_EXTENSIONS.contains(ext);
+        }
+
+        boolean validMime = contentType != null && ALLOWED_IMAGE_MIMES.contains(contentType.toLowerCase().trim());
+
+        if (!validExtension && !validMime) {
+            throw new IllegalArgumentException("Invalid file type. Only image formats (JPEG, PNG, WEBP, GIF, etc.) are permitted.");
         }
     }
 }

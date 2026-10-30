@@ -16,7 +16,6 @@ import java.util.Optional;
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-
     Optional<Booking> findByBookingReference(String bookingReference);
 
     List<Booking> findByGuestId(Long guestId);
@@ -24,7 +23,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("""
         SELECT COUNT(b) > 0
         FROM Booking b
-        WHERE b.room.id = :roomId
+        LEFT JOIN b.rooms r
+        WHERE (b.room.id = :roomId OR r.id = :roomId)
           AND b.bookingStatus IN :statuses
           AND b.checkInDate < :checkOutDate
           AND b.checkOutDate > :checkInDate
@@ -37,24 +37,24 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     );
 
     @Query("""
-        SELECT COUNT(b) > 0
+        SELECT DISTINCT COALESCE(r.id, b.room.id)
         FROM Booking b
-        WHERE b.room.id = :roomId
-          AND b.bookingStatus = :bookingStatus
+        LEFT JOIN b.rooms r
+        WHERE b.bookingStatus IN :statuses
           AND b.checkInDate < :checkOutDate
           AND b.checkOutDate > :checkInDate
     """)
-    boolean existsOverlappingBooking(
-            @Param("roomId") Long roomId,
-            @Param("bookingStatus") BookingStatus bookingStatus,
+    List<Long> findBookedRoomIdsBetweenDates(
             @Param("checkInDate") LocalDate checkInDate,
-            @Param("checkOutDate") LocalDate checkOutDate
+            @Param("checkOutDate") LocalDate checkOutDate,
+            @Param("statuses") Collection<BookingStatus> statuses
     );
-    // For updating an existing booking (backward compatibility)
+
     @Query("""
         SELECT COUNT(b) > 0
         FROM Booking b
-        WHERE b.room.id = :roomId
+        LEFT JOIN b.rooms r
+        WHERE (b.room.id = :roomId OR r.id = :roomId)
           AND b.id <> :bookingId
           AND b.bookingStatus IN :statuses
           AND b.checkInDate < :checkOutDate
@@ -67,27 +67,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("checkInDate") LocalDate checkInDate,
             @Param("checkOutDate") LocalDate checkOutDate
     );
-
-
-    // for updating an existing booking
-    @Query("""
-        SELECT COUNT(b) > 0
-        FROM Booking b
-        WHERE b.room.id = :roomId
-          AND b.id <> :bookingId
-          AND b.bookingStatus = :bookingStatus
-          AND b.checkInDate < :checkOutDate
-          AND b.checkOutDate > :checkInDate
-    """)
-    boolean existsOverlappingBookingForUpdate(
-            @Param("bookingId") Long bookingId,
-            @Param("roomId") Long roomId,
-            @Param("bookingStatus") BookingStatus bookingStatus,
-            @Param("checkInDate") LocalDate checkInDate,
-            @Param("checkOutDate") LocalDate checkOutDate
-    );
-
-
 
     long countByBookingStatus(BookingStatus bookingStatus);
 
@@ -106,6 +85,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         FROM Booking b
         WHERE b.bookingStatus <> 'CANCELLED'
     """)
-
     BigDecimal getTotalPendingAmount();
+
+    List<Booking> findByGuestIdOrderByCreatedAtDesc(Long guestId);
 }
