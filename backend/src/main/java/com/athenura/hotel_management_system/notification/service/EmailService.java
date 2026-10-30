@@ -16,4 +16,5 @@ public interface EmailService {
     void sendGuestRegistrationOtp(String toEmail, String otp);
     void sendTransactionalEmail(String toEmail, String toName, String subject, String htmlContent);
     void sendManageBookingAccessOtp(Booking booking, String otp);
+    void sendPasswordResetEmail(String toEmail, String resetToken, String firstName);
 }

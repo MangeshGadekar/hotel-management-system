@@ -193,7 +193,7 @@ public class EmailServiceImpl implements EmailService {
 
         String htmlContent = """
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; color: #1e293b;">
-                <h2 style="color: #D96B43; margin-top: 0;">Hotel Paradise & Suites</h2>
+                <h2 style="color: #D96B43; margin-top: 0;">Hotel Athitya</h2>
                 <p style="font-size: 15px; margin-bottom: 20px;">Room Service / Add-on Payment Receipt</p>
                 <p>Dear <b>%s</b>,</p>
                 <p>We have processed payment for your room orders and extra services.</p>
@@ -316,6 +316,37 @@ public class EmailServiceImpl implements EmailService {
             """.formatted(recipientName, toEmail, rawPassword);
 
         sendEmailViaBrevo(toEmail, recipientName, "Account Created - Hotel Athitya Staff", htmlContent, null);
+    }
+
+    @Override
+    public void sendPasswordResetEmail(String toEmail, String resetToken, String firstName) {
+        String recipientName = (firstName != null && !firstName.isBlank()) ? firstName : "User";
+        String resetUrl = "http://localhost:5173/reset-password?token=" + resetToken;
+
+        String htmlContent = """
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2 style="color: #D96B43;">Hotel Athitya</h2>
+                <h3>Password Reset Request</h3>
+                <p>Hello <b>%s</b>,</p>
+                <p>You have requested to reset your password. Click the button below to reset it:</p>
+                
+                <div style="margin: 20px 0;">
+                    <a href="%s" style="background-color: #D96B43; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Reset Password</a>
+                </div>
+                
+                <p>Or copy and paste this link into your browser:</p>
+                <p><a href="%s" style="color: #D96B43;">%s</a></p>
+                
+                <p>This link is valid for <b>15 minutes</b>.</p>
+                <p style="color: #888; font-size: 12px;">If you did not request this, please ignore this email.</p>
+                <br>
+                <p>Best Regards,<br><b>Hotel Athitya Team</b></p>
+            </body>
+            </html>
+            """.formatted(recipientName, resetUrl, resetUrl, resetUrl);
+
+        sendEmailViaBrevo(toEmail, recipientName, "Password Reset Request - Hotel Athitya", htmlContent, null);
     }
 
     @Override
