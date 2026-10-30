@@ -20,7 +20,15 @@ public class PaymentDTO {
         private String paymentType; //full, split_advance, split_Balance
         private String paymentMethod;// cash,upi,card
         private BigDecimal amount;
-        private String transactionReference;// custom amount can be entered
+        private String transactionReference;
+        private String settledItems;
+        private String receiptNumber;
+
+        private BigDecimal grossAmount;
+        private BigDecimal discountDeducted;
+        private BigDecimal couponDeducted;
+        private BigDecimal amountPaid;
+        private BigDecimal balanceRemaining;
     }
 
 
@@ -41,7 +49,13 @@ public class PaymentDTO {
         private String paymentMethod;
         private String receiptType;      // full_payment_receipt / advance_payment_receipt
         private LocalDateTime transactionTime;
+        private String settledItems;
         private String transactionReference;
+
+        private BigDecimal grossAmount;
+        private BigDecimal discountDeducted;
+        private BigDecimal couponDeducted;
+        private BigDecimal balanceRemaining;
     }
 
     @Data

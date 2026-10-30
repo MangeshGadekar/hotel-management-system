@@ -39,6 +39,8 @@ public class RoomRequest {
 
     private List<String> images;
 
+    private List<String> amenities;
+
 }
 
 

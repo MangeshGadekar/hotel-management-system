@@ -5,19 +5,19 @@ import com.athenura.hotel_management_system.coupon.dto.CouponRequest;
 import com.athenura.hotel_management_system.coupon.dto.CouponResponse;
 import com.athenura.hotel_management_system.coupon.dto.ValidateCouponRequest;
 import com.athenura.hotel_management_system.coupon.entity.Coupon;
+import com.athenura.hotel_management_system.coupon.enums.CouponAudience;
 import com.athenura.hotel_management_system.coupon.enums.DiscountType;
 import com.athenura.hotel_management_system.coupon.mapper.CouponMapper;
 import com.athenura.hotel_management_system.coupon.repository.CouponRepository;
 import com.athenura.hotel_management_system.coupon.service.CouponService;
 import com.athenura.hotel_management_system.room.enums.RoomType;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -30,8 +30,8 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional
     public CouponResponse createCoupon(CouponRequest request) {
-        if (couponRepository.existsByCodeIgnoreCase(request.getCode())){
-            throw new RuntimeException("Coupon with code " + request.getCode() + "already exists");
+        if (couponRepository.existsByCodeIgnoreCase(request.getCode())) {
+            throw new RuntimeException("Coupon with code '" + request.getCode() + "' already exists");
         }
         Coupon coupon = couponMapper.toEntity(request);
         Coupon savedCoupon = couponRepository.save(coupon);
@@ -39,6 +39,7 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CouponResponse> getAllCoupons() {
         return couponRepository.findAll().stream()
                 .map(couponMapper::toResponse)
@@ -46,6 +47,7 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CouponResponse getCouponByCode(String code) {
         Coupon coupon = couponRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new RuntimeException("Coupon not found: " + code));
@@ -53,9 +55,40 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<CouponResponse> getActiveCouponsForRole(String role) {
+        LocalDate today = LocalDate.now();
+
+        List<Coupon> activeCoupons;
+        if ("ADMIN".equalsIgnoreCase(role) || "ROLE_ADMIN".equalsIgnoreCase(role)) {
+            activeCoupons = couponRepository.findAllActive(today);
+        } else if ("RECEPTIONIST".equalsIgnoreCase(role) || "ROLE_RECEPTIONIST".equalsIgnoreCase(role)) {
+            activeCoupons = couponRepository.findActiveByAudiences(
+                    List.of(CouponAudience.ALL, CouponAudience.RECEPTIONIST),
+                    today
+            );
+        } else {
+            activeCoupons = couponRepository.findActiveByAudiences(
+                    List.of(CouponAudience.ALL, CouponAudience.GUEST),
+                    today
+            );
+        }
+
+        return activeCoupons.stream()
+                .map(couponMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public CouponApplyResponse validateAndApplyCoupon(ValidateCouponRequest request) {
-        BigDecimal discount = calculateDiscount(request.getCode(), request.getBookingAmount(), request.getRoomType());
-        BigDecimal finalAmount = request.getBookingAmount().subtract(discount);
+        BigDecimal discount = calculateDiscount(
+                request.getCode(),
+                request.getBookingAmount(),
+                request.getRoomType(),
+                request.getRole() != null ? request.getRole() : "GUEST"
+        );
+        BigDecimal finalAmount = request.getBookingAmount().subtract(discount).max(BigDecimal.ZERO);
 
         return CouponApplyResponse.builder()
                 .code(request.getCode().trim().toUpperCase())
@@ -67,7 +100,14 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BigDecimal calculateDiscount(String code, BigDecimal bookingAmount, RoomType roomType) {
+        return calculateDiscount(code, bookingAmount, roomType, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal calculateDiscount(String code, BigDecimal bookingAmount, RoomType roomType, String role) {
         Coupon coupon = couponRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new RuntimeException("Coupon '" + code + "' is invalid!"));
 
@@ -76,10 +116,10 @@ public class CouponServiceImpl implements CouponService {
         if (Boolean.FALSE.equals(coupon.getActive())) {
             throw new RuntimeException("Coupon is no longer active");
         }
-        if (today.isBefore(coupon.getValidFrom())) {
+        if (coupon.getValidFrom() != null && today.isBefore(coupon.getValidFrom())) {
             throw new RuntimeException("Coupon is not valid yet");
         }
-        if (today.isAfter(coupon.getValidUntil())) {
+        if (coupon.getValidUntil() != null && today.isAfter(coupon.getValidUntil())) {
             throw new RuntimeException("Coupon has expired");
         }
         if (coupon.getUsageLimit() != null && coupon.getTimesUsed() >= coupon.getUsageLimit()) {
@@ -95,11 +135,22 @@ public class CouponServiceImpl implements CouponService {
             }
         }
 
+        // --- Role & Target Audience Verification ---
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(role) || "ROLE_ADMIN".equalsIgnoreCase(role);
 
+        if (!isAdmin && coupon.getTargetAudience() != null) {
+            if ("RECEPTIONIST".equalsIgnoreCase(role) && coupon.getTargetAudience() == CouponAudience.GUEST) {
+                throw new RuntimeException("This coupon is strictly reserved for online guest bookings.");
+            }
+            if (("GUEST".equalsIgnoreCase(role) || role == null) && coupon.getTargetAudience() == CouponAudience.RECEPTIONIST) {
+                throw new RuntimeException("This coupon is reserved strictly for front-desk walk-in reservations.");
+            }
+        }
 
         BigDecimal discount;
         if (coupon.getDiscountType() == DiscountType.PERCENTAGE) {
-            discount = bookingAmount.multiply(coupon.getDiscountValue().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+            BigDecimal percentage = coupon.getDiscountValue().min(new BigDecimal("100.00")).max(BigDecimal.ZERO);
+            discount = bookingAmount.multiply(percentage.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
         } else {
             discount = coupon.getDiscountValue();
         }
@@ -123,10 +174,9 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional
     public void deleteCoupon(Long id) {
-            if (!couponRepository.existsById(id)) {
-                throw new RuntimeException("Coupon not found with id: " + id);
-            }
-            couponRepository.deleteById(id);
+        if (!couponRepository.existsById(id)) {
+            throw new RuntimeException("Coupon not found with id: " + id);
+        }
+        couponRepository.deleteById(id);
     }
 }
-

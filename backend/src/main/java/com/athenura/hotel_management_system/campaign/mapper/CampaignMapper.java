@@ -1,6 +1,5 @@
 package com.athenura.hotel_management_system.campaign.mapper;
 
-
 import com.athenura.hotel_management_system.campaign.dto.CampaignRequestDto;
 import com.athenura.hotel_management_system.campaign.dto.CampaignResponseDto;
 import com.athenura.hotel_management_system.campaign.entity.Campaign;
@@ -15,24 +14,24 @@ public class CampaignMapper {
     public Campaign toEntity(CampaignRequestDto dto){
         return Campaign.builder()
                 .campaignName(dto.getCampaignName())
-                .subjectLine((dto.getSubjectLine()))
+                .subjectLine(dto.getSubjectLine())
                 .emailContent(dto.getEmailContent())
                 .targetAudience(dto.getTargetAudience())
                 .campaignType(dto.getCampaignType())
                 .schedule(dto.getSchedule())
                 .status(dto.getSchedule() != null && dto.getSchedule().isAfter(LocalDateTime.now())
-                                ? CampaignStatus.SCHEDULED
-                                : CampaignStatus.DRAFT)
+                        ? CampaignStatus.SCHEDULED
+                        : CampaignStatus.DRAFT)
                 .filterRoomType(dto.getFilterRoomType())
                 .filterStartDate(dto.getFilterStartDate())
                 .filterEndDate(dto.getFilterEndDate())
                 .filterMinSpending(dto.getFilterMinSpending())
                 .createdAt(LocalDateTime.now())
                 .build();
-
     }
 
     public CampaignResponseDto toDto(Campaign entity){
+        if (entity == null) return null;
         return CampaignResponseDto.builder()
                 .id(entity.getId())
                 .campaignName(entity.getCampaignName())
@@ -43,7 +42,10 @@ public class CampaignMapper {
                 .schedule(entity.getSchedule())
                 .status(entity.getStatus())
                 .createdAt(entity.getCreatedAt())
+                .filterRoomType(entity.getFilterRoomType())
+                .filterStartDate(entity.getFilterStartDate())
+                .filterEndDate(entity.getFilterEndDate())
+                .filterMinSpending(entity.getFilterMinSpending())
                 .build();
-
     }
 }

@@ -10,11 +10,22 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public interface CouponService {
+
     CouponResponse createCoupon(CouponRequest request);
+
     List<CouponResponse> getAllCoupons();
+
     CouponResponse getCouponByCode(String code);
+
     CouponApplyResponse validateAndApplyCoupon(ValidateCouponRequest request);
+
     BigDecimal calculateDiscount(String code, BigDecimal bookingAmount, RoomType roomType);
+
+    BigDecimal calculateDiscount(String code, BigDecimal bookingAmount, RoomType roomType, String role);
+
     void incrementUsage(String code);
+
     void deleteCoupon(Long id);
+
+    List<CouponResponse> getActiveCouponsForRole(String role);
 }

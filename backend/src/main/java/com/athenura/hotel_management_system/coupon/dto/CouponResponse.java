@@ -1,6 +1,7 @@
 package com.athenura.hotel_management_system.coupon.dto;
 
 
+import com.athenura.hotel_management_system.coupon.enums.CouponAudience;
 import com.athenura.hotel_management_system.coupon.enums.DiscountType;
 import com.athenura.hotel_management_system.room.enums.RoomType;
 import lombok.*;
@@ -29,4 +30,5 @@ public class CouponResponse {
     private Set<RoomType> applicableRoomTypes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private CouponAudience targetAudience;
 }

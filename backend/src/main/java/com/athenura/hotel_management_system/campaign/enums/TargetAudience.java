@@ -6,6 +6,5 @@ public enum TargetAudience {
     BY_ROOM_TYPE,
     BY_DATE_RANGE,
     BY_SPENDING,
-    UPCOMING_BIRTHDAYS,
     STAY_ANNIVERSARIES
 }
