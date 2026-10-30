@@ -1,6 +1,5 @@
 import { apiClient } from "./apiClient";
 
-
 const getAuthHeaders = (token) => {
   if (!token) return {};
 
@@ -26,9 +25,12 @@ export const userLogin = async (payload) => {
 };
 
 export const userLogout = async () => {
-  return await apiClient.get("/auth/logout").json();
+  return await apiClient.post("/auth/logout", {
+    headers : {
+       headers: getAuthHeaders(token),
+    }
+  }).json();
 };
-
 
 /* =================================================== */
 /* RECEPTIONIST */
@@ -73,7 +75,7 @@ export const removeReceptionist = async (id, token) => {
     .delete(`/admin/receptionist/delete/${id}`, {
       headers: getAuthHeaders(token),
     })
-    .json();
+    .text();
 };
 
 /* =================================================== */
@@ -107,7 +109,6 @@ export const fetchGuest = async (id, token) => {
 };
 
 export const fetchAllGuest = async (token) => {
-  console.log("token",token)
   return await apiClient
     .get(`/guest`, {
       headers: getAuthHeaders(token),
@@ -166,24 +167,68 @@ export const verifyGuestOtpAndSave = async (payload, token = null) => {
 /* BOOKINGS */
 /* =================================================== */
 
-export const createBooking = async (payload) => {
-  return await apiClient.post(`/booking/create`, { json: payload }).json();
+export const createBooking = async (payload, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .post(`/booking/create`, {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
 };
 
-export const patchBooking = async (id, payload) => {
+export const patchBooking = async (id, payload, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
-    .patch(`/booking/update/${id}`, { json: payload })
+    .patch(`/booking/update/${id}`, {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
     .json();
 };
 
 export const updateBookingApi = patchBooking;
+
+export const fetchBooking = async (id, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .get(`/booking/${id}`, {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
+};
+
+export const fetchAllBooking = async (token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .get(`/booking`, {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
+};
+
+export const cancelBooking = async (id, payload = {}, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .patch(`/booking/cancel/${id}`, {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
+};
 
 /* =================================================== */
 /* BOOKINGS & OPERATIONS */
 /* =================================================== */
 
 export const checkInGuestApi = async (bookingId, token = null) => {
-  const authToken = token || localStorage.getItem("token");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .patch(`booking/${bookingId}/check-in`, {
       headers: getAuthHeaders(authToken),
@@ -192,7 +237,8 @@ export const checkInGuestApi = async (bookingId, token = null) => {
 };
 
 export const checkOutGuestApi = async (bookingId, token = null) => {
-  const authToken = token || localStorage.getItem("token");
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .patch(`booking/${bookingId}/check-out`, {
       headers: getAuthHeaders(authToken),
@@ -200,8 +246,13 @@ export const checkOutGuestApi = async (bookingId, token = null) => {
     .json();
 };
 
-export const settleBalancePaymentApi = async (bookingId, payload, token = null) => {
-  const authToken = token || localStorage.getItem("token");
+export const settleBalancePaymentApi = async (
+  bookingId,
+  payload,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .post(`booking/${bookingId}/settle-balance`, {
       headers: getAuthHeaders(authToken),
@@ -210,125 +261,19 @@ export const settleBalancePaymentApi = async (bookingId, payload, token = null) 
     .json();
 };
 
-
-/* =================================================== */
-/* PAYMENTS */
-/* =================================================== */
-export const fetchBooking = async (id) => {
-  return await apiClient.get(`/booking/${id}`).json();
-};
-
-export const fetchAllBooking = async () => {
-  return await apiClient.get(`/booking`).json();
-};
-
-export const cancelBooking = async (id, payload) => {
-  return await apiClient
-    .patch(`/booking/cancel/${id}`, { json: payload })
-    .json();
-};
-
-
-/* =================================================== */
-/* PAYMENTS & RAZORPAY GATEWAY */
-/* =================================================== */
-
-export const processPaymentApi = async (payload, token = null) => {
-  const authToken = token || localStorage.getItem("token");
-  return await apiClient
-    .post("api/payments/pay", {
-      headers: getAuthHeaders(authToken),
-      json: payload,
-    })
-    .json();
-};
-
-export const createRazorpayOrderApi = async (bookingId, paymentType, token = null) => {
-  const authToken = token || localStorage.getItem("token");
-  return await apiClient
-    .post("api/payments/razorpay/order", {
-      headers: getAuthHeaders(authToken),
-      searchParams: { bookingId, paymentType },
-    })
-    .json();
-};
-
-export const verifyRazorpayPaymentApi = async (payload, token = null) => {
-  const authToken = token || localStorage.getItem("token");
-  return await apiClient
-    .post("api/payments/razorpay/verify", {
-      headers: getAuthHeaders(authToken),
-      json: payload,
-    })
-    .json();
-};
-
-
-/* =================================================== */
-/* PAYMENTS & AUDIT */
-/* =================================================== */
-
-export const fetchAllPaymentsApi = async (token = null) => {
-  const authToken = token || localStorage.getItem("token");
-  return await apiClient
-    .get("api/payments", {
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-    })
-    .json();
-};
-
-export const fetchPaymentsByBookingApi = async (bookingId, token = null) => {
-  const authToken = token || localStorage.getItem("token");
-  return await apiClient
-    .get(`api/payments/booking/${bookingId}`, {
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-    })
-    .json();
-};
-
-export const addCustomServiceToBookingApi = async (bookingId, payload, token = null) => {
-  const authToken = token || localStorage.getItem("token");
-  return await apiClient
-    .post(`booking/${bookingId}/add-custom-service`, {
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-      json: payload,
-    })
-    .json();
-};
-
-
-export const createExtraServiceApi = async (payload, token = null) => {
-  const authToken = token || localStorage.getItem("token");
-  return await apiClient
-    .post("api/extra-services", {
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-      json: payload,
-    })
-    .json();
-};
-
-export const addExtraServicesToBookingApi = async (bookingId, extraServiceIds, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
-  return await apiClient
-    .post(`booking/${bookingId}/add-services`, {
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-      json: extraServiceIds, // Sends JSON array directly: [1]
-    })
-    .json();
-};
-
-
 export const downloadCheckInReceiptApi = async (bookingId) => {
   const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken");
+    localStorage.getItem("token") || localStorage.getItem("authToken");
 
-  const response = await fetch(`http://localhost:8080/booking/${bookingId}/receipt-pdf`, {
-    method: "GET",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  const response = await fetch(
+    `http://localhost:8080/booking/${bookingId}/receipt-pdf`,
+    {
+      method: "GET",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     },
-  });
+  );
 
   if (!response.ok) {
     throw new Error("Failed to download Check-In receipt PDF");
@@ -345,10 +290,62 @@ export const downloadCheckInReceiptApi = async (bookingId) => {
   window.URL.revokeObjectURL(downloadUrl);
 };
 
+/* =================================================== */
+/* EXTRA SERVICES */
+/* =================================================== */
 
+export const fetchActiveExtraServices = async () => {
+  return await apiClient.get("api/extra-services").json();
+};
 
-export const removeExtraServiceFromBookingApi = async (bookingId, serviceId, token = null) => {
-  const authToken = token || localStorage.getItem("token") || localStorage.getItem("authToken");
+export const createExtraServiceApi = async (payload, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .post("api/extra-services", {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
+};
+
+export const addExtraServicesToBookingApi = async (
+  bookingId,
+  extraServiceIds,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .post(`booking/${bookingId}/add-services`, {
+      headers: getAuthHeaders(authToken),
+      json: extraServiceIds,
+    })
+    .json();
+};
+
+export const addCustomServiceToBookingApi = async (
+  bookingId,
+  payload,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .post(`booking/${bookingId}/add-custom-service`, {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
+};
+
+export const removeExtraServiceFromBookingApi = async (
+  bookingId,
+  serviceId,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
   return await apiClient
     .delete(`booking/${bookingId}/remove-service/${serviceId}`, {
       headers: getAuthHeaders(authToken),
@@ -360,16 +357,92 @@ export const removeExtraServiceFromBookingApi = async (bookingId, serviceId, tok
 /* COUPONS */
 /* =================================================== */
 
-export const fetchCouponsApi = async () => {
-  return await apiClient.get("coupon").json();
+export const createCupone = async (payload, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient.post("/api/coupons/create", {
+    headers: getAuthHeaders(authToken),
+    json: payload,
+  });
+};
+
+export const fetchAllCupons = async (token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .get("/api/coupons", {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
+};
+
+export const deleteCupon = async (cuponId, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient.delete(`/api/coupons/${cuponId}`, {
+    headers: getAuthHeaders(authToken),
+  });
 };
 
 /* =================================================== */
-/* EXTRA SERVICES */
+/* PAYMENTS & RAZORPAY GATEWAY */
 /* =================================================== */
 
-export const fetchActiveExtraServices = async () => {
-  return await apiClient.get("api/extra-services").json();
+export const processPaymentApi = async (payload, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .post("api/payments/pay", {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
+};
+
+export const createRazorpayOrderApi = async (
+  bookingId,
+  paymentType,
+  token = null,
+) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .post("api/payments/razorpay/order", {
+      headers: getAuthHeaders(authToken),
+      searchParams: { bookingId, paymentType },
+    })
+    .json();
+};
+
+export const verifyRazorpayPaymentApi = async (payload, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .post("api/payments/razorpay/verify", {
+      headers: getAuthHeaders(authToken),
+      json: payload,
+    })
+    .json();
+};
+
+export const fetchAllPaymentsApi = async (token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .get("api/payments", {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
+};
+
+export const fetchPaymentsByBookingApi = async (bookingId, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+  return await apiClient
+    .get(`api/payments/booking/${bookingId}`, {
+      headers: getAuthHeaders(authToken),
+    })
+    .json();
 };
 
 /* =================================================== */
@@ -480,66 +553,67 @@ export const deleteRoom = async (roomNumber, token) => {
 };
 
 /* =================================================== */
-/* CAMPAINGS */
+/* CAMPAIGNS & DASHBOARD */
 /* =================================================== */
-/* create campaings */
+
 export const createCampaings = async (token, payload) => {
   return await apiClient
     .post(`admin/campaigns`, {
-      headers: {
-        Authorization: token,
-      },
+      headers: getAuthHeaders(token),
       json: payload,
     })
     .json();
 };
 
-/* get all campaings */
 export const getAllCampaings = async (token) => {
   return apiClient
     .get(`/admin/campaigns`, {
-      headers: {
-        Authorization: token,
-      },
+      headers: getAuthHeaders(token),
     })
     .json();
 };
 
-/* delete campaings */
 export const patchCampaing = async (token, campaignId, payload) => {
   return apiClient
     .post(`/admin/campaign/${campaignId}`, {
-      headers: {
-        Authorization: token,
-      },
+      headers: getAuthHeaders(token),
       json: payload,
     })
     .json();
 };
 
-/* delete campaings */
 export const deleteCampaign = async (token, campaignId) => {
   return await apiClient
     .delete(`/admin/campaigns/${campaignId}`, {
-      headers: {
-        Authorization: token,
-      },
+      headers: getAuthHeaders(token),
     })
     .json();
 };
 
-/* =================================================== */
-/* CAMPAINGS */
-/* =================================================== */
-/* admin dashboard */
-
-/* get type of rooms */
 export const adminDashboard = async (token) => {
   return await apiClient
     .get(`/admin/dashboard`, {
-      headers: {
-        Authorization: token,
-      },
+      headers: getAuthHeaders(token),
     })
     .json();
+};
+
+/*====================================================*/
+/* CAMPAIGNS */
+/*====================================================*/
+
+export const fetchAllCampaigns =async()=> {
+  return await apiClient.get(`/admin/campaigns`).json();
+};
+export const createCampaign =async(payload)=> {
+  return await apiClient.post(`/admin/campaigns`,{
+    json: payload
+  }).json();
+};
+export const sendCampaign = async (id) => {
+  return await apiClient.post(`/admin/campaigns/${id}/send`).json();
+};
+
+export const fetchCampaignAudience = async (id) => {
+  return await apiClient.get(`/admin/campaigns/${id}/audience`).json();
 };

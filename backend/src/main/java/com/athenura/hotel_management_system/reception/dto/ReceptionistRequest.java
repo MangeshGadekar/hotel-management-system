@@ -16,8 +16,6 @@ public class ReceptionistRequest {
 
     private String lastName;
 
-    private String username;
-
     @Email(message = "Invalid email")
     private String email;
 

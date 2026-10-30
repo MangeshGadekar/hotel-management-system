@@ -318,6 +318,7 @@ public class EmailServiceImpl implements EmailService {
         sendEmailViaBrevo(toEmail, recipientName, "Account Created - Hotel Athitya Staff", htmlContent, null);
     }
 
+
     @Override
     public void sendPasswordResetEmail(String toEmail, String resetToken, String firstName) {
         String recipientName = (firstName != null && !firstName.isBlank()) ? firstName : "User";

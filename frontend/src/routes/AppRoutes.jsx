@@ -12,6 +12,7 @@ const Receptionists = lazy(() => import("../pages/admin/Receptionists"));
 const Bookings = lazy(() => import("../pages/admin/Bookings"));
 const Payments = lazy(() => import("../pages/admin/Payments"));
 const Coupons = lazy(() => import("../pages/admin/Coupons"));
+const Campaigns = lazy(() => import("../pages/admin/Campaigns"));
 const Reports = lazy(() => import("../pages/admin/Reports"));
 const Settings = lazy(() => import("../pages/admin/Settings"));
 
@@ -22,7 +23,15 @@ const ForgetPassword = lazy(() => import("../pages/auth/ForgetPassword"));
 const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 
 // Receptionist Pages
-const ReceptionistDashboard = lazy(() => import("../pages/receptionist/Dashboard"));
+const ReceptionistDashboard = lazy(
+  () => import("../pages/receptionist/ReceptionistDashboard"),
+);
+const ReceptionistBookings = lazy(() => import("../pages/admin/Bookings"));
+const ReceptionistCustomer = lazy(() => import("../pages/admin/Customers"));
+const ReceptionistRooms = lazy(() => import("../pages/admin/Rooms"));
+const ReceptionistCustomers = lazy(() => import("../pages/admin/Customers"));
+const ReceptionistPayments = lazy(() => import("../pages/admin/Payments"));
+const ReceptionistCoupons = lazy(() => import("../pages/admin/Coupons"));
 
 // Common Pages
 const RoomsAndSuits = lazy(() => import("../pages/common/RoomsAndSuits"));
@@ -44,7 +53,9 @@ export default function AppRoutes() {
   const hideHeaderFooter =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/receptionist") ||
-    ["/login", "/register", "/forgot-password", "/reset-password"].includes(location.pathname);
+    ["/login", "/register", "/forgot-password", "/reset-password"].includes(
+      location.pathname,
+    );
 
   return (
     <div>
@@ -59,6 +70,7 @@ export default function AppRoutes() {
           <Route path="customers" element={<Customers />} />
           <Route path="payments" element={<Payments />} />
           <Route path="coupons" element={<Coupons />} />
+          <Route path="campaigns" element={<Campaigns />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
         </Route>
@@ -67,6 +79,11 @@ export default function AppRoutes() {
         <Route path="/receptionist" element={<ReceptionistLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ReceptionistDashboard />} />
+          <Route path="bookings" element={<ReceptionistBookings />} />
+          <Route path="rooms" element={<ReceptionistRooms />} />
+          <Route path="customers" element={<ReceptionistCustomers />} />
+          <Route path="payments" element={<ReceptionistPayments />} />
+          <Route path="coupons" element={<ReceptionistCoupons />} />
         </Route>
 
         {/* Auth Routes */}
@@ -78,7 +95,7 @@ export default function AppRoutes() {
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/rooms" element={<Rooms />} />
-        <Route path="/rooms/:id" element={<Room />} />
+        <Route path="/rooms/:roomNumber" element={<Room />} />
         <Route path="/booking/:id" element={<RoomBooking />} />
         <Route path="/rooms-suites" element={<RoomsAndSuits />} />
         <Route path="/about" element={<About />} />

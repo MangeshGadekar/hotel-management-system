@@ -216,6 +216,7 @@ public class RoomServiceImpl implements RoomService {
         return roomMapper.toResponse(updatedRoom);
     }
 
+
     @Override
     @Transactional
     public RoomResponse updateRoomStatus(String roomNumber, RoomStatus newStatus) {
@@ -230,4 +231,5 @@ public class RoomServiceImpl implements RoomService {
         Room updatedRoom = roomRepository.save(room);
         return roomMapper.toResponse(updatedRoom);
     }
+
 }

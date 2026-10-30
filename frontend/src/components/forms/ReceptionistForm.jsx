@@ -33,7 +33,6 @@ const ReceptionistForm = ({
         className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
             <h2 className="text-lg font-bold text-slate-800">
@@ -58,7 +57,6 @@ const ReceptionistForm = ({
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          {/* Email */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">
               Email
@@ -76,26 +74,6 @@ const ReceptionistForm = ({
             )}
           </div>
 
-          {/* Username */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Username
-            </label>
-            <input
-              type="text"
-              onChange={handle("username")}
-              placeholder="johndoe"
-              value={values.username}
-              className={`${inputClass} ${
-                errors.username ? errorClass : ""
-              }`}
-            />
-            {errors.username && (
-              <p className="mt-1 text-xs text-rose-500">{errors.username}</p>
-            )}
-          </div>
-
-          {/* Firstname / Lastname */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">
@@ -106,14 +84,10 @@ const ReceptionistForm = ({
                 onChange={handle("firstName")}
                 placeholder="John"
                 value={values.firstName}
-                className={`${inputClass} ${
-                  errors.firstName ? errorClass : ""
-                }`}
+                className={`${inputClass} ${errors.firstName ? errorClass : ""}`}
               />
               {errors.firstName && (
-                <p className="mt-1 text-xs text-rose-500">
-                  {errors.firstName}
-                </p>
+                <p className="mt-1 text-xs text-rose-500">{errors.firstName}</p>
               )}
             </div>
             <div>
@@ -125,19 +99,14 @@ const ReceptionistForm = ({
                 onChange={handle("lastName")}
                 placeholder="Doe"
                 value={values.lastName}
-                className={`${inputClass} ${
-                  errors.lastName ? errorClass : ""
-                }`}
+                className={`${inputClass} ${errors.lastName ? errorClass : ""}`}
               />
               {errors.lastName && (
-                <p className="mt-1 text-xs text-rose-500">
-                  {errors.lastName}
-                </p>
+                <p className="mt-1 text-xs text-rose-500">{errors.lastName}</p>
               )}
             </div>
           </div>
 
-          {/* Password with show/hide */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">
               Password{" "}
@@ -151,28 +120,19 @@ const ReceptionistForm = ({
               <input
                 type={showPassword ? "text" : "password"}
                 onChange={handle("password")}
-                placeholder={
-                  isEditMode ? "•••••••• (unchanged)" : "••••••••"
-                }
+                placeholder={isEditMode ? "•••••••• (unchanged)" : "••••••••"}
                 value={values.password}
-                className={`${inputClass} pr-11 ${
-                  errors.password ? errorClass : ""
-                }`}
+                className={`${inputClass} pr-11 ${errors.password ? errorClass : ""}`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                title={showPassword ? "Hide password" : "Show password"}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 
                            hover:text-slate-700 transition-colors focus:outline-none"
               >
-                {showPassword ? (
-                  <FiEyeOff className="w-4 h-4" />
-                ) : (
-                  <FiEye className="w-4 h-4" />
-                )}
+                {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
               </button>
             </div>
             {errors.password && (
@@ -180,7 +140,6 @@ const ReceptionistForm = ({
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
             <button
               type="button"
@@ -199,7 +158,7 @@ const ReceptionistForm = ({
                          bg-[#D96B43] hover:bg-[#c25a34] 
                          shadow-xs hover:shadow-md 
                          active:scale-[0.98] transition-all duration-200 
-                         disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                         disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSubmitting
                 ? isEditMode
