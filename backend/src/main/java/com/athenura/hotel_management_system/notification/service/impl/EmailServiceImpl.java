@@ -30,6 +30,9 @@ public class EmailServiceImpl implements EmailService {
     @Value("${brevo.sender.name:Hotel Athitya}")
     private String senderName;
 
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
     private final RestClient restClient;
 
     public EmailServiceImpl(RestClient.Builder restClientBuilder) {

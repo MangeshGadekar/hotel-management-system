@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import GuestForm from "../../components/forms/GuestForm";
 import useGuestStore from "../../app/useGuestStore";
 
+import GuestHistoryModal from "../../components/modals/GuestHistoryModal";
+import BookingDetailsModal from "../../components/modals/BookingDetailsModal";
+
 export default function Customers({ token: propToken }) {
- 
   const token =
     propToken ||
     localStorage.getItem("token") ||
@@ -17,13 +19,15 @@ export default function Customers({ token: propToken }) {
 
   const { guestList, getGuestList, removeGuest, loading } = useGuestStore();
 
+  const [historyGuest, setHistoryGuest] = useState(null);
+  const [inspectBookingId, setInspectBookingId] = useState(null);
+
   useEffect(() => {
     if (token) {
       getGuestList(token);
     }
   }, [token, getGuestList]);
 
-  
   const handleDelete = async (id) => {
     if (!token) {
       alert("Authentication error: Token missing. Please log in again.");
@@ -44,7 +48,6 @@ export default function Customers({ token: propToken }) {
     }
   };
 
-  
   const filteredCustomers = (guestList || []).filter((guest) => {
     const firstName = guest.first_name || guest.firstName || "";
     const lastName = guest.last_name || guest.lastName || "";
@@ -56,7 +59,6 @@ export default function Customers({ token: propToken }) {
     return fullName.includes(query) || email.includes(query) || phone.includes(query);
   });
 
- 
   const getCreatedByText = (guest) => {
     const creator = guest.created_by || guest.createdBy;
     if (!creator || creator.toLowerCase() === "self" || creator.toLowerCase() === "online") {
@@ -72,11 +74,9 @@ export default function Customers({ token: propToken }) {
     <div className="space-y-6 p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">
-            Customer Management
-          </h1>
+          <h1 className="text-xl font-bold text-slate-800">Customer Management</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage guest accounts, verification statuses, and contact details
+            Manage guest accounts, verification statuses, and contact details. Click any guest to view stay history.
           </p>
         </div>
 
@@ -125,11 +125,16 @@ export default function Customers({ token: propToken }) {
                 const creatorInfo = getCreatedByText(guest);
 
                 return (
-                  <tr key={guestId} className="hover:bg-slate-50/60 transition">
-                    <td className="px-6 py-4 font-semibold text-slate-900">
-                      {guestId}
+                  <tr
+                    key={guestId}
+                    onClick={() => setHistoryGuest(guest)}
+                    className="hover:bg-orange-50/40 cursor-pointer transition select-none group"
+                    title="Click to view full reservation history"
+                  >
+                    <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-[#D96B43]">
+                      #{guestId}
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-800">
+                    <td className="px-6 py-4 font-medium text-slate-800 group-hover:text-[#D96B43]">
                       {firstName} {lastName}
                     </td>
                     <td className="px-6 py-4">
@@ -149,7 +154,9 @@ export default function Customers({ token: propToken }) {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full border ${creatorInfo.badgeClass}`}>
+                      <span
+                        className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full border ${creatorInfo.badgeClass}`}
+                      >
                         {creatorInfo.text}
                       </span>
                     </td>
@@ -164,12 +171,16 @@ export default function Customers({ token: propToken }) {
                         {isVerified ? "Verified" : "Unverified"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td
+                      className="px-6 py-4 text-right cursor-default"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center justify-end gap-3">
-                        {/* View Icon */}
+                        {/* View Stay History Icon */}
                         <button
-                          onClick={() => setSelectedCustomer(guest)}
-                          title="View Guest"
+                          type="button"
+                          onClick={() => setHistoryGuest(guest)}
+                          title="View Stay History & Reservations"
                           className="p-1.5 text-slate-500 hover:text-[#D96B43] hover:bg-slate-100 rounded-lg transition cursor-pointer"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,13 +189,13 @@ export default function Customers({ token: propToken }) {
                           </svg>
                         </button>
 
-                       
                         <button
+                          type="button"
                           onClick={() => {
                             setEditingCustomer(guest);
                             setShowGuestForm(true);
                           }}
-                          title="Edit Guest"
+                          title="Edit Guest Profile"
                           className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,8 +203,8 @@ export default function Customers({ token: propToken }) {
                           </svg>
                         </button>
 
-                      
                         <button
+                          type="button"
                           onClick={() => handleDelete(guestId)}
                           title="Delete Guest"
                           className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
@@ -220,52 +231,7 @@ export default function Customers({ token: propToken }) {
         </div>
       </div>
 
-      
-      {selectedCustomer && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-bold text-slate-800">
-                {selectedCustomer.first_name || selectedCustomer.firstName} {selectedCustomer.last_name || selectedCustomer.lastName}
-              </h3>
-              <span
-                className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
-                  Boolean(selectedCustomer.is_verified ?? selectedCustomer.isVerified)
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border-amber-200"
-                }`}
-              >
-                {Boolean(selectedCustomer.is_verified ?? selectedCustomer.isVerified) ? "Verified" : "Unverified"}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-sm text-slate-600 max-h-[60vh] overflow-y-auto pr-1">
-              <p><span className="font-semibold text-slate-800">ID:</span> #{selectedCustomer.id || selectedCustomer._id}</p>
-              <p><span className="font-semibold text-slate-800">Created / Registered By:</span> {getCreatedByText(selectedCustomer).text}</p>
-              <p><span className="font-semibold text-slate-800">Email:</span> {selectedCustomer.email || "N/A"}</p>
-              <p><span className="font-semibold text-slate-800">Phone:</span> {selectedCustomer.phone || "N/A"}</p>
-              <p><span className="font-semibold text-slate-800">DOB:</span> {selectedCustomer.date_of_birth || selectedCustomer.dateOfBirth || "N/A"}</p>
-              <p><span className="font-semibold text-slate-800">Address:</span> {selectedCustomer.address || "N/A"}</p>
-              <p><span className="font-semibold text-slate-800">City:</span> {selectedCustomer.city || "N/A"}</p>
-              <p><span className="font-semibold text-slate-800">State:</span> {selectedCustomer.state || "N/A"}</p>
-              <p><span className="font-semibold text-slate-800">Postal Code:</span> {selectedCustomer.postal_code || selectedCustomer.postalCode || "N/A"}</p>
-              <p><span className="font-semibold text-slate-800">ID Type:</span> {selectedCustomer.id_proof_type || selectedCustomer.idProofType || "N/A"}</p>
-              <p><span className="font-semibold text-slate-800">ID Number:</span> {selectedCustomer.id_proof_number || selectedCustomer.idProofNumber || "N/A"}</p>
-            </div>
-
-            <div className="flex justify-end pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    
+      {/* Guest Edit / Register Modal */}
       {showGuestForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
@@ -295,6 +261,24 @@ export default function Customers({ token: propToken }) {
             />
           </div>
         </div>
+      )}
+
+      {historyGuest && (
+        <GuestHistoryModal
+          guest={historyGuest}
+          onClose={() => setHistoryGuest(null)}
+          onSelectBooking={(bId) => setInspectBookingId(bId)}
+        />
+      )}
+
+      {inspectBookingId && (
+        <BookingDetailsModal
+          bookingId={inspectBookingId}
+          onClose={() => setInspectBookingId(null)}
+          onUpdated={() => {
+            if (token) getGuestList(token);
+          }}
+        />
       )}
     </div>
   );

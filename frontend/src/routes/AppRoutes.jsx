@@ -1,10 +1,11 @@
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
-import { lazy } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
+import { lazy, Suspense } from "react";
 
 import AdminLayout from "../components/layout/AdminLayout";
 import ReceptionistLayout from "../components/layout/ReceptionistLayout";
+import ReceptionistDashboard from "../pages/receptionist/ReceptionistDashboard";
+import ManageBooking from "../pages/public/ManageBooking";
 
-// admin
 const Customers = lazy(() => import("../pages/admin/Customers"));
 const Dashboard = lazy(() => import("../pages/admin/Dashboard"));
 const AdminRoom = lazy(() => import("../pages/admin/Rooms"));
@@ -12,30 +13,17 @@ const Receptionists = lazy(() => import("../pages/admin/Receptionists"));
 const Bookings = lazy(() => import("../pages/admin/Bookings"));
 const Payments = lazy(() => import("../pages/admin/Payments"));
 const Coupons = lazy(() => import("../pages/admin/Coupons"));
-const Campaigns = lazy(() => import("../pages/admin/Campaigns"));
 const Reports = lazy(() => import("../pages/admin/Reports"));
 const Settings = lazy(() => import("../pages/admin/Settings"));
+const ExtraServices = lazy(() => import("../pages/admin/ExtraServices"));
+const Campaigns = lazy(() => import("../pages/admin/Campaigns"));
 
-// Auth Pages
 const Register = lazy(() => import("../pages/auth/Register"));
 const Login = lazy(() => import("../pages/auth/Login"));
 const ForgetPassword = lazy(() => import("../pages/auth/ForgetPassword"));
 const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 
-// Receptionist Pages
-const ReceptionistDashboard = lazy(
-  () => import("../pages/receptionist/ReceptionistDashboard"),
-);
-const ReceptionistBookings = lazy(() => import("../pages/admin/Bookings"));
-const ReceptionistCustomer = lazy(() => import("../pages/admin/Customers"));
-const ReceptionistRooms = lazy(() => import("../pages/admin/Rooms"));
-const ReceptionistCustomers = lazy(() => import("../pages/admin/Customers"));
-const ReceptionistPayments = lazy(() => import("../pages/admin/Payments"));
-const ReceptionistCoupons = lazy(() => import("../pages/admin/Coupons"));
-
-// Common Pages
 const RoomsAndSuits = lazy(() => import("../pages/common/RoomsAndSuits"));
-const RoomBooking = lazy(() => import("../pages/common/RoomBooking"));
 const Room = lazy(() => import("../pages/common/Room"));
 const Rooms = lazy(() => import("../pages/common/Rooms"));
 
@@ -46,61 +34,79 @@ const Contact = lazy(() => import("../pages/common/Contact"));
 const Footer = lazy(() => import("../ui/Footer"));
 const Navbar = lazy(() => import("../ui/Navbar"));
 
+const GuestBookingPage = lazy(() => import("../pages/public/GuestBookingPage"));
+const BookingSuccessPage = lazy(() => import("../pages/public/BookingSuccessPage"));
+
+
+
 export default function AppRoutes() {
   const location = useLocation();
 
-  // Hide global Navbar/Footer on Auth, Admin, and Receptionist routes
   const hideHeaderFooter =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/receptionist") ||
-    ["/login", "/register", "/forgot-password", "/reset-password"].includes(
-      location.pathname,
-    );
+    ["/login", "/register", "/forgot-password", "/reset-password"].includes(location.pathname);
 
   return (
     <div>
       {!hideHeaderFooter && <Navbar />}
-      <Routes>
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="rooms" element={<AdminRoom />} />
-          <Route path="receptionists" element={<Receptionists />} />
-          <Route path="bookings" element={<Bookings />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="payments" element={<Payments />} />
-          <Route path="coupons" element={<Coupons />} />
-          <Route path="campaigns" element={<Campaigns />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
 
-        {/* Receptionist Routes */}
-        <Route path="/receptionist" element={<ReceptionistLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<ReceptionistDashboard />} />
-          <Route path="bookings" element={<ReceptionistBookings />} />
-          <Route path="rooms" element={<ReceptionistRooms />} />
-          <Route path="customers" element={<ReceptionistCustomers />} />
-          <Route path="payments" element={<ReceptionistPayments />} />
-          <Route path="coupons" element={<ReceptionistCoupons />} />
-        </Route>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-[60vh] text-slate-400 text-sm">
+            Loading...
+          </div>
+        }
+      >
+        <Routes>
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="rooms" element={<AdminRoom />} />
+            <Route path="receptionists" element={<Receptionists />} />
+            <Route path="bookings" element={<Bookings />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="payments" element={<Payments />} />
+            <Route path="extra-services" element={<ExtraServices />} />
+            <Route path="coupons" element={<Coupons />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="campaigns" element={<Campaigns />} />
+          </Route>
 
-        {/* Auth Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgetPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+          {/* Receptionist Routes */}
+          <Route path="/receptionist" element={<ReceptionistLayout />}>
+            <Route index element={<ReceptionistDashboard />} />
+            <Route path="dashboard" element={<ReceptionistDashboard />} />
+            <Route path="rooms" element={<AdminRoom />} />
+            <Route path="bookings" element={<Bookings />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="payments" element={<Payments />} />
+            <Route path="coupons" element={<Coupons />} />
+          </Route>
 
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/rooms" element={<Rooms />} />
-        <Route path="/rooms/:roomNumber" element={<Room />} />
-        <Route path="/booking/:id" element={<RoomBooking />} />
-        <Route path="/rooms-suites" element={<RoomsAndSuits />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
-      </Routes>
+          {/* Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgetPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Public Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/rooms" element={<Rooms />} />
+          <Route path="/rooms/:roomNumber" element={<Room />} />
+          <Route path="/rooms-suites" element={<RoomsAndSuits />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+        
+<Route path="/booking/success" element={<BookingSuccessPage />} />
+<Route path="/manage-booking" element={<ManageBooking />} />
+
+          {/* Guest Direct Online Booking */}
+          <Route path="/booking/:roomNumber" element={<GuestBookingPage />} />
+        </Routes>
+      </Suspense>
+
       {!hideHeaderFooter && <Footer />}
     </div>
   );

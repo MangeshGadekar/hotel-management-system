@@ -38,7 +38,6 @@
     box-shadow: none !important;
   }
 
-  /* Ensure background colors/borders print accurately */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -50,20 +49,17 @@
   }
 
 
-  /* Print isolation rule */
 @media print {
-  /* Hide the rest of the application */
+
   body * {
     visibility: hidden !important;
   }
 
-  /* Reveal only the Master Folio document and its contents */
   #master-folio-document,
   #master-folio-document * {
     visibility: visible !important;
   }
 
-  /* Position the document cleanly at the top of the printed page */
   #master-folio-document {
     position: fixed !important;
     left: 0 !important;
@@ -77,7 +73,6 @@
     background: white !important;
   }
 
-  /* Force background colors, cards, and borders to print */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
