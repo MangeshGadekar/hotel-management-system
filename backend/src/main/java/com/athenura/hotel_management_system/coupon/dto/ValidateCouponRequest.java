@@ -14,14 +14,15 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ValidateCouponRequest {
-    
-    @NotBlank(message  = "Coupon code is required")
+
+    @NotBlank(message = "Coupon code is required")
     private String code;
-    
+
     @NotNull(message = "Booking amount is required")
     @DecimalMin(value = "0.00", message = "Booking amount cannot be negative")
     private BigDecimal bookingAmount;
 
     private RoomType roomType;
-    
+
+    private String role;
 }

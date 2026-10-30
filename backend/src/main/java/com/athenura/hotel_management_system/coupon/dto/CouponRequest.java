@@ -1,6 +1,7 @@
 package com.athenura.hotel_management_system.coupon.dto;
 
 
+import com.athenura.hotel_management_system.coupon.enums.CouponAudience;
 import com.athenura.hotel_management_system.coupon.enums.DiscountType;
 import com.athenura.hotel_management_system.room.enums.RoomType;
 import jakarta.validation.constraints.DecimalMin;
@@ -43,5 +44,6 @@ public class CouponRequest {
     private Boolean active;
 
     private Set<RoomType> applicableRoomTypes;
+    private CouponAudience targetAudience;
 
 }

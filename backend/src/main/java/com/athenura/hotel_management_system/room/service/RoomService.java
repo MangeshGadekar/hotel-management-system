@@ -31,4 +31,9 @@ public interface RoomService {
     RoomResponse uploadRoomImages(String roomNumber, List<MultipartFile> files);
 
     RoomResponse removeRoomImage(String roomNumber, String imageUrl);
+
+    RoomResponse updateRoomStatus(String roomNumber, RoomStatus roomStatus);
 }
+
+
+
