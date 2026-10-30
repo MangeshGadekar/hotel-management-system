@@ -10,6 +10,10 @@ import {
   checkOutGuestApi,
   fetchActiveExtraServices,
   processPaymentApi,
+  extendStayApi,
+  sendManageBookingOtpApi,
+  verifyManageBookingOtpApi,
+  cancelGuestBooking,
 } from "../apis/api";
 
 const bookingStore = (set) => ({
@@ -57,7 +61,6 @@ const bookingStore = (set) => ({
     }
   },
 
-  // Direct checkout (Full payment completed: balanceDue <= 0)
   checkOutDirect: async (id) => {
     try {
       const updated = await checkOutGuestApi(id);
@@ -74,10 +77,8 @@ const bookingStore = (set) => ({
     }
   },
 
-  // Settle balance payment via PaymentController, then check out
   settleAndCheckOut: async (bookingId, dueAmount, paymentMethod) => {
     try {
-      // 1. Clear the balance through PaymentController (/api/payments/pay)
       if (dueAmount && dueAmount > 0) {
         await processPaymentApi({
           bookingId: bookingId,
@@ -87,10 +88,7 @@ const bookingStore = (set) => ({
         });
       }
 
-      // 2. Complete check-out now that balanceDue is 0.00
       const checkoutResponse = await checkOutGuestApi(bookingId);
-
-      // 3. Update Zustand store state
       set((state) => ({
         bookingList: state.bookingList.map((b) =>
           b.id === bookingId
@@ -132,14 +130,21 @@ const bookingStore = (set) => ({
     }
   },
 
-  cancelBooking: async (id, payload) => {
+ cancelBooking: async (id, emailOrPayload) => {
     try {
-      await apiCancelBooking(id, payload);
+      let res;
+      if (typeof emailOrPayload === "string" && emailOrPayload.includes("@")) {
+        res = await cancelGuestBooking(id, emailOrPayload);
+      } else {
+        res = await apiCancelBooking(id, emailOrPayload);
+      }
+
       set((state) => ({
         bookingList: state.bookingList.map((b) =>
           b.id === id ? { ...b, bookingStatus: "CANCELLED" } : b
         ),
       }));
+      return res;
     } catch (error) {
       throw error;
     }
@@ -156,7 +161,53 @@ const bookingStore = (set) => ({
       return [];
     }
   },
+
+
+  extendStay: async (bookingId, newCheckOutDate) => {
+    try {
+      const res = await extendStayApi(bookingId, newCheckOutDate);
+      set((state) => ({
+        bookingList: state.bookingList.map((b) => (b.id === bookingId ? res : b)),
+      }));
+      return res;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  
+  switchRoom: async (bookingId, targetRoomId, reason) => {
+    try {
+      const res = await switchRoomApi(bookingId, targetRoomId, reason);
+      set((state) => ({
+        bookingList: state.bookingList.map((b) => (b.id === bookingId ? res : b)),
+      }));
+      return res;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  sendBookingOtp: async (bookingId, email) => {
+    return await sendManageBookingOtpApi(bookingId, email);
+  },
+
+  verifyBookingOtp: async (bookingId, email, otp) => {
+    const bookingResponse = await verifyManageBookingOtpApi(bookingId, email, otp);
+    set({ currentBooking: bookingResponse });
+    return bookingResponse;
+  },
+
+  resetBooking: () => {
+    set({ currentBooking: null });
+  },
+
+
+
 });
+
+
+
 
 const useBookingStore = create(
   devtools(
@@ -165,5 +216,8 @@ const useBookingStore = create(
     })
   )
 );
+
+
+
 
 export default useBookingStore;

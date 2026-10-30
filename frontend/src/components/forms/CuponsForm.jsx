@@ -14,6 +14,7 @@ const initialCoupon = {
   usageLimit: 100,
   active: true,
   applicableRoomTypes: [],
+  targetAudience: 'ALL',
 };
 
 const CuponsForm = ({ onClose, onSuccess }) => {
@@ -45,10 +46,10 @@ const CuponsForm = ({ onClose, onSuccess }) => {
       usageLimit: Number(newCoupon.usageLimit) || 100,
       active: newCoupon.active,
       applicableRoomTypes: newCoupon.applicableRoomTypes,
+      targetAudience: newCoupon.targetAudience,
     };
 
-    const res = await addCuponse(payload, token);
-    console.log('res, ', res);
+    await addCuponse(payload, token);
 
     setNewCoupon(initialCoupon);
     onSuccess?.();
@@ -60,16 +61,39 @@ const CuponsForm = ({ onClose, onSuccess }) => {
       {/* Code */}
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">
-          Coupon Code
+          Coupon Code <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           placeholder="e.g. SUMMER20"
           value={newCoupon.code}
           onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value })}
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43] uppercase font-mono"
           required
         />
+      </div>
+
+      {/* Target Audience Selector */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">
+          Available To (Target Audience) <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={newCoupon.targetAudience}
+          onChange={(e) =>
+            setNewCoupon({ ...newCoupon, targetAudience: e.target.value })
+          }
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43] bg-white text-xs font-medium"
+        >
+          <option value="ALL">All Platforms & Desk (Guests, Desk, & Admin)</option>
+          <option value="GUEST">Online Guests Only (Website Checkout & Admin)</option>
+          <option value="RECEPTIONIST">Desk Walk-In Only (Front Desk Staff & Admin)</option>
+        </select>
+        <p className="text-[11px] text-slate-400 mt-1">
+          {newCoupon.targetAudience === 'GUEST' && 'Visible on public guest checkout page. Hidden from desk staff.'}
+          {newCoupon.targetAudience === 'RECEPTIONIST' && 'Exclusive to front desk reservations. Hidden from website guests.'}
+          {newCoupon.targetAudience === 'ALL' && 'Usable everywhere across online checkout and front desk.'}
+        </p>
       </div>
 
       {/* Discount Type */}
@@ -82,7 +106,7 @@ const CuponsForm = ({ onClose, onSuccess }) => {
           onChange={(e) =>
             setNewCoupon({ ...newCoupon, discountType: e.target.value })
           }
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43] bg-white text-xs"
         >
           <option value="PERCENTAGE">Percentage (%)</option>
           <option value="FLAT">Flat Amount (₹)</option>
@@ -92,10 +116,11 @@ const CuponsForm = ({ onClose, onSuccess }) => {
       {/* Discount Value */}
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">
-          Discount Value
+          Discount Value <span className="text-red-500">*</span>
         </label>
         <input
           type="number"
+          min="1"
           placeholder={newCoupon.discountType === 'PERCENTAGE' ? '20' : '500'}
           value={newCoupon.discountValue}
           onChange={(e) =>
@@ -113,6 +138,7 @@ const CuponsForm = ({ onClose, onSuccess }) => {
         </label>
         <input
           type="number"
+          min="0"
           placeholder="e.g. 1000"
           value={newCoupon.minBookingAmount}
           onChange={(e) =>
@@ -134,7 +160,7 @@ const CuponsForm = ({ onClose, onSuccess }) => {
             onChange={(e) =>
               setNewCoupon({ ...newCoupon, validFrom: e.target.value })
             }
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43] text-xs"
             required
           />
         </div>
@@ -144,11 +170,12 @@ const CuponsForm = ({ onClose, onSuccess }) => {
           </label>
           <input
             type="date"
+            min={newCoupon.validFrom}
             value={newCoupon.validUntil}
             onChange={(e) =>
               setNewCoupon({ ...newCoupon, validUntil: e.target.value })
             }
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D96B43] text-xs"
             required
           />
         </div>
@@ -161,6 +188,7 @@ const CuponsForm = ({ onClose, onSuccess }) => {
         </label>
         <input
           type="number"
+          min="1"
           value={newCoupon.usageLimit}
           onChange={(e) =>
             setNewCoupon({ ...newCoupon, usageLimit: Number(e.target.value) })
@@ -172,7 +200,7 @@ const CuponsForm = ({ onClose, onSuccess }) => {
       {/* Applicable Room Types */}
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">
-          Applicable Room Types
+          Applicable Room Types (Leave empty for All)
         </label>
         <div className="grid grid-cols-2 gap-2">
           {ROOM_TYPES.map((room) => (

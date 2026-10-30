@@ -5,27 +5,16 @@ import {
   HiOutlineCreditCard,
   HiOutlineTicket,
   HiOutlineChartBar,
-  HiOutlineSpeakerphone,
   HiOutlineCog,
+  HiOutlineSparkles,
   HiOutlineUserGroup,
-  HiOutlineLogout
-} from 'react-icons/hi';
-import { MdDashboard } from 'react-icons/md';
+  HiOutlineSpeakerphone,
+  HiOutlineLogout,
+} from "react-icons/hi";
+import { MdDashboard } from "react-icons/md";
 import { LuHotel } from "react-icons/lu";
-
-const navItems = [
-  { label: 'Dashboard', path: '/admin/dashboard', icon: MdDashboard },
-  { label: 'Rooms', path: '/admin/rooms', icon: LuHotel},
-  { label: 'Bookings', path: '/admin/bookings', icon: HiOutlineCalendar },
-  { label: 'Customers', path: '/admin/customers', icon: HiOutlineUsers },
-  { label: 'Payments', path: '/admin/payments', icon: HiOutlineCreditCard },
-  { label: 'Coupons', path: '/admin/coupons', icon: HiOutlineTicket },
-  { label: 'Campaigns', path: '/admin/campaigns', icon: HiOutlineSpeakerphone },
-  { label: 'Reports', path: '/admin/reports', icon: HiOutlineChartBar },
-  { label: 'Settings', path: '/admin/settings', icon: HiOutlineCog },
-  { label: 'Receptionists', path: '/admin/receptionists', icon: HiOutlineUserGroup },
-  { label: 'Home', path: '/', icon: HiOutlineHome },
-];
+import { NavLink, useNavigate } from "react-router-dom";
+import useAuthStore from "../../app/useAuthStore";
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
@@ -37,8 +26,9 @@ export default function Sidebar() {
     { label: "Dashboard", path: `/admin/dashboard`, icon: MdDashboard },
     { label: "Rooms", path: `/admin/rooms`, icon: LuHotel },
     { label: "Bookings", path: `/admin/bookings`, icon: HiOutlineCalendar },
-    { label: "Customers", path: `/admin/customers`, icon: HiOutlineUsers },
     { label: "Payments", path: `/admin/payments`, icon: HiOutlineCreditCard },
+    { label: "Customers", path: `/admin/customers`, icon: HiOutlineUsers },
+    { label: "Extra Services", path: `/admin/extra-services`, icon: HiOutlineSparkles },
     { label: "Coupons", path: `/admin/coupons`, icon: HiOutlineTicket },
     { label: "Campaigns", path: `/admin/campaigns`, icon: HiOutlineSpeakerphone },
     { label: "Reports", path: `/admin/reports`, icon: HiOutlineChartBar },
@@ -89,7 +79,6 @@ export default function Sidebar() {
         ? receptionistNavItems
         : [];
 
-  // ---- Theme tokens per role ----
   const theme =
     role === "admin"
       ? {
@@ -128,7 +117,6 @@ export default function Sidebar() {
             arrow: "text-emerald-600",
           }
         : {
-            // fallback (guest / unknown)
             sidebarBg: "from-slate-50 to-slate-100",
             sidebarBorder: "border-slate-200/70",
             brandGradient: "from-slate-500 to-slate-400",

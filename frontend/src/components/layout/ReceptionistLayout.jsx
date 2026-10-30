@@ -32,19 +32,6 @@ export default function AdminLayout() {
     );
   }
 
-  // Filter bookings according to the active navigation menu
-  const getFilteredBookings = () => {
-    if (activeMenu === "Check-In Operations") {
-      return bookings.filter(b => b.status === "Confirmed");
-    }
-    if (activeMenu === "Check-Out Operations") {
-      return bookings.filter(b => b.status === "Checked-In");
-    }
-    return bookings;
-  };
-
-  const filteredBookings = getFilteredBookings();
-
   return (
     <div className="flex h-screen bg-[#F5F9F6] font-sans overflow-hidden">
       <Sidebar />

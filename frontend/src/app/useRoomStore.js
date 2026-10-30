@@ -9,32 +9,18 @@ import {
 } from "../apis/api";
 import { devtools, persist } from "zustand/middleware";
 
-const roomStore = (set, get) => ({
+const roomStore = (set) => ({
   roomList: [],
   room: {},
   typeOfRooms: [],
   statusOfRooms: [],
 
   addRoom: async (data) => {
-    let token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
+    const res = await createRoom(data, token);
 
-    const { amenities, ...backendPayload } = data;
-    let res = null;
-
-    try {
-      res = await createRoom(backendPayload, token);
-    } catch (error) {
-      
-      console.warn("Backend response warning during create:", error);
-    }
-
-    const roomNumber = res?.roomNumber || backendPayload.roomNumber;
-    const localAmenities = amenities || [];
-
-    const roomWithFrontendAmenities = {
-      ...(res || backendPayload),
-      amenities: localAmenities,
-    };
+    const roomNumber = res?.roomNumber || data.roomNumber;
+    const roomRecord = res || data;
 
     set((state) => {
       const exists = state.roomList.some(
@@ -43,58 +29,45 @@ const roomStore = (set, get) => ({
       if (exists) {
         return {
           roomList: state.roomList.map((r) =>
-            r.roomNumber === roomNumber
-              ? { ...r, ...roomWithFrontendAmenities }
-              : r
+            r.roomNumber === roomNumber ? { ...r, ...roomRecord } : r
           ),
         };
       }
-      return { roomList: [roomWithFrontendAmenities, ...state.roomList] };
+      return { roomList: [roomRecord, ...state.roomList] };
     });
 
-    return roomWithFrontendAmenities;
+    return roomRecord;
   },
 
   updateRoom: async (roomNumber, data) => {
-    let token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
+    const res = await patchRoom(roomNumber, data, token);
 
-    const { amenities, ...backendPayload } = data;
-    let res = null;
-
-    try {
-      res = await patchRoom(roomNumber, backendPayload, token);
-    } catch (error) {
-      console.warn("Backend response warning during update:", error);
-    }
+    const updated = res || { roomNumber, ...data };
 
     set((state) => ({
       roomList: state.roomList.map((room) =>
         room.roomNumber === roomNumber
           ? {
               ...room,
-              ...(res || backendPayload),
+              ...updated,
               amenities:
-                amenities !== undefined ? amenities : room.amenities || [],
+                updated.amenities !== undefined
+                  ? updated.amenities
+                  : room.amenities || [],
             }
           : room
       ),
     }));
 
-    return res || { roomNumber, ...data };
+    return updated;
   },
 
   getRoom: async (roomNumber) => {
     try {
       const res = await fetchRoom(roomNumber);
-      const existingRoom = get().roomList.find(
-        (r) => r.roomNumber === roomNumber
-      );
-      const mergedRoom = {
-        ...res,
-        amenities: existingRoom?.amenities || [],
-      };
-      set({ room: mergedRoom });
-      return mergedRoom;
+      set({ room: res });
+      return res;
     } catch (error) {
       console.error("Error fetching room:", error);
       throw error;
@@ -104,20 +77,9 @@ const roomStore = (set, get) => ({
   getRoomsList: async () => {
     try {
       const res = await fetchAllRooms();
-      const currentList = get().roomList || [];
-
-      const mergedList = (res || []).map((backendRoom) => {
-        const localRoom = currentList.find(
-          (r) => r.roomNumber === backendRoom.roomNumber
-        );
-        return {
-          ...backendRoom,
-          amenities: localRoom?.amenities || [],
-        };
-      });
-
-      set({ roomList: mergedList });
-      return mergedList;
+      const list = Array.isArray(res) ? res : [];
+      set({ roomList: list });
+      return list;
     } catch (error) {
       console.error("Error fetching rooms list:", error);
       throw error;
@@ -137,7 +99,7 @@ const roomStore = (set, get) => ({
 
   deleteRoom: async (roomNumber) => {
     try {
-      let token = localStorage.getItem("token");
+      const token = localStorage.getItem("token");
       const res = await deleteRoom(roomNumber, token);
       set((state) => ({
         roomList: state.roomList.filter(

@@ -1,4 +1,4 @@
-// all images upload on cloudinary and past thier link for webiste will load the buttery feel
+
 
 export const Bedroom_image_login_Register = "https://res.cloudinary.com/qnf2f4fq/image/upload/v1786955356/ROOM_IMG_mq6zla.jpg"
 export const Athenura_Circle_Logo = "https://res.cloudinary.com/qnf2f4fq/image/upload/v1785166465/favicon_z4byb1.png"
