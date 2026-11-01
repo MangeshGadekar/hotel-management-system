@@ -50,6 +50,7 @@ public class ReportPdfBuilder {
             PdfWriter.getInstance(doc, out);
             doc.open();
 
+            doc.add(new Paragraph("Paradise - Booking & Payment Report", title));
             String who = r.getReceptionistId() == null ? "All receptionists"
                     : "Receptionist: " + (r.getReceptionistName() != null ? r.getReceptionistName() : r.getReceptionistId());
             doc.add(new Paragraph("Period: " + r.getFrom().format(DATE) + " to " + r.getTo().format(DATE) + "   |   " + who, sub));
