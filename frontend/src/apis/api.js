@@ -897,3 +897,44 @@ export const cancelGuestBooking = async (bookingId, guestEmail) => {
     })
     .json();
 };
+/* =================================================== */
+/* REPORTS (admin + receptionist)                      */
+/* =================================================== */
+
+
+const reportBase = (role) =>
+  String(role).toLowerCase() === "admin" ? "admin/reports" : "reception/reports";
+
+const reportParams = ({ from, to, receptionistId }) => {
+  const p = { from, to };
+  if (receptionistId) p.receptionistId = receptionistId;
+  return p;
+};
+
+export const fetchReportApi = async (role, params, token = null) => {
+  return await apiClient
+    .get(reportBase(role), {
+      headers: getAuthHeaders(token),
+      searchParams: reportParams(params),
+    })
+    .json();
+};
+
+
+export const downloadReportApi = async (role, type, params, token = null) => {
+  const blob = await apiClient
+    .get(`${reportBase(role)}/${type}`, {
+      headers: getAuthHeaders(token),
+      searchParams: reportParams(params),
+    })
+    .blob();
+
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `report_${params.from}_to_${params.to}.${type}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+};
