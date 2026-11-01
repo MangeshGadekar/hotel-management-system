@@ -36,7 +36,7 @@ cloudinary:
 
 brevo:
   api:
-    key: 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
+    key:
   sender:
     email: marathevedant123@gmail.com
     name: Hotel Aatithya
