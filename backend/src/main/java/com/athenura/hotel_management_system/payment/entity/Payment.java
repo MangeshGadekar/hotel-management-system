@@ -79,4 +79,38 @@ public class Payment {
     @Column(name = "razorpay_payment_id")
     private String razorpayPaymentId;
 
+
+    @Column(name = "settled_items", length = 1000)
+    private String settledItems;
+
+
+    @Column(precision = 10, scale = 2)
+
+    private BigDecimal grossAmount;
+
+
+
+    @Column(precision = 10, scale = 2)
+
+    private BigDecimal discountDeducted;
+
+
+
+    @Column(precision = 10, scale = 2)
+
+    private BigDecimal couponDeducted;
+
+
+
+    @Column(precision = 10, scale = 2)
+
+    private BigDecimal amountPaid;
+
+
+
+    @Column(precision = 10, scale = 2)
+
+    private BigDecimal balanceRemaining;
+
+
 }

@@ -2,6 +2,8 @@ package com.athenura.hotel_management_system.payment.service.impl;
 
 import com.athenura.hotel_management_system.booking.entity.Booking;
 import com.athenura.hotel_management_system.booking.repository.BookingRepository;
+import com.athenura.hotel_management_system.booking.service.MasterReceiptPdfService;
+import com.athenura.hotel_management_system.notification.service.EmailService;
 import com.athenura.hotel_management_system.payment.dto.PaymentDTO;
 import com.athenura.hotel_management_system.payment.entity.Payment;
 import com.athenura.hotel_management_system.payment.mapper.PaymentMapper;
@@ -9,18 +11,23 @@ import com.athenura.hotel_management_system.payment.repository.PaymentRepository
 import com.athenura.hotel_management_system.payment.service.PaymentService;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
-import org.springframework.transaction.annotation.Transactional;
+import com.razorpay.Refund;
+import com.razorpay.Utils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
-import com.razorpay.Utils;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
@@ -34,14 +41,16 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
     private final PaymentMapper paymentMapper;
+    private final EmailService emailNotificationService;
+    private final MasterReceiptPdfService masterReceiptPdfService;
 
+    private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
-    // this calculates the default calculation for split payments
     private BigDecimal calculateDefaultAmount(String paymentType, BigDecimal totalAmount, BigDecimal alreadyPaid) {
-        BigDecimal remainingBalance = totalAmount.subtract(alreadyPaid);
+        BigDecimal remainingBalance = totalAmount.subtract(alreadyPaid).max(BigDecimal.ZERO);
 
         if ("SPLIT_ADVANCE".equalsIgnoreCase(paymentType)) {
-            return BigDecimal.valueOf(totalAmount.doubleValue() * 0.40);
+            return totalAmount.multiply(new BigDecimal("0.40")).setScale(2, RoundingMode.HALF_UP);
         } else if ("SPLIT_BALANCE".equalsIgnoreCase(paymentType) || "FULL".equalsIgnoreCase(paymentType)) {
             return remainingBalance;
         } else {
@@ -49,42 +58,37 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-
-    // reception payment
     @Override
     @Transactional
     public PaymentDTO.ReceiptResponse processPayment(PaymentDTO.PaymentRequest request) {
-        //find the booking
         Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(()-> new RuntimeException("Booking not found!"));
+                .orElseThrow(() -> new RuntimeException("Booking not found!"));
 
-        // fecth total and previous payments
-        BigDecimal totalAmount = booking.getTotalAmount();
+        BigDecimal totalAmount = booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO;
         BigDecimal alreadyPaid = paymentRepository.sumPaidByBookingId(booking.getId());
+        if (alreadyPaid == null) {
+            alreadyPaid = BigDecimal.ZERO;
+        }
         BigDecimal currentBalance = totalAmount.subtract(alreadyPaid);
 
-
-        // check if the balance is not zero
-        if (currentBalance.compareTo(BigDecimal.ZERO) <= 0){
-            throw new RuntimeException("No Pending Balance to pay for this booking.!");
+        if (currentBalance.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("No Pending Balance to pay for this booking!");
         }
 
         BigDecimal amountToPay;
-
-        if(request.getAmount() !=null && request.getAmount().compareTo(BigDecimal.ZERO) >0){
+        if (request.getAmount() != null && request.getAmount().compareTo(BigDecimal.ZERO) > 0) {
             amountToPay = request.getAmount();
-        }else {
-            amountToPay = calculateDefaultAmount(request.getPaymentType(), totalAmount,alreadyPaid);
+        } else {
+            amountToPay = calculateDefaultAmount(request.getPaymentType(), totalAmount, alreadyPaid);
         }
 
-        if(amountToPay.compareTo(BigDecimal.ZERO) <=0){
-            throw new RuntimeException("Payment Must be greater than 0");
+        if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Payment must be greater than 0");
         }
 
-        if(amountToPay.compareTo(currentBalance) > 0){
-            throw new RuntimeException("Amount can not exceed the remaining balance: " + currentBalance);
+        if (amountToPay.compareTo(currentBalance) > 0) {
+            throw new RuntimeException("Amount cannot exceed the remaining balance: " + currentBalance);
         }
-
 
         String paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod().toUpperCase() : "CASH";
 
@@ -94,118 +98,150 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
+        String finalReceiptNumber = (request.getReceiptNumber() != null && !request.getReceiptNumber().trim().isEmpty())
+                ? request.getReceiptNumber().trim()
+                : "REC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
+        BigDecimal totalPaidSoFar = alreadyPaid.add(amountToPay);
+        BigDecimal newRemainingBalance = totalAmount.subtract(totalPaidSoFar).max(BigDecimal.ZERO);
+
+        BigDecimal resolvedGross = request.getGrossAmount() != null ? request.getGrossAmount() : amountToPay;
+        BigDecimal resolvedCoupon = request.getCouponDeducted() != null ? request.getCouponDeducted() : BigDecimal.ZERO;
+        BigDecimal resolvedDiscount = request.getDiscountDeducted() != null ? request.getDiscountDeducted() : BigDecimal.ZERO;
+        BigDecimal resolvedBalanceAfterSlip = request.getBalanceRemaining() != null ? request.getBalanceRemaining() : newRemainingBalance;
 
         Payment payment = Payment.builder()
                 .booking(booking)
                 .amount(amountToPay)
+                .amountPaid(amountToPay)
                 .paymentType(request.getPaymentType() != null ? request.getPaymentType().toUpperCase() : "PARTIAL")
-                .paymentMethod(request.getPaymentMethod().toUpperCase())
+                .paymentMethod(paymentMethod)
                 .transactionReference("CARD_MACHINE".equals(paymentMethod) ? request.getTransactionReference().trim().toUpperCase() : null)
                 .paymentStatus("SUCCESS")
-                .receiptNumber("REC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .paymentDate(LocalDateTime.now())
+                .receiptNumber(finalReceiptNumber)
+                .settledItems(request.getSettledItems())
+                .paymentDate(LocalDateTime.now(IST_ZONE))
+                .grossAmount(resolvedGross)
+                .couponDeducted(resolvedCoupon)
+                .discountDeducted(resolvedDiscount)
+                .balanceRemaining(resolvedBalanceAfterSlip)
                 .build();
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        // calculate the balance
-        BigDecimal totalPaidSoFar = alreadyPaid.add(amountToPay);
-        BigDecimal remainingBalance = totalAmount.subtract(totalPaidSoFar).max(BigDecimal.ZERO);
-
-        // SYNC BOOKING BALANCE DUE
-        booking.setBalanceDue(remainingBalance);
+        booking.setBalanceDue(newRemainingBalance);
         bookingRepository.save(booking);
 
-        // receipt check (if less than equal to zero then full receipt else advance receipt)
-        String receiptType;
-        if(remainingBalance.compareTo(BigDecimal.ZERO) <= 0){
-            receiptType = "FULL_PAYMENT_RECEIPT";
-        } else {
-            receiptType = "ADVANCE_PAYMENT_RECEIPT";
-        }
+        String receiptType = (resolvedBalanceAfterSlip.compareTo(BigDecimal.ZERO) <= 0)
+                ? "FULL_PAYMENT_RECEIPT"
+                : "ADVANCE_PAYMENT_RECEIPT";
 
         return paymentMapper.toReceiptResponse(
                 savedPayment,
                 booking,
                 totalPaidSoFar,
-                remainingBalance,
+                resolvedBalanceAfterSlip,
                 receiptType
         );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaymentDTO.ReceiptResponse getReceiptByNumber(String receiptNumber) {
-        //find receipt
         Payment payment = paymentRepository.findByReceiptNumber(receiptNumber)
-                .orElseThrow(() -> new RuntimeException("Receipt not found: "+ receiptNumber));
+                .orElseThrow(() -> new RuntimeException("Receipt not found: " + receiptNumber));
 
         Booking booking = payment.getBooking();
         BigDecimal totalPaidSoFar = paymentRepository.sumPaidByBookingId(booking.getId());
-        BigDecimal remainingBalance = booking.getTotalAmount().subtract(totalPaidSoFar);
+        if (totalPaidSoFar == null) totalPaidSoFar = BigDecimal.ZERO;
 
-        //receipt type
-        String receiptType;
-        if (remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
-            receiptType = "FULL_PAYMENT_RECEIPT";
-        } else {
-            receiptType = "ADVANCE_PAYMENT_RECEIPT";
-        }
+        BigDecimal balanceAfterThisSlip = payment.getBalanceRemaining() != null
+                ? payment.getBalanceRemaining()
+                : (booking.getTotalAmount() != null ? booking.getTotalAmount().subtract(totalPaidSoFar).max(BigDecimal.ZERO) : BigDecimal.ZERO);
 
-      // receipt response
+        String receiptType = (balanceAfterThisSlip.compareTo(BigDecimal.ZERO) <= 0)
+                ? "FULL_PAYMENT_RECEIPT"
+                : "ADVANCE_PAYMENT_RECEIPT";
+
         return paymentMapper.toReceiptResponse(
                 payment,
                 booking,
                 totalPaidSoFar,
-                remainingBalance,
+                balanceAfterThisSlip,
                 receiptType
         );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<PaymentDTO.ReceiptResponse> getPaymentsByBookingId(Long bookingId) {
-
-        //find booking
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()-> new RuntimeException("Booking not found: " + bookingId));
+                .orElseThrow(() -> new RuntimeException("Booking not found: " + bookingId));
 
-        //find total and remaining balance
         BigDecimal totalPaidSoFar = paymentRepository.sumPaidByBookingId(booking.getId());
-        BigDecimal remainingBalance = booking.getTotalAmount().subtract(totalPaidSoFar);
+        if (totalPaidSoFar == null) totalPaidSoFar = BigDecimal.ZERO;
 
-        String receiptType;
-        if (remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
-            receiptType = "FULL_PAYMENT_RECEIPT";
-        } else {
-            receiptType = "ADVANCE_PAYMENT_RECEIPT";
-        }
-
-        //stream and map each payment
+        BigDecimal finalTotalPaidSoFar = totalPaidSoFar;
         return paymentRepository.findByBookingId(bookingId)
                 .stream()
-                .map(p -> paymentMapper.toReceiptResponse(
-                        p,
-                        booking,
-                        totalPaidSoFar,
-                        remainingBalance,
-                        receiptType))
+                .map(p -> {
+                    BigDecimal balanceAfterThisSlip = p.getBalanceRemaining() != null
+                            ? p.getBalanceRemaining()
+                            : (booking.getTotalAmount() != null ? booking.getTotalAmount().subtract(finalTotalPaidSoFar).max(BigDecimal.ZERO) : BigDecimal.ZERO);
 
+                    String receiptType = (balanceAfterThisSlip.compareTo(BigDecimal.ZERO) <= 0)
+                            ? "FULL_PAYMENT_RECEIPT"
+                            : "ADVANCE_PAYMENT_RECEIPT";
+
+                    return paymentMapper.toReceiptResponse(
+                            p,
+                            booking,
+                            finalTotalPaidSoFar,
+                            balanceAfterThisSlip,
+                            receiptType
+                    );
+                })
                 .toList();
-
-
-
-
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<PaymentDTO.ReceiptResponse> getAllPayments() {
+        return paymentRepository.findAll()
+                .stream()
+                .map(payment -> {
+                    Booking booking = payment.getBooking();
+                    BigDecimal balanceAfterThisSlip = payment.getBalanceRemaining() != null
+                            ? payment.getBalanceRemaining()
+                            : BigDecimal.ZERO;
+
+                    BigDecimal slipPaid = payment.getAmountPaid() != null ? payment.getAmountPaid() : payment.getAmount();
+
+                    String receiptType = (balanceAfterThisSlip.compareTo(BigDecimal.ZERO) <= 0)
+                            ? "FULL_PAYMENT_RECEIPT"
+                            : "ADVANCE_PAYMENT_RECEIPT";
+
+                    return paymentMapper.toReceiptResponse(
+                            payment,
+                            booking,
+                            slipPaid,
+                            balanceAfterThisSlip,
+                            receiptType
+                    );
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional
     public PaymentDTO.RazorpayOrderResponse createRazorpayOrder(Long bookingId, String paymentType) {
-        // find the booking
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found!"));
 
-        // fetch total and previous payments
-        BigDecimal totalAmount = booking.getTotalAmount();
+        BigDecimal totalAmount = booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO;
         BigDecimal alreadyPaid = paymentRepository.sumPaidByBookingId(booking.getId());
+        if (alreadyPaid == null) alreadyPaid = BigDecimal.ZERO;
+
         BigDecimal amountToPay = calculateDefaultAmount(paymentType, totalAmount, alreadyPaid);
 
         if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
@@ -213,19 +249,15 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         try {
-            //connect to razorpay client
             RazorpayClient client = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
 
-            // Razorpay by default is in paise
             JSONObject orderRequest = new JSONObject();
-            orderRequest.put("amount", (int) (amountToPay.doubleValue() * 100)); //in paise
+            orderRequest.put("amount", amountToPay.multiply(new BigDecimal("100")).setScale(0, RoundingMode.HALF_UP).intValue());
             orderRequest.put("currency", "INR");
             orderRequest.put("receipt", "bk_" + bookingId);
 
-            // razorpay generates and returns an Order object
             Order order = client.orders.create(orderRequest);
 
-            // return response to frontend
             return PaymentDTO.RazorpayOrderResponse.builder()
                     .orderId(order.get("id"))
                     .amount(amountToPay)
@@ -236,7 +268,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .build();
 
         } catch (Exception e) {
-            throw new RuntimeException("Error creating Razorpay order: " + e.getMessage());
+            throw new RuntimeException("Error creating Razorpay order: " + e.getMessage(), e);
         }
     }
 
@@ -244,7 +276,6 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentDTO.ReceiptResponse verifyRazorpayPayment(PaymentDTO.RazorpayVerifyRequest request) {
         try {
-            // check cryptographic signature to confirm Razorpay actually processed the money
             JSONObject options = new JSONObject();
             options.put("razorpay_order_id", request.getRazorpayOrderId());
             options.put("razorpay_payment_id", request.getRazorpayPaymentId());
@@ -255,47 +286,55 @@ public class PaymentServiceImpl implements PaymentService {
                 throw new RuntimeException("Invalid Signature! Payment verification failed.");
             }
 
-            // find the booking
             Booking booking = bookingRepository.findById(request.getBookingId())
                     .orElseThrow(() -> new RuntimeException("Booking not found!"));
 
-            // fetch total and previous payments
-            BigDecimal totalAmount = booking.getTotalAmount();
+            BigDecimal totalAmount = booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO;
             BigDecimal alreadyPaid = paymentRepository.sumPaidByBookingId(booking.getId());
+            if (alreadyPaid == null) alreadyPaid = BigDecimal.ZERO;
+
             BigDecimal amountToPay = calculateDefaultAmount(request.getPaymentType(), totalAmount, alreadyPaid);
 
-            // build and save the payment
+            BigDecimal totalPaidSoFar = alreadyPaid.add(amountToPay);
+            BigDecimal remainingBalance = totalAmount.subtract(totalPaidSoFar).max(BigDecimal.ZERO);
+
+            BigDecimal trueBookingGross = (booking.getSubtotal() != null ? booking.getSubtotal() : BigDecimal.ZERO)
+                    .add(booking.getTaxAmount() != null ? booking.getTaxAmount() : BigDecimal.ZERO);
+
             Payment payment = Payment.builder()
                     .booking(booking)
                     .amount(amountToPay)
+                    .amountPaid(amountToPay)
                     .paymentType(request.getPaymentType().toUpperCase())
-                    .paymentMethod("RAZORPAY")
+                    .paymentMethod("RAZORPAY_ONLINE")
                     .paymentStatus("SUCCESS")
                     .receiptNumber("REC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                    .paymentDate(LocalDateTime.now())
+                    .paymentDate(LocalDateTime.now(IST_ZONE))
                     .razorpayOrderId(request.getRazorpayOrderId())
                     .razorpayPaymentId(request.getRazorpayPaymentId())
-                    .transactionReference(request.getRazorpayOrderId())
+                    .transactionReference(request.getRazorpayPaymentId())
+                    .settledItems("Online Gateway Payment (" + request.getPaymentType().toUpperCase() + ")")
+                    .grossAmount(trueBookingGross.compareTo(BigDecimal.ZERO) > 0 ? trueBookingGross : amountToPay)
+                    .couponDeducted(BigDecimal.ZERO)
+                    .discountDeducted(BigDecimal.ZERO)
+                    .balanceRemaining(remainingBalance)
                     .build();
 
             Payment savedPayment = paymentRepository.save(payment);
 
-            // calculate remaining balance
-            BigDecimal totalPaidSoFar = alreadyPaid.add(amountToPay);
-            BigDecimal remainingBalance = totalAmount.subtract(totalPaidSoFar).max(BigDecimal.ZERO);
-
-            // SYNC BOOKING BALANCE DUE
             booking.setBalanceDue(remainingBalance);
             bookingRepository.save(booking);
 
-            // determine receipt type
-            String receiptType;
-            if (remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
-                receiptType = "FULL_PAYMENT_RECEIPT";
-            } else {
-                receiptType = "ADVANCE_PAYMENT_RECEIPT";
+            try {
+                emailNotificationService.sendOnlineBookingWithPaymentSummary(booking, savedPayment);
+            } catch (Exception mailEx) {
+                log.warn("Failed to dispatch unified booking confirmation email: {}", mailEx.getMessage());
             }
-            // return receipt response
+
+            String receiptType = (remainingBalance.compareTo(BigDecimal.ZERO) <= 0)
+                    ? "FULL_PAYMENT_RECEIPT"
+                    : "ADVANCE_PAYMENT_RECEIPT";
+
             return paymentMapper.toReceiptResponse(
                     savedPayment,
                     booking,
@@ -305,41 +344,155 @@ public class PaymentServiceImpl implements PaymentService {
             );
 
         } catch (Exception e) {
-            throw new RuntimeException("Razorpay Verification Error: " + e.getMessage());
+            throw new RuntimeException("Razorpay Verification Error: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public List<PaymentDTO.ReceiptResponse> getAllPayments() {
-        return paymentRepository.findAll()
-                .stream()
-                .map(payment -> {
-                    Booking booking = payment.getBooking();
-                    BigDecimal totalPaidSoFar = paymentRepository.sumPaidByBookingId(booking.getId());
-                    if (totalPaidSoFar == null) {
-                        totalPaidSoFar = BigDecimal.ZERO;
-                    }
-
-                    BigDecimal bookingTotal = booking.getTotalAmount() != null
-                            ? booking.getTotalAmount()
-                            : BigDecimal.ZERO;
-
-                    BigDecimal remainingBalance = bookingTotal.subtract(totalPaidSoFar).max(BigDecimal.ZERO);
-
-                    String receiptType = (remainingBalance.compareTo(BigDecimal.ZERO) <= 0)
-                            ? "FULL_PAYMENT_RECEIPT"
-                            : "ADVANCE_PAYMENT_RECEIPT";
-
-                    return paymentMapper.toReceiptResponse(
-                            payment,
-                            booking,
-                            totalPaidSoFar,
-                            remainingBalance,
-                            receiptType
-                    );
-                })
-                .toList();
+    @Transactional
+    public void processRefundForBooking(Long bookingId) {
+        processRefundForBookingWithPolicy(bookingId, BigDecimal.ONE);
     }
 
+    @Override
+    @Transactional
+    public void processRefundForBookingWithPolicy(Long bookingId, BigDecimal refundRatio) {
+        List<Payment> payments = paymentRepository.findByBookingId(bookingId);
 
+        for (Payment payment : payments) {
+            if (!"SUCCESS".equalsIgnoreCase(payment.getPaymentStatus())) {
+                continue;
+            }
+
+            BigDecimal originalPaid = payment.getAmountPaid() != null && payment.getAmountPaid().compareTo(BigDecimal.ZERO) > 0
+                    ? payment.getAmountPaid()
+                    : (payment.getAmount() != null ? payment.getAmount() : BigDecimal.ZERO);
+
+            if (originalPaid.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            BigDecimal safeRatio = (refundRatio != null) ? refundRatio : BigDecimal.ONE;
+            BigDecimal refundAmount = originalPaid.multiply(safeRatio).setScale(2, RoundingMode.HALF_UP);
+
+            if (payment.getRazorpayPaymentId() != null && !payment.getRazorpayPaymentId().isBlank()) {
+                try {
+                    if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+                        RazorpayClient client = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
+                        JSONObject refundRequest = new JSONObject();
+                        int amountInPaise = refundAmount.multiply(new BigDecimal("100")).intValue();
+                        refundRequest.put("amount", amountInPaise);
+                        refundRequest.put("speed", "normal");
+
+                        JSONObject notes = new JSONObject();
+                        notes.put("bookingId", String.valueOf(bookingId));
+                        refundRequest.put("notes", notes);
+
+                        Refund refund = client.payments.refund(payment.getRazorpayPaymentId(), refundRequest);
+                        String refundId = refund.has("id") ? refund.get("id").toString() : "RAZORPAY_REFUND";
+
+                        payment.setPaymentStatus("REFUNDED");
+                        payment.setTransactionReference("REFUND-" + refundId);
+                        Payment savedRefundPayment = paymentRepository.save(payment);
+
+                        try {
+                            byte[] refundPdf = masterReceiptPdfService.generateRefundReceipt(
+                                    payment.getBooking(),
+                                    savedRefundPayment,
+                                    "Accounts Desk"
+                            );
+                            emailNotificationService.sendRefundNotificationWithPdf(
+                                    payment.getBooking(),
+                                    refundAmount,
+                                    refundId,
+                                    refundPdf
+                            );
+                        } catch (Exception mailEx) {
+                            log.warn("Failed to generate or dispatch refund PDF email: {}", mailEx.getMessage());
+                        }
+                    } else {
+                        payment.setPaymentStatus("RETAINED_NO_REFUND");
+                        paymentRepository.save(payment);
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to reverse Razorpay payment "
+                            + payment.getRazorpayPaymentId() + ": " + e.getMessage(), e);
+                }
+            }
+
+            else if ("CARD_MACHINE".equalsIgnoreCase(payment.getPaymentMethod())) {
+                payment.setPaymentStatus("REFUNDED");
+                String origAuth = payment.getTransactionReference() != null ? payment.getTransactionReference() : "NONE";
+                String refundRef = "POS-REVERSED-" + origAuth;
+                payment.setTransactionReference(refundRef);
+                Payment savedRefundPayment = paymentRepository.save(payment);
+
+                if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    try {
+                        byte[] refundPdf = masterReceiptPdfService.generateRefundReceipt(
+                                payment.getBooking(),
+                                savedRefundPayment,
+                                "Front Desk"
+                        );
+                        emailNotificationService.sendRefundNotificationWithPdf(
+                                payment.getBooking(),
+                                refundAmount,
+                                refundRef,
+                                refundPdf
+                        );
+                    } catch (Exception mailEx) {
+                        log.warn("Failed to send POS refund email: {}", mailEx.getMessage());
+                    }
+                }
+            }
+
+            else {
+                payment.setPaymentStatus("REFUNDED");
+                payment.setTransactionReference("CASH-REFUNDED-BOOKING-" + bookingId);
+                paymentRepository.save(payment);
+
+                if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    String cashReceiptNum = "REF-CASH-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                    Payment cashPayout = Payment.builder()
+                            .booking(payment.getBooking())
+                            .amount(refundAmount.negate())
+                            .amountPaid(refundAmount.negate())
+                            .taxableAmount(BigDecimal.ZERO)
+                            .taxAmount(BigDecimal.ZERO)
+                            .totalAmount(refundAmount.negate())
+                            .balanceDue(BigDecimal.ZERO)
+                            .paymentType("CASH_REFUND_OUTFLOW")
+                            .paymentMethod("CASH")
+                            .paymentStatus("REFUNDED")
+                            .receiptNumber(cashReceiptNum)
+                            .paymentDate(LocalDateTime.now(IST_ZONE))
+                            .transactionReference("CASH-PAYOUT-BK" + bookingId)
+                            .settledItems("Cash refund payout for cancelled booking #" + bookingId)
+                            .grossAmount(refundAmount.negate())
+                            .discountDeducted(BigDecimal.ZERO)
+                            .couponDeducted(BigDecimal.ZERO)
+                            .balanceRemaining(BigDecimal.ZERO)
+                            .build();
+
+                    Payment savedCashPayout = paymentRepository.save(cashPayout);
+
+                    try {
+                        byte[] refundPdf = masterReceiptPdfService.generateRefundReceipt(
+                                payment.getBooking(),
+                                savedCashPayout,
+                                "Cashier Desk"
+                        );
+                        emailNotificationService.sendRefundNotificationWithPdf(
+                                payment.getBooking(),
+                                refundAmount,
+                                cashReceiptNum,
+                                refundPdf
+                        );
+                    } catch (Exception mailEx) {
+                        log.warn("Failed to send cash refund email: {}", mailEx.getMessage());
+                    }
+                }
+            }
+        }
+    }
 }

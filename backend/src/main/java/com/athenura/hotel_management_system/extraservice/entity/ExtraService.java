@@ -64,4 +64,12 @@ public class ExtraService {
 
     @Column(name = "booking_id")
     private Long bookingId;
+
+
+    @Builder.Default
+    @Column(name = "paid", nullable = false)
+    private Boolean paid = false;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 }

@@ -11,37 +11,39 @@ import {
   FaTimes,
   FaConciergeBell,
   FaSearch,
+  FaImage,
 } from "react-icons/fa";
 
 const STATUS_BADGES = {
   AVAILABLE: "bg-emerald-500/90 text-white",
   OCCUPIED: "bg-rose-500/90 text-white",
   RESERVED: "bg-amber-500/90 text-white",
+  CLEANING: "bg-purple-600/90 text-white",
   MAINTENANCE: "bg-slate-500/90 text-white",
 };
 
 const AMENITY_LOOKUP = {};
-AMENITIES_CATEGORIES.forEach((cat) => {
-  cat.items.forEach((item) => {
-    AMENITY_LOOKUP[item.name] = { icon: item.icon, color: item.color };
+(AMENITIES_CATEGORIES || []).forEach((cat) => {
+  (cat.items || []).forEach((item) => {
+    const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    AMENITY_LOOKUP[key] = { icon: item.icon, color: item.color, canonicalName: item.name };
   });
 });
-
-const DEFAULT_IMAGE =
-  "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800";
 
 const formatPrice = (price) => `₹${Number(price ?? 0).toLocaleString()}`;
 
 const titleCase = (str = "") =>
   str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
 
+const normalizeStr = (s = "") => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+
 const mapRoomFromApi = (room) => {
-  const rawAmenities = room.amenities || room.amenityList || [];
+  const rawAmenities = room.amenities || room.amenityList || room.roomAmenities || [];
 
   const parsedAmenities = Array.isArray(rawAmenities)
-    ? rawAmenities.map((a) => (typeof a === "string" ? a : a.name || a.title || ""))
+    ? rawAmenities.map((a) => (typeof a === "string" ? a : a.name || a.title || "")).filter(Boolean)
     : typeof rawAmenities === "string"
-    ? rawAmenities.split(",").map((s) => s.trim())
+    ? rawAmenities.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
 
   return {
@@ -51,28 +53,42 @@ const mapRoomFromApi = (room) => {
     pricePerNight: room.pricePerNight ?? 0,
     capacity: room.capacity ?? 1,
     roomStatus: room.roomStatus || "AVAILABLE",
-    images:
-      room.images && room.images.length > 0 ? room.images : [DEFAULT_IMAGE],
+    images: Array.isArray(room.images) ? room.images.filter(Boolean) : [],
     amenities: parsedAmenities,
     displayPrice: formatPrice(room.pricePerNight ?? 0),
     displayType: titleCase(room.roomType || "Single"),
   };
 };
 
-function AdminRoomCard({ room, onEdit, onDelete, onViewDetails }) {
+function ImagePlaceholder({ text = "No preview available yet", className = "" }) {
+  return (
+    <div
+      className={`w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-400 p-4 text-center select-none ${className}`}
+    >
+      <FaImage className="w-8 h-8 mb-1.5 opacity-40 text-slate-400" />
+      <span className="text-xs font-semibold text-slate-500">{text}</span>
+    </div>
+  );
+}
+
+function AdminRoomCard({ room, onEdit, onDelete, onViewDetails, onMarkClean }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const images =
-    room.images && room.images.length > 0 ? room.images : [DEFAULT_IMAGE];
+  const images = Array.isArray(room.images) ? room.images : [];
+  const hasImages = images.length > 0;
 
   const nextImage = (e) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    if (images.length > 1) {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }
   };
 
   const prevImage = (e) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    if (images.length > 1) {
+      setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
   };
 
   return (
@@ -91,48 +107,54 @@ function AdminRoomCard({ room, onEdit, onDelete, onViewDetails }) {
         </span>
       </div>
 
-      <div className="relative w-full aspect-square overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 group/slider">
-        <img
-          src={images[currentImageIndex]}
-          alt={`Room ${room.roomNumber}`}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-          loading="lazy"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-        {images.length > 1 && (
+      <div className="relative w-full aspect-square overflow-hidden bg-slate-100 group/slider">
+        {hasImages ? (
           <>
-            <button
-              onClick={prevImage}
-              className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/40 text-white opacity-0 group-hover/slider:opacity-100 hover:bg-black/70 transition-all"
-            >
-              <FaChevronLeft className="w-2.5 h-2.5" />
-            </button>
-            <button
-              onClick={nextImage}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/40 text-white opacity-0 group-hover/slider:opacity-100 hover:bg-black/70 transition-all"
-            >
-              <FaChevronRight className="w-2.5 h-2.5" />
-            </button>
+            <img
+              src={images[currentImageIndex]}
+              alt={`Room ${room.roomNumber}`}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 flex gap-1">
-              {images.map((_, idx) => (
+            {images.length > 1 && (
+              <>
                 <button
-                  key={idx}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentImageIndex(idx);
-                  }}
-                  className={`w-1.5 h-1.5 rounded-full transition-all ${
-                    idx === currentImageIndex ? "bg-white w-3" : "bg-white/50"
-                  }`}
-                />
-              ))}
-            </div>
+                  onClick={prevImage}
+                  className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/40 text-white opacity-0 group-hover/slider:opacity-100 hover:bg-black/70 transition-all cursor-pointer"
+                >
+                  <FaChevronLeft className="w-2.5 h-2.5" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/40 text-white opacity-0 group-hover/slider:opacity-100 hover:bg-black/70 transition-all cursor-pointer"
+                >
+                  <FaChevronRight className="w-2.5 h-2.5" />
+                </button>
+
+                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 flex gap-1">
+                  {images.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex(idx);
+                      }}
+                      className={`w-1.5 h-1.5 rounded-full transition-all ${
+                        idx === currentImageIndex ? "bg-white w-3" : "bg-white/50"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </>
+        ) : (
+          <ImagePlaceholder text="No preview available yet" />
         )}
 
-        <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs px-3 py-1 rounded-lg border border-white/10">
+        <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs px-3 py-1 rounded-lg border border-white/10 z-10">
           <span className="text-white text-sm font-bold">
             {room.displayPrice}
           </span>
@@ -167,7 +189,8 @@ function AdminRoomCard({ room, onEdit, onDelete, onViewDetails }) {
               {room.amenities && room.amenities.length > 0 ? (
                 room.amenities.map((amenity, index) => {
                   if (!amenity) return null;
-                  const lookup = AMENITY_LOOKUP[amenity];
+                  const key = normalizeStr(amenity);
+                  const lookup = AMENITY_LOOKUP[key];
                   const Icon = lookup?.icon || FaConciergeBell;
                   const color = lookup?.color || "text-[#D96B43]";
 
@@ -188,13 +211,26 @@ function AdminRoomCard({ room, onEdit, onDelete, onViewDetails }) {
           </div>
         </div>
 
+        {room.roomStatus === "CLEANING" && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMarkClean(room);
+            }}
+            className="w-full mb-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 active:scale-[0.98] text-white text-xs font-bold rounded-lg transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Clean & Ready</span>
+          </button>
+        )}
+
         <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onEdit(room);
             }}
-            className="flex-1 px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1"
+            className="flex-1 px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
           >
             <FaEdit className="w-2.5 h-2.5 text-slate-600" />
             Edit
@@ -204,7 +240,7 @@ function AdminRoomCard({ room, onEdit, onDelete, onViewDetails }) {
               e.stopPropagation();
               onDelete(room);
             }}
-            className="px-3 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-500 hover:text-white text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1"
+            className="px-3 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-500 hover:text-white text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
           >
             <FaTrash className="w-2.5 h-2.5" />
             Delete
@@ -233,6 +269,7 @@ export default function Rooms() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   const fetchRooms = useCallback(async () => {
     try {
@@ -259,15 +296,22 @@ export default function Rooms() {
   }, [roomListFromStore]);
 
   const filteredRooms = useMemo(() => {
-    if (!searchQuery.trim()) return rooms;
     const query = searchQuery.toLowerCase().trim();
-    return rooms.filter(
-      (room) =>
+
+    return rooms.filter((room) => {
+      const matchesSearch =
+        !query ||
         room.roomNumber.toLowerCase().includes(query) ||
         room.roomType.toLowerCase().includes(query) ||
-        room.roomStatus.toLowerCase().includes(query)
-    );
-  }, [rooms, searchQuery]);
+        room.roomStatus.toLowerCase().includes(query);
+
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        String(room.roomStatus).toUpperCase() === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [rooms, searchQuery, statusFilter]);
 
   const openAddModal = () => {
     setEditingRoom(null);
@@ -324,6 +368,19 @@ export default function Rooms() {
     }
   };
 
+  const handleMarkClean = async (room) => {
+    try {
+      await updateRoom(room.roomNumber, {
+        ...room,
+        roomStatus: "AVAILABLE",
+      });
+      await getRoomsList();
+    } catch (err) {
+      console.error("Error setting room to available:", err);
+      alert("Failed to update room status");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -337,42 +394,83 @@ export default function Rooms() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">
-            Rooms & Inventory
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage room details, statuses, and amenities
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="relative w-full sm:w-64">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-            <input
-              type="text"
-              placeholder="Search room number..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-[#D96B43]/20 focus:border-[#D96B43]"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <FaTimes size={12} />
-              </button>
-            )}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">
+              Rooms &amp; Inventory
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Manage room details, statuses, and amenities
+            </p>
           </div>
 
-          <button
-            onClick={openAddModal}
-            className="shrink-0 px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white text-sm font-semibold rounded-lg shadow-xs transition"
-          >
-            + Add New Room
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="relative w-full sm:w-64">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+              <input
+                type="text"
+                placeholder="Search room number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-[#D96B43]/20 focus:border-[#D96B43]"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <FaTimes size={12} />
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={openAddModal}
+              className="shrink-0 px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white text-sm font-semibold rounded-lg shadow-xs transition cursor-pointer"
+            >
+              + Add New Room
+            </button>
+          </div>
+        </div>
+
+        {/* Status Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {[
+            { label: "All", value: "ALL", activeClass: "bg-slate-800 text-white" },
+            { label: "Available", value: "AVAILABLE", activeClass: "bg-emerald-600 text-white" },
+            { label: "Cleaning", value: "CLEANING", activeClass: "bg-purple-600 text-white" },
+            { label: "Occupied", value: "OCCUPIED", activeClass: "bg-rose-600 text-white" },
+            { label: "Maintenance", value: "MAINTENANCE", activeClass: "bg-slate-600 text-white" },
+          ].map((tab) => {
+            const isActive = statusFilter === tab.value;
+            const count =
+              tab.value === "ALL"
+                ? rooms.length
+                : rooms.filter((r) => String(r.roomStatus).toUpperCase() === tab.value).length;
+
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setStatusFilter(tab.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  isActive
+                    ? `${tab.activeClass} shadow-xs`
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -384,6 +482,7 @@ export default function Rooms() {
               room={room}
               onEdit={openEditModal}
               onDelete={handleDeleteRoom}
+              onMarkClean={handleMarkClean}
               onViewDetails={(r) => {
                 setSelectedDetailsRoom(r);
                 setActiveModalImgIdx(0);
@@ -392,7 +491,6 @@ export default function Rooms() {
           ))
         ) : (
           <div className="col-span-full text-center py-12 bg-white rounded-xl border border-slate-100">
-            <div className="text-slate-400 text-4xl mb-3">🏠</div>
             <p className="text-slate-600 text-sm font-medium">
               {searchQuery ? `No rooms matching "${searchQuery}"` : "No rooms available"}
             </p>
@@ -414,7 +512,7 @@ export default function Rooms() {
               </div>
               <button
                 onClick={closeModal}
-                className="text-slate-400 hover:text-slate-600 transition p-1.5 rounded-full hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 transition p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
               >
                 <FaTimes size={18} />
               </button>
@@ -434,107 +532,152 @@ export default function Rooms() {
         </div>
       )}
 
+    
       {selectedDetailsRoom && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col relative">
-            <div className="flex justify-between items-center border-b p-6 pb-3 bg-white z-10 shrink-0">
-              <div>
-                <h3 className="text-xl font-bold text-slate-800">
-                  Room {selectedDetailsRoom.roomNumber} Overview
-                </h3>
-                <p className="text-xs text-[#D96B43] font-semibold">
-                  {selectedDetailsRoom.displayType} Room
-                </p>
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => setSelectedDetailsRoom(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col relative border border-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative w-full h-56 bg-slate-100 shrink-0 overflow-hidden">
+              {selectedDetailsRoom.images && selectedDetailsRoom.images.length > 0 ? (
+                <img
+                  src={selectedDetailsRoom.images[activeModalImgIdx] || selectedDetailsRoom.images[0]}
+                  alt={`Room ${selectedDetailsRoom.roomNumber}`}
+                  className="w-full h-full object-cover transition-all duration-300"
+                />
+              ) : (
+                <ImagePlaceholder text="No preview available yet" />
+              )}
+
+              <div className="absolute bottom-3 left-4">
+                <span
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-md tracking-wider uppercase backdrop-blur-xs ${
+                    STATUS_BADGES[selectedDetailsRoom.roomStatus] || "bg-emerald-500 text-white"
+                  }`}
+                >
+                  {selectedDetailsRoom.roomStatus}
+                </span>
               </div>
+
               <button
+                type="button"
                 onClick={() => setSelectedDetailsRoom(null)}
-                className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition"
+                className="absolute top-3 right-3 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition cursor-pointer shadow-md backdrop-blur-xs"
               >
-                <FaTimes size={18} />
+                <FaTimes size={12} />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-5 flex-1">
-              <div className="space-y-3">
-                <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-200 flex items-center justify-center">
-                  <img
-                    src={selectedDetailsRoom.images[activeModalImgIdx] || DEFAULT_IMAGE}
-                    alt={`Room ${selectedDetailsRoom.roomNumber}`}
-                    className="w-full h-full object-contain"
-                  />
-                  <div className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold shadow-md backdrop-blur-md bg-black/60 text-white">
-                    {selectedDetailsRoom.roomStatus}
-                  </div>
-                </div>
+            {selectedDetailsRoom.images && selectedDetailsRoom.images.length > 1 && (
+              <div className="flex gap-2 px-6 pt-3 pb-1 overflow-x-auto bg-slate-50/50 border-b border-slate-100">
+                {selectedDetailsRoom.images.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveModalImgIdx(idx)}
+                    className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 shrink-0 transition cursor-pointer ${
+                      activeModalImgIdx === idx
+                        ? "border-[#D96B43] ring-2 ring-[#D96B43]/20"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <img
+                      src={imgUrl}
+                      alt="thumbnail"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
 
-                {selectedDetailsRoom.images.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {selectedDetailsRoom.images.map((imgUrl, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveModalImgIdx(idx)}
-                        className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 shrink-0 transition ${
-                          activeModalImgIdx === idx
-                            ? "border-[#D96B43] ring-2 ring-[#D96B43]/30"
-                            : "border-slate-200 opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        <img
-                          src={imgUrl}
-                          alt="thumbnail"
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-800">
+                  Room {selectedDetailsRoom.roomNumber}
+                </h3>
+                <p className="text-xs font-semibold text-[#D96B43] mt-0.5">
+                  {selectedDetailsRoom.displayType} Room Inventory Item
+                </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl text-center">
+              <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 border border-slate-100 rounded-xl text-center">
                 <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Price</div>
-                  <div className="text-sm font-bold text-slate-800">{selectedDetailsRoom.displayPrice} / night</div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Rate
+                  </span>
+                  <span className="text-xs font-extrabold text-slate-800 block mt-0.5">
+                    {selectedDetailsRoom.displayPrice}
+                  </span>
+                  <span className="text-[9px] text-slate-400 block">Per Night</span>
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Capacity</div>
-                  <div className="text-sm font-bold text-slate-800">{selectedDetailsRoom.capacity} Guests</div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Capacity
+                  </span>
+                  <span className="text-xs font-extrabold text-slate-800 block mt-0.5">
+                    {selectedDetailsRoom.capacity} Guests
+                  </span>
+                  <span className="text-[9px] text-slate-400 block">Max Occupancy</span>
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Type</div>
-                  <div className="text-sm font-bold text-slate-800">{selectedDetailsRoom.roomType}</div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Room Type
+                  </span>
+                  <span className="text-xs font-extrabold text-slate-800 block mt-0.5">
+                    {selectedDetailsRoom.roomType}
+                  </span>
+                  <span className="text-[9px] text-slate-400 block">Category</span>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-slate-800 border-b pb-2 flex items-center gap-2">
+              {/* Room Amenities*/}
+              <div className="space-y-2.5">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
                   <FaConciergeBell className="text-[#D96B43]" />
-                  All In-Room Amenities ({selectedDetailsRoom.amenities.length})
-                </h4>
+                  In-Room Amenities ({selectedDetailsRoom.amenities.length})
+                </span>
 
-                <div className="max-h-[30vh] overflow-hidden rounded-xl">
-                  <div className="h-full overflow-y-auto pr-1 space-y-4">
-                    {AMENITIES_CATEGORIES.map((cat) => {
-                      const matchedInRoom = cat.items.filter((item) =>
-                        selectedDetailsRoom.amenities.includes(item.name)
-                      );
+                {selectedDetailsRoom.amenities.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic py-1">
+                    No amenities recorded for this room.
+                  </p>
+                ) : (
+                  <div className="space-y-3 max-h-44 overflow-y-auto pr-1">
+                    {(AMENITIES_CATEGORIES || []).map((cat) => {
+                      const matchedInRoom = (cat.items || []).filter((item) => {
+                        const canonicalItemKey = normalizeStr(item.name);
+                        return selectedDetailsRoom.amenities.some((a) => {
+                          const normA = normalizeStr(a);
+                          return (
+                            normA === canonicalItemKey ||
+                            normA.includes(canonicalItemKey) ||
+                            canonicalItemKey.includes(normA)
+                          );
+                        });
+                      });
 
                       if (matchedInRoom.length === 0) return null;
 
                       return (
                         <div key={cat.category}>
-                          <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                             {cat.category}
-                          </h5>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          </span>
+                          <div className="grid grid-cols-2 gap-1.5">
                             {matchedInRoom.map((item) => {
-                              const Icon = item.icon;
+                              const Icon = item.icon || FaConciergeBell;
                               return (
                                 <div
                                   key={item.name}
-                                  className="flex items-center gap-2 p-2 bg-amber-50/50 border border-amber-100 rounded-lg text-xs text-slate-700 font-medium"
+                                  className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border border-slate-100 text-[11px] text-slate-700 font-medium"
                                 >
-                                  <Icon className={`${item.color} w-3.5 h-3.5 shrink-0`} />
-                                  <span>{item.name}</span>
+                                  <Icon className={`${item.color || "text-[#D96B43]"} w-3 h-3 shrink-0`} />
+                                  <span className="truncate">{item.name}</span>
                                 </div>
                               );
                             })}
@@ -542,8 +685,44 @@ export default function Rooms() {
                         </div>
                       );
                     })}
+                    
+                    {(() => {
+                      const allCategorizedKeys = new Set(
+                        (AMENITIES_CATEGORIES || []).flatMap((cat) =>
+                          (cat.items || []).map((i) => normalizeStr(i.name))
+                        )
+                      );
+
+                      const uncategorized = selectedDetailsRoom.amenities.filter((a) => {
+                        const normA = normalizeStr(a);
+                        return ![...allCategorizedKeys].some(
+                          (k) => k === normA || normA.includes(k) || k.includes(normA)
+                        );
+                      });
+
+                      if (uncategorized.length === 0) return null;
+
+                      return (
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                            Additional Amenities
+                          </span>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {uncategorized.map((name, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border border-slate-100 text-[11px] text-slate-700 font-medium"
+                              >
+                                <FaConciergeBell className="text-[#D96B43] w-3 h-3 shrink-0" />
+                                <span className="truncate">{name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

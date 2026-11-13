@@ -4,6 +4,7 @@ import {
   FiPlusCircle,
   FiCreditCard,
   FiCheckCircle,
+  FiDownload,
   FiPrinter,
   FiX,
   FiArrowRight,
@@ -11,17 +12,20 @@ import {
   FiTag,
   FiFileText,
 } from "react-icons/fi";
+import { FaSpinner } from "react-icons/fa";
 import toast from "react-hot-toast";
 import useBookingStore from "../../app/useBookingStore";
 import useGuestStore from "../../app/useGuestStore";
 import useRoomStore from "../../app/useRoomStore";
 import useAuthStore from "../../app/useAuthStore";
+
 import {
   createRazorpayOrderApi,
   verifyRazorpayPaymentApi,
+  fetchStaffCouponsApi,
+  fetchAdminAvailableRoomsByDatesApi,
+  downloadCheckInReceiptApi,
 } from "../../apis/api";
-
-import  useCuponesStore from '../../app/useCuponesStore'
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -56,11 +60,7 @@ export default function BookingForm({
   const checkInBooking = useBookingStore((state) => state.checkInBooking);
   const extraServicesCatalog = useBookingStore((state) => state.extraServices) || [];
   const loadExtraServices = useBookingStore((state) => state.loadExtraServices);
-  const getRoomsList = useRoomStore((state) => state.getRoomsList);
-  const  getAllCuponse = useCuponesStore((state) => state.getAllCuponse)
 
-
-  // Exact guest store methods from GuestForm
   const {
     sendOtp,
     verifyOtpAndSave,
@@ -70,7 +70,6 @@ export default function BookingForm({
     loading: guestLoading,
   } = useGuestStore();
 
-  // Exact state from GuestForm
   const [formData, setFormData] = useState({
     firstName: preSelectedGuest?.firstName || preSelectedGuest?.first_name || "",
     lastName: preSelectedGuest?.lastName || preSelectedGuest?.last_name || "",
@@ -96,20 +95,26 @@ export default function BookingForm({
   const [isResending, setIsResending] = useState(false);
 
   const dropdownRef = useRef(null);
-
-  // Step 2 & 3 State
   const [stayDates, setStayDates] = useState({
     checkInDate: new Date().toISOString().split("T")[0],
     checkOutDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
   });
-  const [rooms, setRooms] = useState([]);
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [totalGuests, setTotalGuests] = useState(2);
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [selectedRoomIds, setSelectedRoomIds] = useState([]);
   const [selectedServiceIds, setSelectedServiceIds] = useState([]);
-
-  // Step 4 State
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [selectedCoupon, setSelectedCoupon] = useState(null);
-  const [couponDiscount, setCouponDiscount] = useState(0);
+
+  const [discountDraftVal, setDiscountDraftVal] = useState("");
+  const [discountDraftType, setDiscountDraftType] = useState("FLAT");
+  const [discountDraftReason, setDiscountDraftReason] = useState("");
+
+  const [appliedDiscountVal, setAppliedDiscountVal] = useState(0);
+  const [appliedDiscountType, setAppliedDiscountType] = useState("FLAT");
+  const [appliedDiscountReason, setAppliedDiscountReason] = useState("");
+  const [isDiscountApplied, setIsDiscountApplied] = useState(false);
 
   const [paymentType, setPaymentType] = useState("FULL");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
@@ -119,21 +124,48 @@ export default function BookingForm({
   useEffect(() => {
     const init = async () => {
       try {
-        const [roomsData, _, couponsData] = await Promise.all([
-          getRoomsList(),
+        const [_, couponsData] = await Promise.all([
           loadExtraServices ? loadExtraServices() : Promise.resolve([]),
-          getAllCuponse ? getAllCuponse().catch(() => []) : Promise.resolve([]),
+          fetchStaffCouponsApi().catch(() => []),
         ]);
-        setRooms(Array.isArray(roomsData) ? roomsData : []);
         setAvailableCoupons(Array.isArray(couponsData) ? couponsData : []);
       } catch (err) {
         console.error("Initialization error:", err);
       }
     };
     init();
-  }, [getRoomsList, loadExtraServices]);
+  }, [loadExtraServices]);
 
-  // Outside click handler for email search dropdown
+  useEffect(() => {
+    if (!stayDates.checkInDate || !stayDates.checkOutDate) return;
+    if (new Date(stayDates.checkOutDate) <= new Date(stayDates.checkInDate)) {
+      setAvailableRooms([]);
+      return;
+    }
+
+    let active = true;
+    setLoadingRooms(true);
+
+    fetchAdminAvailableRoomsByDatesApi(stayDates.checkInDate, stayDates.checkOutDate)
+      .then((data) => {
+        if (active) {
+          const roomList = Array.isArray(data) ? data : [];
+          setAvailableRooms(roomList);
+          setSelectedRoomIds((prev) => prev.filter((id) => roomList.some((r) => r.id === id)));
+        }
+      })
+      .catch(() => {
+        if (active) setAvailableRooms([]);
+      })
+      .finally(() => {
+        if (active) setLoadingRooms(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [stayDates.checkInDate, stayDates.checkOutDate]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -144,7 +176,6 @@ export default function BookingForm({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // OTP Countdown Timer
   useEffect(() => {
     let interval = null;
     if (showOtpModal && resendTimer > 0) {
@@ -157,7 +188,6 @@ export default function BookingForm({
     return () => clearInterval(interval);
   }, [showOtpModal, resendTimer]);
 
-  // Exact Handlers from GuestForm
   const handleEmailChange = async (e) => {
     const value = e.target.value;
     setFormData((prev) => ({ ...prev, email: value }));
@@ -237,7 +267,6 @@ export default function BookingForm({
       return;
     }
 
-    // If an existing registered guest was picked without changes, go straight to Step 2
     if (isExistingGuest && verifiedGuestId) {
       setStep(2);
       return;
@@ -307,7 +336,6 @@ export default function BookingForm({
     }
   };
 
-  // Calculation logic for Steps 2 to 4
   const nights = useMemo(() => {
     const diff =
       (new Date(stayDates.checkOutDate) - new Date(stayDates.checkInDate)) /
@@ -315,11 +343,17 @@ export default function BookingForm({
     return Math.max(1, Math.round(diff) || 1);
   }, [stayDates]);
 
-  const availableRooms = useMemo(() => {
-    return rooms.filter((r) => (r.roomStatus || r.status) === "AVAILABLE");
-  }, [rooms]);
+  const selectedRooms = useMemo(() => {
+    return availableRooms.filter((r) => selectedRoomIds.includes(r.id));
+  }, [availableRooms, selectedRoomIds]);
 
-  const roomCharges = selectedRoom ? Number(selectedRoom.pricePerNight) * nights : 0;
+  const combinedCapacity = useMemo(() => {
+    return selectedRooms.reduce((acc, r) => acc + (r.capacity || 2), 0);
+  }, [selectedRooms]);
+
+  const roomCharges = useMemo(() => {
+    return selectedRooms.reduce((acc, r) => acc + Number(r.pricePerNight || r.price || 0) * nights, 0);
+  }, [selectedRooms, nights]);
 
   const selectedServices = useMemo(() => {
     return (extraServicesCatalog || []).filter((s) => selectedServiceIds.includes(s.id));
@@ -334,45 +368,134 @@ export default function BookingForm({
 
   const subtotal = roomCharges + extraServicesTotal;
 
+  const couponDiscount = useMemo(() => {
+    if (!selectedCoupon || roomCharges <= 0) return 0;
+    const val = Number(selectedCoupon.discountValue || selectedCoupon.discount || 0);
+    const isPercent =
+      (selectedCoupon.discountType || selectedCoupon.type) === "PERCENTAGE" ||
+      (selectedCoupon.discountType || selectedCoupon.type) === "PERCENT";
+
+    if (isPercent) {
+      let discount = Math.round((roomCharges * val) / 100);
+      if (selectedCoupon.maxDiscount && discount > selectedCoupon.maxDiscount) {
+        discount = Number(selectedCoupon.maxDiscount);
+      }
+      return discount;
+    }
+    return Math.min(val, roomCharges);
+  }, [selectedCoupon, roomCharges]);
+
   const handleToggleCoupon = (cpn) => {
     if (selectedCoupon?.id === cpn.id || selectedCoupon?.code === cpn.code) {
       setSelectedCoupon(null);
-      setCouponDiscount(0);
       toast.success("Coupon removed");
     } else {
-      let discount = 0;
-      const val = Number(cpn.discountValue || cpn.discount || cpn.value || 0);
-      const isPercent =
-        (cpn.discountType || cpn.type) === "PERCENTAGE" ||
-        cpn.code?.includes("20") ||
-        val <= 100;
-
-      if (isPercent) {
-        discount = Math.round((subtotal * val) / 100);
-      } else {
-        discount = Math.min(val, subtotal);
+      if (cpn.minBookingAmount && roomCharges < cpn.minBookingAmount) {
+        toast.error(`Requires minimum room spend of ₹${cpn.minBookingAmount}`);
+        return;
       }
-
       setSelectedCoupon(cpn);
-      setCouponDiscount(discount);
-      toast.success(`Coupon ${cpn.code} applied! Saved ₹${discount}`);
+      toast.success(`Coupon ${cpn.code} applied!`);
     }
   };
 
-  const taxableAmount = Math.max(0, subtotal - couponDiscount);
-  const discountRatio = subtotal > 0 && couponDiscount > 0 ? 1 - couponDiscount / subtotal : 1;
-  const roomTax = roomCharges * discountRatio * 0.18;
+  const maxEligibleDiscount = Math.max(0, roomCharges - couponDiscount);
+
+  const discretionaryDiscount = useMemo(() => {
+    const val = Number(appliedDiscountVal) || 0;
+    if (val <= 0) return 0;
+    if (appliedDiscountType === "PERCENT") {
+      const pct = Math.min(100, Math.max(0, val));
+      return Math.round((maxEligibleDiscount * pct) / 100);
+    }
+    return Math.min(val, maxEligibleDiscount);
+  }, [maxEligibleDiscount, appliedDiscountVal, appliedDiscountType]);
+
+  const handleDiscountInputChange = (e) => {
+    const inputVal = e.target.value;
+    if (inputVal === "") {
+      setDiscountDraftVal("");
+      return;
+    }
+
+    const numericVal = parseFloat(inputVal);
+
+    if (discountDraftType === "PERCENT") {
+      if (numericVal > 100) {
+        toast.error("You can only give discount below or equal to 100%");
+        setDiscountDraftVal("100");
+      } else {
+        setDiscountDraftVal(inputVal);
+      }
+    } else {
+      if (numericVal > maxEligibleDiscount) {
+        toast.error(`You can only give discount below or equal to ₹${maxEligibleDiscount.toLocaleString("en-IN")}`);
+        setDiscountDraftVal(String(maxEligibleDiscount));
+      } else {
+        setDiscountDraftVal(inputVal);
+      }
+    }
+  };
+
+  const handleApplyDiscount = (e) => {
+    if (e) e.preventDefault();
+    const val = parseFloat(discountDraftVal);
+
+    if (!discountDraftVal || isNaN(val) || val <= 0) {
+      toast.error("Please enter a valid discount amount");
+      return;
+    }
+
+    if (discountDraftType === "FLAT" && val > maxEligibleDiscount) {
+      toast.error(`You can only give discount below or equal to ₹${maxEligibleDiscount.toLocaleString("en-IN")}`);
+      setDiscountDraftVal(String(maxEligibleDiscount));
+      return;
+    }
+
+    if (discountDraftType === "PERCENT" && val > 100) {
+      toast.error("You can only give discount below or equal to 100%");
+      setDiscountDraftVal("100");
+      return;
+    }
+
+    setAppliedDiscountVal(val);
+    setAppliedDiscountType(discountDraftType);
+    setAppliedDiscountReason(discountDraftReason);
+    setIsDiscountApplied(true);
+    toast.success("Discount applied successfully");
+  };
+
+  const handleRemoveDiscount = () => {
+    setIsDiscountApplied(false);
+    setAppliedDiscountVal(0);
+    setDiscountDraftVal("");
+    setDiscountDraftReason("");
+    setAppliedDiscountReason("");
+    toast.success("Discount removed");
+  };
+
+  const taxableAmount = roomCharges + extraServicesTotal;
+  const roomTax = roomCharges * 0.18;
   const servicesTax = selectedServices.reduce((acc, s) => {
     const price = Number(s.price) || 0;
     const itemCost = s.priceType === "PER_NIGHT" ? price * nights : price;
-    const rate = (Number(s.taxRate) || 18) / 100;
-    return acc + itemCost * discountRatio * rate;
+    const rate = Number(s.taxRate != null ? s.taxRate : 18) / 100;
+    return acc + itemCost * rate;
   }, 0);
-
   const taxAmount = Math.round(roomTax + servicesTax);
-  const totalAmount = taxableAmount + taxAmount;
+
+  const grossBeforeDeductions = taxableAmount + taxAmount;
+  const totalDiscount = couponDiscount + discretionaryDiscount;
+  const totalAmount = Math.max(0, grossBeforeDeductions - totalDiscount);
+
   const amountToPayNow = paymentType === "SPLIT_ADVANCE" ? Math.round(totalAmount * 0.4) : totalAmount;
   const balanceDue = totalAmount - amountToPayNow;
+
+  const toggleRoomSelection = (id) => {
+    setSelectedRoomIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   const toggleService = (id) => {
     setSelectedServiceIds((prev) =>
@@ -380,7 +503,15 @@ export default function BookingForm({
     );
   };
 
-  const handleFinalizeBooking = async () => {
+  const handleFinalizeBooking = async (checkInDirectly = false) => {
+    if (selectedRooms.length === 0) {
+      toast.error("Please select at least one room.");
+      return;
+    }
+    if (combinedCapacity < totalGuests) {
+      toast.error(`Guest headcount (${totalGuests}) exceeds combined room capacity (${combinedCapacity}). Please select additional rooms.`);
+      return;
+    }
     if (paymentMethod === "CARD_MACHINE" && !cardMachineAuthCode.trim()) {
       toast.error("Please enter the physical card machine Auth / Slip code.");
       return;
@@ -402,11 +533,18 @@ export default function BookingForm({
               idProofType: formData.idProofType,
               idProofNumber: formData.idProofNumber.trim(),
             },
-        roomId: selectedRoom.id,
+        roomIds: selectedRoomIds,
+        roomId: selectedRoomIds[0], // backward compatibility
         checkInDate: stayDates.checkInDate,
         checkOutDate: stayDates.checkOutDate,
+        totalGuests: totalGuests,
         extraServiceIds: selectedServiceIds,
         couponCode: selectedCoupon?.code || null,
+
+        customDiscount: appliedDiscountVal ? parseFloat(appliedDiscountVal) : 0,
+        customDiscountType: appliedDiscountType,
+        discountReason: appliedDiscountReason.trim() || null,
+
         paymentType: paymentType,
         paymentMethod: isOnline ? null : paymentMethod,
         transactionReference: paymentMethod === "CARD_MACHINE" ? cardMachineAuthCode.trim() : null,
@@ -414,27 +552,28 @@ export default function BookingForm({
       };
 
       const bookingRes = await addBooking(payload);
+
       if (!isOnline) {
-        let checkedInRes = bookingRes;
-        try {
-          checkedInRes = await checkInBooking(bookingRes.id);
-        } catch (err) {
-          console.warn("Check-in note:", err);
+        let finalBooking = bookingRes;
+        if (checkInDirectly) {
+          try {
+            finalBooking = await checkInBooking(bookingRes.id);
+            toast.success("Guest checked in! Room(s) marked OCCUPIED.");
+          } catch (err) {
+            console.warn("Check-in notice:", err);
+          }
+        } else {
+          toast.success(`Advance reservation #${bookingRes.id} confirmed! Room(s) marked RESERVED.`);
         }
 
-        setCompletedBooking(checkedInRes);
-        setStep(5);
-        toast.success(
-          paymentMethod === "CARD_MACHINE"
-            ? `Card payment recorded (Auth: ${cardMachineAuthCode}) & checked in!`
-            : "Cash received & guest checked in!"
-        );
+        setCompletedBooking(finalBooking);
+        setStep(4);
         return;
       }
 
       const isScriptLoaded = await loadRazorpayScript();
       if (!isScriptLoaded) {
-        toast.error("Failed to load Razorpay SDK. Please check your internet connection.");
+        toast.error("Failed to load Razorpay SDK. Please check internet connection.");
         setIsSubmitting(false);
         return;
       }
@@ -445,8 +584,8 @@ export default function BookingForm({
         key: order.keyId,
         amount: order.amount * 100,
         currency: order.currency || "INR",
-        name: "Athenura Grand Hotel",
-        description: `Desk Settlement - Booking #${bookingRes.id}`,
+        name: "Hotel Athenura",
+        description: `Reservation Payment - Booking #${bookingRes.id}`,
         order_id: order.orderId,
         prefill: {
           name: `${formData.firstName} ${formData.lastName}`,
@@ -469,16 +608,22 @@ export default function BookingForm({
               token
             );
 
-            let checkedInRes = bookingRes;
-            try {
-              checkedInRes = await checkInBooking(bookingRes.id);
-            } catch (err) {
-              console.warn("Check-in note:", err);
+            let finalBooking = bookingRes;
+            if (checkInDirectly) {
+              try {
+                finalBooking = await checkInBooking(bookingRes.id);
+              } catch (err) {
+                console.warn("Check-in notice:", err);
+              }
             }
 
-            setCompletedBooking(checkedInRes);
-            setStep(5);
-            toast.success("Online payment verified & guest checked in!");
+            setCompletedBooking(finalBooking);
+            setStep(4);
+            toast.success(
+              checkInDirectly
+                ? "Payment verified & guest checked in!"
+                : "Payment verified & reservation confirmed!"
+            );
           } catch {
             toast.error("Signature verification failed.");
           }
@@ -504,6 +649,22 @@ export default function BookingForm({
     }
   };
 
+  const handleDownloadCheckInPdf = async () => {
+    const targetBookingId = completedBooking?.id;
+    if (!targetBookingId) {
+      toast.error("Booking reference not found for slip download");
+      return;
+    }
+
+    const toastId = toast.loading("Downloading Check-In Slip...");
+    try {
+      await downloadCheckInReceiptApi(targetBookingId);
+      toast.success("Check-In Slip downloaded!", { id: toastId });
+    } catch {
+      toast.error("Could not download Check-In Slip.", { id: toastId });
+    }
+  };
+
   return (
     <div className={`flex flex-col h-full space-y-6 ${className}`}>
       {/* Header */}
@@ -511,12 +672,11 @@ export default function BookingForm({
         <div>
           <h2 className="text-xl font-bold text-slate-800">Desk Walk-In Booking & Check-In</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Step {step} of 5 —{" "}
+            Step {step} of 4 —{" "}
             {step === 1 && "Guest Registration & Verification"}
-            {step === 2 && "Stay Dates & Available Room"}
-            {step === 3 && "Extra Services & Available Promotions"}
-            {step === 4 && "Live Billing Breakdown & Payment"}
-            {step === 5 && "Confirmation & Key Handover"}
+            {step === 2 && "Stay Dates, Room Selection & Extra Services"}
+            {step === 3 && "Billing Breakdown, Coupons, Discount & Payment"}
+            {step === 4 && "Confirmation & Key Handover"}
           </p>
         </div>
         {onCancel && (
@@ -530,7 +690,7 @@ export default function BookingForm({
       </div>
 
       <div className="flex-1 overflow-y-auto pr-1">
-        {/* STEP 1: Exact GuestForm Implementation */}
+        {/* STEP 1: Guest Verification */}
         {step === 1 && (
           <form onSubmit={handleInitiateSubmit} className="space-y-4 text-sm text-slate-700">
             {error && (
@@ -542,7 +702,6 @@ export default function BookingForm({
               </div>
             )}
 
-            {/* Email Search Field */}
             <div className="relative" ref={dropdownRef}>
               <label className="block font-medium mb-1">
                 Email <span className="text-red-500">*</span>
@@ -586,7 +745,6 @@ export default function BookingForm({
               </div>
             )}
 
-            {/* First and Last Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block font-medium mb-1">
@@ -617,7 +775,6 @@ export default function BookingForm({
               </div>
             </div>
 
-            {/* Phone and Date of Birth */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block font-medium mb-1">
@@ -647,7 +804,6 @@ export default function BookingForm({
               </div>
             </div>
 
-            {/* ID Proof Type & Number */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block font-medium mb-1">ID Proof Type</label>
@@ -676,7 +832,6 @@ export default function BookingForm({
               </div>
             </div>
 
-            {/* Address */}
             <div>
               <label className="block font-medium mb-1">Address</label>
               <input
@@ -688,7 +843,6 @@ export default function BookingForm({
               />
             </div>
 
-            {/* City, State, Postal Code */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block font-medium mb-1">City</label>
@@ -726,194 +880,406 @@ export default function BookingForm({
           </form>
         )}
 
-        {/* STEP 2: Dates & Room Inventory */}
+        {/* STEP 2: Dates, Dynamic Overlap Multi-Room Selection & Headcount */}
         {step === 2 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <FiCalendar className="text-[#D96B43]" /> 2. Dates & Available Rooms
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Check-in Date</label>
-                <input
-                  type="date"
-                  value={stayDates.checkInDate}
-                  onChange={(e) => setStayDates({ ...stayDates, checkInDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Check-out Date</label>
-                <input
-                  type="date"
-                  value={stayDates.checkOutDate}
-                  onChange={(e) => setStayDates({ ...stayDates, checkOutDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <label className="text-xs font-medium text-slate-600 block mb-2">
-                Available Rooms ({availableRooms.length} Ready for Check-In)
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
-                {availableRooms.map((room) => (
-                  <div
-                    key={room.id}
-                    onClick={() => setSelectedRoom(room)}
-                    className={`p-3.5 border rounded-xl cursor-pointer transition flex justify-between items-center ${
-                      selectedRoom?.id === room.id
-                        ? "border-[#D96B43] bg-orange-50/50 ring-1 ring-[#D96B43]"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">Room {room.roomNumber}</h4>
-                      <p className="text-xs text-slate-500">{room.roomType} | Capacity: {room.capacity}</p>
-                    </div>
-                    <span className="font-extrabold text-[#D96B43] text-sm">
-                      ₹{room.pricePerNight}<span className="text-[10px] text-slate-400 font-normal">/nt</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: Extra Services & Promotions */}
-        {step === 3 && (
           <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
-                <FiPlusCircle className="text-[#D96B43]" /> Extra Services
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <FiCalendar className="text-[#D96B43]" /> 2. Dates, Headcount & Room Selection
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
-                {extraServicesCatalog.map((service) => (
-                  <div
-                    key={service.id}
-                    onClick={() => toggleService(service.id)}
-                    className={`p-3.5 border rounded-xl flex justify-between items-center cursor-pointer transition ${
-                      selectedServiceIds.includes(service.id)
-                        ? "border-[#D96B43] bg-orange-50/40 ring-1 ring-[#D96B43]"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold text-sm text-slate-800">{service.name}</p>
-                      <p className="text-xs text-slate-500">{service.description || service.category} ({service.taxRate}% GST)</p>
-                    </div>
-                    <span className="font-bold text-sm text-slate-700">
-                      ₹{service.price}{service.priceType === "PER_NIGHT" && <span className="text-[10px] text-slate-400">/nt</span>}
-                    </span>
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Check-in Date</label>
+                  <input
+                    type="date"
+                    value={stayDates.checkInDate}
+                    onChange={(e) => setStayDates({ ...stayDates, checkInDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Check-out Date</label>
+                  <input
+                    type="date"
+                    min={stayDates.checkInDate}
+                    value={stayDates.checkOutDate}
+                    onChange={(e) => setStayDates({ ...stayDates, checkOutDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Total Guests</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="2"
+                    value={totalGuests}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      setTotalGuests(val === "" ? "" : parseInt(val, 10));
+                    }}
+                    onBlur={() => {
+                      if (!totalGuests || totalGuests < 1) setTotalGuests(1);
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-1 focus:ring-[#D96B43]"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="border-t border-slate-100 pt-4">
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
-                <FiTag className="text-[#D96B43]" /> Promotional Coupons
-              </h3>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-slate-600 flex items-center gap-2">
+                  <span>Available Rooms ({availableRooms.length} Free)</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    combinedCapacity >= totalGuests ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                  }`}>
+                    Capacity: {combinedCapacity} / {totalGuests} Guests
+                  </span>
+                </label>
+                {loadingRooms && <FaSpinner className="animate-spin text-xs text-[#D96B43]" />}
+              </div>
 
-              {availableCoupons.length === 0 ? (
-                <p className="text-xs text-slate-400 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  No active promotions available at this time.
-                </p>
+              {availableRooms.length === 0 && !loadingRooms ? (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500">
+                  No rooms free for the selected dates.
+                </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-56 overflow-y-auto">
-                  {availableCoupons.map((cpn) => {
-                    const isSelected = selectedCoupon?.code === cpn.code;
-                    const discountText =
-                      (cpn.discountType || cpn.type) === "PERCENTAGE" ||
-                      cpn.code?.includes("20")
-                        ? `${cpn.discountValue || cpn.discount || 20}% OFF`
-                        : `₹${cpn.discountValue || cpn.discount} OFF`;
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
+                  {availableRooms.map((room) => {
+                    const isSelected = selectedRoomIds.includes(room.id);
+                    const isCapacityFull = combinedCapacity >= totalGuests;
+                    const isDisabled = isCapacityFull && !isSelected;
 
                     return (
                       <div
-                        key={cpn.id || cpn.code}
-                        className={`p-3.5 border rounded-xl flex flex-col justify-between transition-all ${
-                          isSelected
-                            ? "border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500"
-                            : "border-slate-200 hover:border-slate-300 bg-white"
+                        key={room.id}
+                        onClick={() => {
+                          if (isDisabled) {
+                            toast.error(`Guest capacity (${totalGuests}) is already fulfilled. Unselect a room first if you want to switch.`);
+                            return;
+                          }
+                          toggleRoomSelection(room.id);
+                        }}
+                        className={`p-3.5 border rounded-xl transition flex justify-between items-center ${
+                          isDisabled
+                            ? "opacity-40 bg-slate-100 border-slate-200 cursor-not-allowed select-none"
+                            : isSelected
+                            ? "border-[#D96B43] bg-orange-50/50 ring-1 ring-[#D96B43] cursor-pointer"
+                            : "border-slate-200 hover:border-slate-300 cursor-pointer bg-white"
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div>
-                            <span className="px-2 py-0.5 bg-slate-800 text-white rounded text-[11px] font-mono font-bold tracking-wider uppercase">
-                              {cpn.code}
-                            </span>
-                            <p className="text-xs text-slate-500 mt-1 line-clamp-1">{cpn.description || "Stay Promotion"}</p>
-                          </div>
-                          <span className="text-xs font-extrabold text-emerald-600 bg-emerald-100/60 px-2 py-0.5 rounded-full shrink-0">
-                            {discountText}
-                          </span>
+                        <div>
+                          <h4 className="font-bold text-slate-800 text-sm">Room {room.roomNumber}</h4>
+                          <p className="text-xs text-slate-500">{room.roomType} | Max {room.capacity || 2} Guests</p>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleToggleCoupon(cpn)}
-                          className={`mt-2 py-1 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                            isSelected
-                              ? "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100"
-                              : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                          }`}
-                        >
-                          {isSelected ? "Remove Coupon" : "Apply Coupon"}
-                        </button>
+                        <div className="text-right">
+                          <span className="font-extrabold text-[#D96B43] text-sm block">
+                            ₹{room.pricePerNight || room.price}
+                          </span>
+                          {isSelected && <span className="text-[10px] text-emerald-600 font-bold">✓ Picked</span>}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
+
+            <div className="border-t border-slate-100 pt-4">
+              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                <FiPlusCircle className="text-[#D96B43]" /> Add Extra Services to Stay
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-44 overflow-y-auto">
+                {extraServicesCatalog.map((service) => (
+                  <div
+                    key={service.id}
+                    onClick={() => toggleService(service.id)}
+                    className={`p-3 border rounded-xl flex justify-between items-center cursor-pointer transition ${
+                      selectedServiceIds.includes(service.id)
+                        ? "border-[#D96B43] bg-orange-50/40 ring-1 ring-[#D96B43]"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                  >
+                    <div>
+                      <p className="font-bold text-sm text-slate-800">{service.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {service.description || service.category} ({service.taxRate != null ? service.taxRate : 18}% GST)
+                      </p>
+                    </div>
+                    <span className="font-bold text-sm text-slate-700">
+                      ₹{service.price}
+                      {service.priceType === "PER_NIGHT" && <span className="text-[10px] text-slate-400">/nt</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* STEP 4: Billing Breakdown */}
-        {step === 4 && (
+        {/* STEP 3: Live Billing & Role-Aware Coupon Selection */}
+        {step === 3 && (
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <FiCreditCard className="text-[#D96B43]" /> 4. Live Billing & Counter Payment
+              <FiCreditCard className="text-[#D96B43]" /> 3. Live Billing & Counter Payment
             </h3>
 
+            {/* Billing Summary Box */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
               <div className="flex justify-between">
-                <span>Room Charges ({selectedRoom?.roomType} × {nights} nights)</span>
-                <span className="font-semibold">₹{roomCharges.toLocaleString()}</span>
+                <span>Rooms Tariff ({selectedRooms.map((r) => r.roomNumber).join(", ")} × {nights}N):</span>
+                <span className="font-semibold">₹{roomCharges.toLocaleString("en-IN")}</span>
               </div>
+
               {selectedServices.map((s) => (
                 <div key={s.id} className="flex justify-between text-slate-500">
-                  <span>{s.name} ({s.taxRate}% GST)</span>
-                  <span>₹{(s.priceType === "PER_NIGHT" ? s.price * nights : s.price).toLocaleString()}</span>
+                  <span>{s.name} ({s.taxRate != null ? s.taxRate : 18}% GST)</span>
+                  <span>₹{(s.priceType === "PER_NIGHT" ? s.price * nights : s.price).toLocaleString("en-IN")}</span>
                 </div>
               ))}
+
               <div className="flex justify-between border-t border-slate-200 pt-1 font-semibold text-slate-700">
-                <span>Subtotal</span>
-                <span>₹{subtotal.toLocaleString()}</span>
+                <span>Subtotal (Base Charges)</span>
+                <span>₹{subtotal.toLocaleString("en-IN")}</span>
               </div>
+
+              <div className="flex justify-between">
+                <span>Taxable Amount</span>
+                <span className="font-semibold">₹{taxableAmount.toLocaleString("en-IN")}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Itemized GST (18% on full base)</span>
+                <span>₹{taxAmount.toLocaleString("en-IN")}</span>
+              </div>
+
+              <div className="flex justify-between border-t border-slate-200 pt-1 font-bold text-slate-800">
+                <span>Total Before Deductions</span>
+                <span>₹{grossBeforeDeductions.toLocaleString("en-IN")}</span>
+              </div>
+
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-emerald-600 font-medium">
                   <span>Coupon Discount ({selectedCoupon?.code})</span>
-                  <span>-₹{couponDiscount.toLocaleString()}</span>
+                  <span>-₹{couponDiscount.toLocaleString("en-IN")}</span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span>Taxable Amount</span>
-                <span>₹{taxableAmount.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Itemized GST</span>
-                <span>₹{taxAmount.toLocaleString()}</span>
-              </div>
+
+              {discretionaryDiscount > 0 && (
+                <div className="flex justify-between items-start text-emerald-700 font-semibold bg-emerald-50/90 px-2.5 py-1.5 rounded-lg border border-emerald-200">
+                  <div>
+                    <span>
+                      Discount ({appliedDiscountType === "PERCENT" ? `${appliedDiscountVal}%` : `₹${appliedDiscountVal}`})
+                    </span>
+                    {appliedDiscountReason && (
+                      <span className="text-[11px] font-normal text-emerald-800 block italic">
+                        Reason: {appliedDiscountReason}
+                      </span>
+                    )}
+                  </div>
+                  <span>-₹{discretionaryDiscount.toLocaleString("en-IN")}</span>
+                </div>
+              )}
+
               <div className="flex justify-between border-t border-slate-200 pt-2 text-sm font-extrabold text-slate-800">
-                <span>Total Amount</span>
-                <span>₹{totalAmount.toLocaleString()}</span>
+                <span>Total Amount (Net Payable)</span>
+                <span className="text-[#D96B43]">₹{totalAmount.toLocaleString("en-IN")}</span>
               </div>
             </div>
 
+            {/* Side-by-Side Coupons & Discounts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+              {/* LEFT COLUMN: Role-Filtered Coupons */}
+              <div className="bg-white border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-2">
+                    <FiTag className="text-[#D96B43]" /> Applicable Coupons (Role-Aware)
+                  </h4>
+                  {availableCoupons.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 py-6 text-center">No active promotions available for this role.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                      {availableCoupons.map((cpn) => {
+                        const isSelected = selectedCoupon?.code === cpn.code;
+                        const isPercent = (cpn.discountType || cpn.type) === "PERCENTAGE" || (cpn.discountType || cpn.type) === "PERCENT";
+                        const discountText = isPercent
+                          ? `${cpn.discountValue}% OFF`
+                          : `₹${cpn.discountValue} OFF`;
+
+                        return (
+                          <div
+                            key={cpn.id || cpn.code}
+                            onClick={() => handleToggleCoupon(cpn)}
+                            className={`p-2.5 border rounded-lg cursor-pointer transition flex items-center justify-between ${
+                              isSelected
+                                ? "border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500"
+                                : "border-slate-200 hover:border-slate-300 bg-white"
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="px-1.5 py-0.5 bg-slate-800 text-white rounded text-[10px] font-mono font-bold uppercase">
+                                  {cpn.code}
+                                </span>
+                                {cpn.targetAudience && (
+                                  <span className="px-1 py-0.2 bg-amber-100 text-[#D96B43] rounded text-[9px] font-semibold">
+                                    {cpn.targetAudience}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-emerald-700 font-bold block mt-1">
+                                {discountText}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded cursor-pointer ${
+                                isSelected ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {isSelected ? "Remove" : "Apply"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: Front Desk Concession */}
+              <div
+                className={`border rounded-xl p-3.5 flex flex-col justify-between space-y-3 transition ${
+                  isDiscountApplied
+                    ? "bg-slate-50 border-emerald-300"
+                    : "bg-amber-50/70 border-amber-200/90"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <FiTag className="text-[#D96B43]" /> Custom Concession
+                      {isDiscountApplied && (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                          Locked & Applied
+                        </span>
+                      )}
+                    </span>
+
+                    <div
+                      className={`flex items-center bg-white border border-amber-200 rounded-lg p-0.5 text-xs font-semibold ${
+                        isDiscountApplied ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        disabled={isDiscountApplied}
+                        onClick={() => {
+                          setDiscountDraftType("FLAT");
+                          if (parseFloat(discountDraftVal) > maxEligibleDiscount) {
+                            setDiscountDraftVal(String(maxEligibleDiscount));
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                          discountDraftType === "FLAT"
+                            ? "bg-[#D96B43] text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        ₹ Flat
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDiscountApplied}
+                        onClick={() => {
+                          setDiscountDraftType("PERCENT");
+                          if (parseFloat(discountDraftVal) > 100) {
+                            setDiscountDraftVal("100");
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                          discountDraftType === "PERCENT"
+                            ? "bg-[#D96B43] text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        % Percent
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        {discountDraftType === "FLAT"
+                          ? `Discount Value (Max ₹${maxEligibleDiscount.toLocaleString("en-IN")})`
+                          : "Discount Value (%)"}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          disabled={isDiscountApplied}
+                          placeholder={discountDraftType === "FLAT" ? `Max ₹${maxEligibleDiscount}` : "Max 100%"}
+                          value={discountDraftVal}
+                          onChange={handleDiscountInputChange}
+                          className={`w-full px-3 py-1.5 border rounded-lg text-xs font-bold transition focus:outline-none ${
+                            isDiscountApplied
+                              ? "bg-slate-100 text-slate-500 border-slate-300 cursor-not-allowed select-none"
+                              : "bg-white text-slate-800 border-amber-200 focus:ring-1 focus:ring-[#D96B43]"
+                          }`}
+                        />
+                        <span className="absolute right-3 top-1.5 text-xs font-bold text-slate-400">
+                          {discountDraftType === "FLAT" ? "₹" : "%"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Reason
+                      </label>
+                      <input
+                        type="text"
+                        disabled={isDiscountApplied}
+                        placeholder="Reason (Optional)"
+                        value={discountDraftReason}
+                        onChange={(e) => setDiscountDraftReason(e.target.value)}
+                        className={`w-full px-3 py-1.5 border rounded-lg text-xs transition focus:outline-none ${
+                          isDiscountApplied
+                            ? "bg-slate-100 text-slate-500 border-slate-300 cursor-not-allowed select-none"
+                            : "bg-white text-slate-800 border-amber-200 focus:ring-1 focus:ring-[#D96B43]"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end items-center gap-2 pt-1 border-t border-amber-200/50">
+                  {isDiscountApplied ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveDiscount}
+                      className="px-4 py-1.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-lg transition cursor-pointer shadow-xs"
+                    >
+                      Remove Discount
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!discountDraftVal || parseFloat(discountDraftVal) <= 0}
+                      onClick={handleApplyDiscount}
+                      className="px-4 py-1.5 bg-[#D96B43] hover:bg-[#c45b34] text-white text-xs font-bold rounded-lg transition disabled:opacity-50 cursor-pointer shadow-xs"
+                    >
+                      Apply Discount
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Split & Payment Mode */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">Payment Split Policy</label>
@@ -922,8 +1288,8 @@ export default function BookingForm({
                   onChange={(e) => setPaymentType(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
                 >
-                  <option value="FULL">100% Full Payment (₹{totalAmount.toLocaleString()})</option>
-                  <option value="SPLIT_ADVANCE">40% Advance Split (₹{Math.round(totalAmount * 0.4).toLocaleString()})</option>
+                  <option value="FULL">100% Full Payment (₹{totalAmount.toLocaleString("en-IN")})</option>
+                  <option value="SPLIT_ADVANCE">40% Advance Split (₹{Math.round(totalAmount * 0.4).toLocaleString("en-IN")})</option>
                 </select>
               </div>
 
@@ -963,22 +1329,25 @@ export default function BookingForm({
             )}
 
             <div className="p-3 bg-amber-50 rounded-lg text-amber-800 text-xs border border-amber-200">
-              Amount to collect right now: <strong className="text-sm">₹{amountToPayNow.toLocaleString()}</strong>
-              {paymentType === "SPLIT_ADVANCE" && ` (Remaining Balance Due at Check-out: ₹${balanceDue.toLocaleString()})`}
+              Amount to collect right now: <strong className="text-sm">₹{amountToPayNow.toLocaleString("en-IN")}</strong>
+              {paymentType === "SPLIT_ADVANCE" && ` (Remaining Balance Due at Check-out: ₹{balanceDue.toLocaleString("en-IN")})`}
             </div>
           </div>
         )}
 
-        {/* STEP 5: Receipt */}
-        {step === 5 && completedBooking && (
+        {/* STEP 4: Receipt Confirmation */}
+        {step === 4 && completedBooking && (
           <div className="space-y-6">
             <div className="text-center py-2 print:hidden">
               <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl mb-2">
                 <FiCheckCircle />
               </div>
-              <h3 className="text-lg font-bold text-slate-800">Check-In Successful!</h3>
+              <h3 className="text-lg font-bold text-slate-800">
+                {completedBooking.bookingStatus === "CHECKED_IN" ? "Check-In Successful!" : "Reservation Confirmed!"}
+              </h3>
               <p className="text-xs text-slate-500">
-                Room <strong>{selectedRoom?.roomNumber}</strong> is now marked as <strong>OCCUPIED</strong>.
+                Rooms <strong>{completedBooking.allocatedRoomsDisplay || selectedRooms.map(r => r.roomNumber).join(", ")}</strong> are now marked as{" "}
+                <strong>{completedBooking.bookingStatus === "CHECKED_IN" ? "OCCUPIED" : "RESERVED"}</strong>.
               </p>
             </div>
 
@@ -988,11 +1357,11 @@ export default function BookingForm({
             >
               <div className="flex justify-between items-start border-b border-slate-200 pb-5">
                 <div>
-                  <h2 className="text-2xl font-black tracking-tight text-slate-900">HOTEL</h2>
+                  <h2 className="text-2xl font-black tracking-tight text-slate-900">HOTEL ATHENURA</h2>
                 </div>
                 <div className="text-right">
                   <span className="inline-block px-2.5 py-1 bg-slate-900 text-white rounded text-[11px] font-bold tracking-widest uppercase">
-                    CHECK-IN RECEIPT
+                    {completedBooking.bookingStatus === "CHECKED_IN" ? "CHECK-IN RECEIPT" : "BOOKING CONFIRMATION"}
                   </span>
                   <p className="text-xs font-mono font-semibold text-slate-700 mt-2">
                     Invoice: INV-{completedBooking.id}-{new Date().getFullYear()}
@@ -1025,10 +1394,7 @@ export default function BookingForm({
                     Reservation Particulars
                   </p>
                   <p className="font-bold text-slate-900 text-sm">
-                    Room {selectedRoom?.roomNumber}{" "}
-                    <span className="text-xs font-medium text-slate-500">
-                      ({selectedRoom?.roomType})
-                    </span>
+                    {selectedRooms.map(r => `Room ${r.roomNumber}`).join(", ")}
                   </p>
                   <p className="text-slate-600 mt-0.5">
                     Check-In: <strong>{stayDates.checkInDate}</strong>
@@ -1053,27 +1419,29 @@ export default function BookingForm({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    <tr>
-                      <td className="py-2.5 font-medium text-slate-800">
-                        Room Stay ({selectedRoom?.roomType})
-                      </td>
-                      <td className="py-2.5 text-center">{nights} nights</td>
-                      <td className="py-2.5 text-right font-mono">₹{Number(selectedRoom?.pricePerNight).toLocaleString()}</td>
-                      <td className="py-2.5 text-right font-mono font-medium">₹{roomCharges.toLocaleString()}</td>
-                    </tr>
+                    {selectedRooms.map((room) => (
+                      <tr key={room.id}>
+                        <td className="py-2.5 font-medium text-slate-800">
+                          Room {room.roomNumber} ({room.roomType})
+                        </td>
+                        <td className="py-2.5 text-center">{nights} nights</td>
+                        <td className="py-2.5 text-right font-mono">₹{Number(room.pricePerNight || room.price).toLocaleString("en-IN")}</td>
+                        <td className="py-2.5 text-right font-mono font-medium">₹{(Number(room.pricePerNight || room.price) * nights).toLocaleString("en-IN")}</td>
+                      </tr>
+                    ))}
 
                     {selectedServices.map((srv) => (
                       <tr key={srv.id}>
                         <td className="py-2.5">
                           {srv.name}{" "}
-                          <span className="text-[10px] text-slate-400">({srv.taxRate}% GST)</span>
+                          <span className="text-[10px] text-slate-400">({srv.taxRate != null ? srv.taxRate : 18}% GST)</span>
                         </td>
                         <td className="py-2.5 text-center">
                           {srv.priceType === "PER_NIGHT" ? `${nights} nights` : "1 time"}
                         </td>
-                        <td className="py-2.5 text-right font-mono">₹{Number(srv.price).toLocaleString()}</td>
+                        <td className="py-2.5 text-right font-mono">₹{Number(srv.price).toLocaleString("en-IN")}</td>
                         <td className="py-2.5 text-right font-mono font-medium">
-                          ₹{(srv.priceType === "PER_NIGHT" ? srv.price * nights : srv.price).toLocaleString()}
+                          ₹{(srv.priceType === "PER_NIGHT" ? srv.price * nights : srv.price).toLocaleString("en-IN")}
                         </td>
                       </tr>
                     ))}
@@ -1109,56 +1477,71 @@ export default function BookingForm({
                 <div className="space-y-1.5 text-right">
                   <div className="flex justify-between text-slate-600">
                     <span>Subtotal:</span>
-                    <span className="font-mono">₹{subtotal.toLocaleString()}</span>
+                    <span className="font-mono">₹{subtotal.toLocaleString("en-IN")}</span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-600">
+                    <span>Taxable Amount:</span>
+                    <span className="font-mono font-semibold">₹{taxableAmount.toLocaleString("en-IN")}</span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-600">
+                    <span>Taxes & GST (18% on full base):</span>
+                    <span className="font-mono">₹{taxAmount.toLocaleString("en-IN")}</span>
+                  </div>
+
+                  <div className="flex justify-between border-t border-slate-200 pt-1 font-bold text-slate-800">
+                    <span>Gross Total:</span>
+                    <span className="font-mono">₹{grossBeforeDeductions.toLocaleString("en-IN")}</span>
                   </div>
 
                   {couponDiscount > 0 && (
                     <div className="flex justify-between text-emerald-600">
                       <span>Coupon Discount ({selectedCoupon?.code}):</span>
-                      <span className="font-mono">-₹{couponDiscount.toLocaleString()}</span>
+                      <span className="font-mono">-₹{couponDiscount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-slate-600">
-                    <span>Taxable Amount:</span>
-                    <span className="font-mono">₹{taxableAmount.toLocaleString()}</span>
-                  </div>
-
-                  <div className="flex justify-between text-slate-600">
-                    <span>Taxes & GST:</span>
-                    <span className="font-mono">₹{taxAmount.toLocaleString()}</span>
-                  </div>
+                  {discretionaryDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-medium">
+                      <span>
+                        Discount:
+                        {appliedDiscountReason && <span className="text-[10px] text-slate-400 block italic">({appliedDiscountReason})</span>}
+                      </span>
+                      <span className="font-mono">-₹{discretionaryDiscount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between border-t border-slate-200 pt-1 text-sm font-black text-slate-900">
-                    <span>Grand Total:</span>
-                    <span className="font-mono">₹{totalAmount.toLocaleString()}</span>
+                    <span>Net Total Payable:</span>
+                    <span className="font-mono text-[#D96B43]">₹{totalAmount.toLocaleString("en-IN")}</span>
                   </div>
 
                   <div className="flex justify-between font-bold text-emerald-700 pt-1">
                     <span>Amount Paid:</span>
-                    <span className="font-mono">₹{amountToPayNow.toLocaleString()}</span>
+                    <span className="font-mono">₹{amountToPayNow.toLocaleString("en-IN")}</span>
                   </div>
 
                   <div className="flex justify-between font-bold text-amber-700">
                     <span>Balance Due:</span>
-                    <span className="font-mono">₹{balanceDue.toLocaleString()}</span>
+                    <span className="font-mono">₹{balanceDue.toLocaleString("en-IN")}</span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-200 text-center space-y-1">
                 <p className="text-xs font-semibold text-slate-800">
-                  Thank you for choosing Athenura Grand Hotel! We wish you a delightful stay.
+                  Thank you for choosing Hotel Athenura! We wish you a delightful stay.
                 </p>
               </div>
             </div>
 
             <div className="text-center print:hidden">
               <button
-                onClick={() => window.print()}
+                onClick={handleDownloadCheckInPdf}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold cursor-pointer transition shadow-sm"
               >
-                <FiPrinter /> Print Guest Key Slip / Bill
+                <FiPrinter /> Print check-in receipt
               </button>
             </div>
           </div>
@@ -1167,7 +1550,7 @@ export default function BookingForm({
 
       {/* Footer Navigation */}
       <div className="flex justify-between items-center border-t border-slate-100 pt-4">
-        {step > 1 && step < 5 ? (
+        {step > 1 && step < 4 ? (
           <button
             type="button"
             onClick={() => setStep(step - 1)}
@@ -1179,18 +1562,22 @@ export default function BookingForm({
           <div />
         )}
 
-        {step < 4 && (
+        {step < 3 && (
           <button
             type="button"
             disabled={
               step === 1
                 ? !formData.firstName || !formData.email || !formData.phone || guestLoading
-                : step === 2 && !selectedRoom
+                : step === 2 && (selectedRoomIds.length === 0 || combinedCapacity < totalGuests)
             }
             onClick={() => {
               if (step === 1) {
                 handleInitiateSubmit();
               } else {
+                if (combinedCapacity < totalGuests) {
+                  toast.error(`Selected rooms capacity (${combinedCapacity}) is less than total guests (${totalGuests}). Please select more rooms.`);
+                  return;
+                }
                 setStep(step + 1);
               }
             }}
@@ -1205,24 +1592,36 @@ export default function BookingForm({
           </button>
         )}
 
-        {step === 4 && (
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={handleFinalizeBooking}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50 shadow-xs transition cursor-pointer"
-          >
-            {isSubmitting
-              ? "Processing..."
-              : paymentMethod === "CASH"
-              ? `Collect ₹${amountToPayNow.toLocaleString()} Cash & Check In`
-              : paymentMethod === "CARD_MACHINE"
-              ? `Confirm Card Swipe (₹${amountToPayNow.toLocaleString()}) & Check In`
-              : `Open Razorpay (₹${amountToPayNow.toLocaleString()}) & Check In`}
-          </button>
-        )}
+        {step === 3 && (() => {
+          const todayStr = new Date().toISOString().split("T")[0];
+          const isCheckInToday = stayDates.checkInDate === todayStr;
 
-        {step === 5 && (
+          return (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleFinalizeBooking(false)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold disabled:opacity-50 shadow-xs transition cursor-pointer"
+              >
+                {isSubmitting ? "Processing..." : "Confirm Advance Reservation"}
+              </button>
+
+              {isCheckInToday && (
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => handleFinalizeBooking(true)}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50 shadow-xs transition cursor-pointer"
+                >
+                  {isSubmitting ? "Processing..." : "Hand Key & Check In Now"}
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {step === 4 && (
           <button
             type="button"
             onClick={() => {
@@ -1230,12 +1629,14 @@ export default function BookingForm({
             }}
             className="px-6 py-2.5 bg-[#D96B43] hover:bg-[#c95a34] text-white rounded-lg text-xs font-semibold transition cursor-pointer"
           >
-            Close & Hand Over Key
+            {completedBooking?.bookingStatus === "CHECKED_IN"
+              ? "Close & Hand Over Key"
+              : "Close & Reservation Saved"}
           </button>
         )}
       </div>
 
-      {/* Exact OTP Modal from GuestForm */}
+      {/* OTP Modal */}
       {showOtpModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 border border-slate-200">

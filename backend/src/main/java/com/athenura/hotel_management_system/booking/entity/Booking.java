@@ -34,11 +34,18 @@ public class Booking {
     private Guest guest;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
+    @JoinColumn(name = "room_id")
     private Room room;
 
-    // Null when booking is made directly by customer
-    // Not null when booking is created by receptionist
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "booking_rooms",
+            joinColumns = @JoinColumn(name = "booking_id"),
+            inverseJoinColumns = @JoinColumn(name = "room_id")
+    )
+    @Builder.Default
+    private List<Room> rooms = new ArrayList<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receptionist_id")
     private Users receptionist;
@@ -108,4 +115,19 @@ public class Booking {
             createdAt = LocalDateTime.now();
         }
     }
+
+    @Column(name = "discount_reason")
+    private String discountReason;
+
+    @Column(name = "receipt_number", length = 64)
+    private String receiptNumber;
+
+    @Column(name = "previous_room_number")
+    private String previousRoomNumber;
+
+    @Column(name = "access_otp", length = 6)
+    private String accessOtp;
+
+    @Column(name = "access_otp_expires_at")
+    private LocalDateTime accessOtpExpiresAt;
 }

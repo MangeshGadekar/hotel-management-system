@@ -10,6 +10,7 @@ import com.athenura.hotel_management_system.room.enums.RoomType;
 import com.athenura.hotel_management_system.room.mapper.RoomMapper;
 import com.athenura.hotel_management_system.room.repository.RoomRepository;
 import com.athenura.hotel_management_system.room.service.RoomService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +32,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional
     public RoomResponse createRoom(RoomRequest roomRequest, List<MultipartFile> files) {
 
         if (roomRepository.existsByRoomNumber(roomRequest.getRoomNumber()))
@@ -38,6 +40,16 @@ public class RoomServiceImpl implements RoomService {
 
         Room room = roomMapper.toEntity(roomRequest);
 
+        if (roomRequest.getAmenities() != null) {
+            if (room.getAmenities() == null) {
+                room.setAmenities(new ArrayList<>());
+            } else {
+                room.getAmenities().clear();
+            }
+            room.getAmenities().addAll(roomRequest.getAmenities());
+        } else if (room.getAmenities() == null) {
+            room.setAmenities(new ArrayList<>());
+        }
 
         if (files != null && !files.isEmpty()) {
             List<MultipartFile> validFiles = files.stream()
@@ -63,6 +75,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional
     public RoomResponse updateRoom(String roomNumber, RoomRequest roomRequest, List<MultipartFile> files) {
 
         Room room = roomRepository.findByRoomNumber(roomNumber)
@@ -94,6 +107,15 @@ public class RoomServiceImpl implements RoomService {
             room.setRoomStatus(roomRequest.getRoomStatus());
         }
 
+        if (roomRequest.getAmenities() != null) {
+            if (room.getAmenities() == null) {
+                room.setAmenities(new ArrayList<>());
+            } else {
+                room.getAmenities().clear();
+            }
+            room.getAmenities().addAll(roomRequest.getAmenities());
+        }
+
         List<String> updatedImages = new ArrayList<>();
         if (roomRequest.getImages() != null) {
             updatedImages.addAll(roomRequest.getImages());
@@ -110,12 +132,13 @@ public class RoomServiceImpl implements RoomService {
             }
         }
 
-
+        room.setImages(updatedImages);
         Room updatedRoom = roomRepository.save(room);
         return roomMapper.toResponse(updatedRoom);
     }
 
     @Override
+    @Transactional
     public String deleteRoom(String roomNumber) {
         Room room = roomRepository.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
@@ -157,6 +180,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional
     public RoomResponse uploadRoomImages(String roomNumber, List<MultipartFile> files) {
         Room room = roomRepository.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
@@ -172,6 +196,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional
     public RoomResponse removeRoomImage(String roomNumber, String imageUrl) {
         Room room = roomRepository.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RoomNotFoundException("Room with number " + roomNumber + " not found."));
@@ -183,7 +208,6 @@ public class RoomServiceImpl implements RoomService {
                 try {
                     cloudinaryService.deleteImage(publicId);
                 } catch (Exception e) {
-                    // log warning
                 }
             }
         }
@@ -191,4 +215,21 @@ public class RoomServiceImpl implements RoomService {
         Room updatedRoom = roomRepository.save(room);
         return roomMapper.toResponse(updatedRoom);
     }
+
+
+    @Override
+    @Transactional
+    public RoomResponse updateRoomStatus(String roomNumber, RoomStatus newStatus) {
+        Room room = roomRepository.findByRoomNumber(roomNumber)
+                .orElseThrow(() -> new RuntimeException("Room not found with number: " + roomNumber));
+
+        if (newStatus == RoomStatus.AVAILABLE && room.getRoomStatus() == RoomStatus.OCCUPIED) {
+            throw new IllegalStateException("Cannot mark room " + roomNumber + " as AVAILABLE while it is still OCCUPIED by a checked-in guest.");
+        }
+
+        room.setRoomStatus(newStatus);
+        Room updatedRoom = roomRepository.save(room);
+        return roomMapper.toResponse(updatedRoom);
+    }
+
 }

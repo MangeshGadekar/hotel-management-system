@@ -1,471 +1,629 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  FaStar, FaWifi, FaTv, FaSnowflake, FaCoffee, FaUserFriends,
-  FaBed, FaRulerCombined, FaHeart, FaRegHeart, FaFilter,
-  FaTimes, FaChevronDown
-} from 'react-icons/fa'
-import { MdCheckCircle, MdLocalBar, MdBathtub, MdHotTub, MdWeekend, MdBalcony, MdKitchen, MdWork, MdLocationCity, MdGrass } from 'react-icons/md'
-import { BiLoaderAlt } from 'react-icons/bi'
-import { BsCupHot } from 'react-icons/bs'
-import { TbSofa } from 'react-icons/tb'
-import RoomsData from '../../config/Room.json'
-import { RiFridgeLine } from "react-icons/ri";
-import { FaChampagneGlasses } from "react-icons/fa6";
-import { Link, useNavigate } from 'react-router-dom';
+  FaCalendarAlt,
+  FaUsers,
+  FaSearch,
+  FaBed,
+  FaCheckCircle,
+  FaStar,
+  FaConciergeBell,
+  FaChevronLeft,
+  FaChevronRight,
+  FaCheck,
+} from "react-icons/fa";
+import { BiLoaderAlt, BiImage } from "react-icons/bi";
+import toast from "react-hot-toast";
+import { searchAvailableRoomsApi } from "../../apis/api";
+import useRoomStore from "../../app/useRoomStore.js";
+import { AMENITIES_CATEGORIES } from "../../components/forms/RoomForm";
 
-
-// ---- Fake API service ----
-const roomListService = {
-  fetchRooms: async () => {
-    return new Promise((resolve) => setTimeout(() => resolve(RoomsData), 600))
-  },
+const AMENITY_LOOKUP = {};
+if (Array.isArray(AMENITIES_CATEGORIES)) {
+  AMENITIES_CATEGORIES.forEach((cat) => {
+    cat.items?.forEach((item) => {
+      AMENITY_LOOKUP[item.name] = { icon: item.icon, color: item.color };
+    });
+  });
 }
 
-// Full amenities list from your JSON
-const ALL_AMENITIES = [
-  'WiFi', 'TV', 'AC', 'Coffee', 'Mini Bar', 'Bathtub', 'Jacuzzi',
-  'Living Room', 'Balcony', 'Mini Fridge', 'Champagne', 'Work Desk',
-  'City View', 'Terrace', 'Kitchen', 'Lounge', 'Garden View', 'Living Area',
-]
+const normalizeImages = (room) => {
+  const raw =
+    room.images ||
+    room.imageUrls ||
+    room.roomImages ||
+    room.imagesList ||
+    [];
 
-const amenityIcons = {
-  WiFi: <FaWifi />,
-  TV: <FaTv />,
-  AC: <FaSnowflake />,
-  Coffee: <FaCoffee />,
-  'Mini Bar': <MdLocalBar />,
-  Bathtub: <MdBathtub />,
-  Jacuzzi: <MdHotTub />,
-  'Living Room': <MdWeekend />,
-  Balcony: <MdBalcony />,
-  'Mini Fridge': <RiFridgeLine />,
-  Champagne: <FaChampagneGlasses />,
-  'Work Desk': <MdWork />,
-  'City View': <MdLocationCity />,
-  Terrace: <BsCupHot />,
-  Kitchen: <MdKitchen />,
-  Lounge: <TbSofa />,
-  'Garden View': <MdGrass />,
-  'Living Area': <MdWeekend />,
-}
+  let list = [];
 
-
-// ---------------- Room Card ----------------
-const RoomCard = ({ room, isFavorite, onToggleFavorite }) => (
-  <div className="group bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col">
-    <div className="relative h-56 overflow-hidden">
-      <img
-        src={room.images?.[0]}
-        alt={room.name}
-        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-      />
-      {room.isFeatured && (
-        <span className="absolute top-3 left-3 bg-amber-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">
-          Featured
-        </span>
-      )}
-      <span
-        className={`absolute top-3 right-3 text-xs font-semibold px-3 py-1 rounded-full shadow ${
-          room.isAvailable ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-        }`}
-      >
-        {room.isAvailable ? 'Available' : 'Booked'}
-      </span>
-      <button
-        onClick={() => onToggleFavorite(room.id)}
-        className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow hover:scale-110 transition"
-      >
-        {isFavorite ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-gray-600" />}
-      </button>
-    </div>
-
-    <div className="p-5 flex flex-col flex-1">
-      <div className="flex items-start justify-between gap-2 mb-1">
-        <h3 className="text-lg font-bold text-gray-800">{room.name}</h3>
-        <div className="flex items-center gap-1 text-amber-500 text-sm font-semibold shrink-0">
-          <FaStar />
-          <span>{room.rating}</span>
-          <span className="text-gray-400 font-normal">({room.reviews})</span>
-        </div>
-      </div>
-
-      <p className="text-sm text-gray-500 line-clamp-2 mb-4">{room.description}</p>
-
-      <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mb-4">
-        <div className="flex items-center gap-1">
-          <FaUserFriends className="text-indigo-500" />
-          <span>{room.capacity} Guests</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <FaBed className="text-indigo-500" />
-          <span className="truncate">{room.bedType}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <FaRulerCombined className="text-indigo-500" />
-          <span>{room.size}</span>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-4">
-        {room.amenities?.slice(0, 4).map((a) => (
-          <span
-            key={a}
-            className="flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md"
-          >
-            {amenityIcons[a] || <MdCheckCircle />}
-            {a}
-          </span>
-        ))}
-        {room.amenities?.length > 4 && (
-          <span className="text-xs text-gray-500 px-2 py-1">
-            +{room.amenities.length - 4} more
-          </span>
-        )}
-      </div>
-
-      <div className="mt-auto flex items-center justify-between pt-3 border-t border-gray-100">
-        <div>
-          <span className="text-2xl font-bold text-gray-800">${room.price}</span>
-          <span className="text-sm text-gray-500"> / night</span>
-        </div>
-         <button
-      disabled={!room.isAvailable}
-      onClick={() => navigate(`/${room.id}`)}
-      className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-        room.isAvailable
-          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-      }`}
-    >
-      {room.isAvailable ? 'Book Now' : 'Unavailable'}
-    </button>
-      </div>
-    </div>
-  </div>
-)
-
-// ---------------- Filters Sidebar ----------------
-const Filters = ({ filters, setFilters, priceBounds, onClear }) => {
-  const [amenityOpen, setAmenityOpen] = useState(true)
-
-  const toggleAmenity = (a) => {
-    setFilters((prev) => ({
-      ...prev,
-      amenities: prev.amenities.includes(a)
-        ? prev.amenities.filter((x) => x !== a)
-        : [...prev.amenities, a],
-    }))
+  if (Array.isArray(raw)) {
+    list = raw
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === "string") return item.trim();
+        return item.url || item.imageUrl || item.src || null;
+      })
+      .filter(Boolean);
+  } else if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        list = parsed
+          .map((item) =>
+            typeof item === "string" ? item.trim() : item.url || item.imageUrl || null
+          )
+          .filter(Boolean);
+      } else {
+        list = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      }
+    } catch {
+      list = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    }
   }
 
-  return (
-    <aside className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:sticky lg:top-6 h-fit">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-gray-800">
-          <FaFilter className="text-indigo-600" /> Filters
-        </h2>
-        <button
-          onClick={onClear}
-          className="text-xs text-indigo-600 hover:underline font-medium"
-        >
-          Clear all
-        </button>
-      </div>
-
-      {/* Availability */}
-      <div className="mb-5">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">Availability</h3>
-        <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={filters.availableOnly}
-            onChange={(e) =>
-              setFilters((p) => ({ ...p, availableOnly: e.target.checked }))
-            }
-            className="accent-indigo-600 w-4 h-4"
-          />
-          Show available rooms only
-        </label>
-      </div>
-
-      {/* Price */}
-      <div className="mb-5">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">
-          Price per night
-        </h3>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm font-semibold text-indigo-600">
-            ${filters.price[0]}
-          </span>
-          <span className="text-gray-400 text-sm">—</span>
-          <span className="text-sm font-semibold text-indigo-600">
-            ${filters.price[1]}
-          </span>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-gray-500">Min</label>
-            <input
-              type="range"
-              min={priceBounds.min}
-              max={priceBounds.max}
-              value={filters.price[0]}
-              onChange={(e) =>
-                setFilters((p) => ({
-                  ...p,
-                  price: [Math.min(+e.target.value, p.price[1]), p.price[1]],
-                }))
-              }
-              className="w-full accent-indigo-600"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">Max</label>
-            <input
-              type="range"
-              min={priceBounds.min}
-              max={priceBounds.max}
-              value={filters.price[1]}
-              onChange={(e) =>
-                setFilters((p) => ({
-                  ...p,
-                  price: [p.price[0], Math.max(+e.target.value, p.price[0])],
-                }))
-              }
-              className="w-full accent-indigo-600"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Amenities */}
-      <div>
-        <button
-          onClick={() => setAmenityOpen((o) => !o)}
-          className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 mb-2"
-        >
-          Amenities
-          <FaChevronDown
-            className={`transition-transform ${amenityOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
-
-        {amenityOpen && (
-          <div className="max-h-64 overflow-y-auto pr-1 space-y-1.5">
-            {ALL_AMENITIES.map((a) => (
-              <label
-                key={a}
-                className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 hover:text-indigo-600"
-              >
-                <input
-                  type="checkbox"
-                  checked={filters.amenities.includes(a)}
-                  onChange={() => toggleAmenity(a)}
-                  className="accent-indigo-600 w-4 h-4"
-                />
-                <span className="text-indigo-500">
-                  {amenityIcons[a] || <MdCheckCircle />}
-                </span>
-                {a}
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-    </aside>
-  )
-}
-
-// ---------------- Main Rooms ----------------
-const Rooms = () => {
-  const [rooms, setRooms] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [favorites, setFavorites] = useState([])
-  const [showMobileFilters, setShowMobileFilters] = useState(false)
-  const navigate = useNavigate()
+  return list;
+};
 
 
-  const [filters, setFilters] = useState({
-    amenities: [],
-    price: [0, 1000],
-    availableOnly: false,
-  })
+const mapRoomFromApi = (room) => {
+  const rawAmenities = room.amenities || room.amenityList || [];
+
+  const parsedAmenities = Array.isArray(rawAmenities)
+    ? rawAmenities.map((a) => (typeof a === "string" ? a : a.name || a.title || ""))
+    : typeof rawAmenities === "string"
+    ? rawAmenities.split(",").map((s) => s.trim())
+    : [];
+
+  return {
+    ...room,
+    images: normalizeImages(room),
+    amenities: parsedAmenities,
+  };
+};
+
+const GuestRoomCard = ({
+  room,
+  nights,
+  isSelected,
+  isDisabled,
+  onToggle,
+}) => {
+  const [currentImgIdx, setCurrentImgIdx] = useState(0);
+
+  const images = normalizeImages(room);
+  const hasImages = images.length > 0;
 
   useEffect(() => {
-    let isMounted = true
-    const load = async () => {
-      try {
-        setLoading(true)
-        const data = await roomListService.fetchRooms()
-        if (isMounted) {
-          setRooms(data || [])
-          const prices = (data || []).map((r) => r.price)
-          if (prices.length) {
-            const min = Math.min(...prices)
-            const max = Math.max(...prices)
-            setFilters((p) => ({ ...p, price: [min, max] }))
-          }
-        }
-      } catch (err) {
-        if (isMounted) setError(err.message || 'Something went wrong')
-      } finally {
-        if (isMounted) setLoading(false)
-      }
-    }
-    load()
-    return () => { isMounted = false }
-  }, [])
+    setCurrentImgIdx(0);
+  }, [images.length]);
 
-  const priceBounds = useMemo(() => {
-    if (!rooms.length) return { min: 0, max: 1000 }
-    const prices = rooms.map((r) => r.price)
-    return { min: Math.min(...prices), max: Math.max(...prices) }
-  }, [rooms])
+  const nextImage = (e) => {
+    e.stopPropagation();
+    setCurrentImgIdx((prev) => (prev + 1) % images.length);
+  };
 
-  const filteredRooms = useMemo(() => {
-    return rooms.filter((room) => {
-      if (filters.availableOnly && !room.isAvailable) return false
-      if (room.price < filters.price[0] || room.price > filters.price[1]) return false
-      if (filters.amenities.length) {
-        const hasAll = filters.amenities.every((a) => room.amenities?.includes(a))
-        if (!hasAll) return false
-      }
-      return true
-    })
-  }, [rooms, filters])
+  const prevImage = (e) => {
+    e.stopPropagation();
+    setCurrentImgIdx((prev) => (prev - 1 + images.length) % images.length);
+  };
 
-  const clearFilters = () => {
-    setFilters({
-      amenities: [],
-      price: [priceBounds.min, priceBounds.max],
-      availableOnly: false,
-    })
-  }
-
-  const toggleFavorite = (id) =>
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    )
-
-  const activeFilterCount =
-    filters.amenities.length +
-    (filters.availableOnly ? 1 : 0) +
-    (filters.price[0] !== priceBounds.min || filters.price[1] !== priceBounds.max ? 1 : 0)
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <BiLoaderAlt className="animate-spin text-4xl text-indigo-600" />
-        <p className="text-gray-500">Loading rooms...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <p className="text-red-500 font-medium">⚠ {error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-        >
-          Retry
-        </button>
-      </div>
-    )
-  }
+  const perNight = Number(room.pricePerNight || room.price || 0);
+  const roomTotal = perNight * nights;
+  const estTax = Math.round(roomTotal * 0.18);
+  const netTotal = roomTotal + estTax;
 
   return (
-    <section className="max-w-7xl mx-auto px-4 py-10">
-      {/* Header */}
-      <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+    <div
+      // onClick={() => {
+      //   if (!isDisabled) onToggle(room);
+      // }}
+      className={`bg-white rounded-2xl border transition-all flex flex-col justify-between overflow-hidden ${
+        isDisabled
+          ? "opacity-50 cursor-not-allowed border-slate-200"
+          : isSelected
+          ? "border-[#D96B43] ring-2 ring-[#D96B43] shadow-md cursor-pointer"
+          : "border-slate-200/90 hover:border-slate-300 shadow-xs hover:shadow-md cursor-pointer"
+      }`}
+    >
+      <div>
+        {/* Top Image Container with Slider */}
+        <div className="relative aspect-[16/10] w-full bg-slate-900 overflow-hidden flex items-center justify-center select-none group/slider">
+          {hasImages ? (
+            <>
+              <img
+                src={images[currentImgIdx]}
+                alt={`Room ${room.roomNumber} Photo ${currentImgIdx + 1}`}
+                className="w-full h-full object-cover transition-all duration-300"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={prevImage}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 cursor-pointer shadow-md"
+                  >
+                    <FaChevronLeft className="text-[10px]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={nextImage}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 cursor-pointer shadow-md"
+                  >
+                    <FaChevronRight className="text-[10px]" />
+                  </button>
+
+                  <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/30 backdrop-blur-xs px-2 py-1 rounded-full">
+                    {images.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentImgIdx(idx);
+                        }}
+                        className={`transition-all rounded-full cursor-pointer ${
+                          idx === currentImgIdx
+                            ? "bg-white w-3 h-1.5"
+                            : "bg-white/50 hover:bg-white/80 w-1.5 h-1.5"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="absolute top-3 right-14 z-20 bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs">
+                    {currentImgIdx + 1} / {images.length}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center text-slate-400 gap-1.5 p-4 text-center">
+              <BiImage className="text-4xl text-slate-600" />
+              <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-400">
+                No Preview Image Yet
+              </span>
+            </div>
+          )}
+
+          {isSelected ? (
+            <span className="absolute top-3 left-3 z-20 bg-[#D96B43] text-white text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-xs shadow-xs flex items-center gap-1">
+              <FaCheck className="text-[9px]" /> Selected
+            </span>
+          ) : (
+            <span className="absolute top-3 left-3 z-20 bg-emerald-600/95 text-white text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-xs shadow-xs">
+              Available
+            </span>
+          )}
+
+          <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-white/95 backdrop-blur-xs px-2 py-1 rounded-md shadow-xs text-xs font-bold text-slate-800">
+            <FaStar className="text-amber-400 text-[11px]" />
+            <span>4.8</span>
+          </div>
+
+          <span className="absolute bottom-3 left-3 z-20 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded">
+            Room {room.roomNumber}
+          </span>
+        </div>
+
+        {/* Content Section */}
+        <div className="p-5 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <span className="text-[10px] font-bold text-[#D96B43] tracking-wider uppercase block">
+                {room.roomType ? room.roomType.replace(/_/g, " ") : "Deluxe"}
+              </span>
+              <h3 className="text-base font-extrabold text-slate-900 mt-0.5">
+                Room {room.roomNumber}
+              </h3>
+            </div>
+            <span className="text-xs text-slate-600 font-semibold flex items-center gap-1 shrink-0 mt-1 bg-slate-100 px-2 py-0.5 rounded-md">
+              <FaUsers className="text-slate-500 text-xs" /> Max {room.capacity || 2} Guests
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+            {room.description ||
+              "Spacious luxury accommodation."}
+          </p>
+
+          <div className="text-xs text-slate-600 pt-0.5">
+            <p className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+              <FaCheckCircle className="text-slate-400 text-[10px] shrink-0" />
+              <span>Free cancellation up to 24h before check-in</span>
+            </p>
+          </div>
+
+          {/* Amenities Grid */}
+          <div className="flex flex-wrap gap-1.5 pt-1.5 min-h-[32px]">
+            {room.amenities && room.amenities.length > 0 ? (
+              room.amenities.slice(0, 5).map((amenityName, idx) => {
+                const lookup = AMENITY_LOOKUP[amenityName];
+                const IconComponent = lookup?.icon || FaConciergeBell;
+                const colorClass = lookup?.color || "text-[#D96B43]";
+
+                return (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50/50 border border-amber-100/80 text-slate-700 text-[11px] rounded-lg font-medium shadow-2xs"
+                  >
+                    <IconComponent className={`${colorClass} w-3.5 h-3.5 shrink-0`} />
+                    <span>{amenityName}</span>
+                  </span>
+                );
+              })
+            ) : (
+              <span className="text-[11px] text-slate-400 italic">
+                No special amenities listed
+              </span>
+            )}
+            {room.amenities && room.amenities.length > 5 && (
+              <span className="text-[10px] text-slate-400 font-semibold self-center ml-0.5">
+                +{room.amenities.length - 5} more
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Pricing & Selection Bar */}
+      <div className="p-5 pt-3 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Our Rooms</h1>
-          <p className="text-gray-500 mt-1">
-            {filteredRooms.length} of {rooms.length} rooms match your filters
+          <div className="flex items-baseline gap-1">
+            <span className="text-xl font-black text-slate-900">
+              ₹{perNight.toLocaleString("en-IN")}
+            </span>
+            <span className="text-xs text-slate-400">/ night</span>
+          </div>
+          <p className="text-[10px] text-slate-500">
+            Total {nights}N: <strong className="text-slate-700 font-semibold">₹{netTotal.toLocaleString("en-IN")}</strong>
           </p>
         </div>
 
         <button
-          onClick={() => setShowMobileFilters(true)}
-          className="lg:hidden relative flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(room);
+          }}
+          disabled={isDisabled}
+          className={`px-5 py-2.5 font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap ${
+            isSelected
+              ? "bg-slate-800 text-white hover:bg-slate-900"
+              : isDisabled
+              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+              : "bg-[#D96B43] hover:bg-[#c45a33] text-white active:scale-95"
+          }`}
         >
-          <FaFilter /> Filters
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {activeFilterCount}
-            </span>
-          )}
+          {isSelected ? "DESELECT" : "SELECT ROOM"}
         </button>
       </div>
+    </div>
+  );
+};
 
-      {/* Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        {/* Desktop Filters */}
-        <div className="hidden lg:block">
-          <Filters
-            filters={filters}
-            setFilters={setFilters}
-            priceBounds={priceBounds}
-            onClear={clearFilters}
-          />
-        </div>
+const Rooms = () => {
+  const navigate = useNavigate();
 
-        {/* Mobile Filters Drawer */}
-        {showMobileFilters && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <div
-              className="absolute inset-0 bg-black/40"
-              onClick={() => setShowMobileFilters(false)}
-            />
-            <div className="absolute right-0 top-0 bottom-0 w-80 max-w-full bg-white overflow-y-auto p-4">
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={() => setShowMobileFilters(false)}
-                  className="p-2 text-gray-500 hover:text-gray-800"
-                >
-                  <FaTimes />
-                </button>
-              </div>
-              <Filters
-                filters={filters}
-                setFilters={setFilters}
-                priceBounds={priceBounds}
-                onClear={clearFilters}
+  const getRoomsList = useRoomStore((state) => state.getRoomsList);
+  const roomListFromStore = useRoomStore((state) => state.roomList);
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+
+  const [checkIn, setCheckIn] = useState(todayStr);
+  const [checkOut, setCheckOut] = useState(tomorrowStr);
+  const [guests, setGuests] = useState(2);
+
+  const [rooms, setRooms] = useState([]);
+  const [selectedRooms, setSelectedRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const nights = Math.max(
+    1,
+    Math.round((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1
+  );
+
+  const combinedCapacity = selectedRooms.reduce(
+    (acc, r) => acc + (r.capacity || 2),
+    0
+  );
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
+    if (!roomListFromStore || roomListFromStore.length === 0) {
+      getRoomsList().catch(() => {});
+    }
+  }, [getRoomsList, roomListFromStore]);
+
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault();
+
+    if (!checkIn || !checkOut || checkIn >= checkOut) {
+      toast.error("Check-out date must be after check-in date");
+      return;
+    }
+
+    setLoading(true);
+    setSelectedRooms([]);
+    try {
+      const availableData = await searchAvailableRoomsApi(
+        checkIn,
+        checkOut,
+        guests || 1
+      );
+      const searchResults = Array.isArray(availableData) ? availableData : [];
+
+      let storeCatalog = roomListFromStore;
+      if (!storeCatalog || storeCatalog.length === 0) {
+        try {
+          await getRoomsList();
+          storeCatalog = useRoomStore.getState().roomList || [];
+        } catch {
+          storeCatalog = [];
+        }
+      }
+
+      const mergedRooms = searchResults.map((availRoom) => {
+        const normalized = mapRoomFromApi(availRoom);
+
+        const storeMatch = storeCatalog.find(
+          (sr) => String(sr.roomNumber) === String(availRoom.roomNumber)
+        );
+
+        if (storeMatch) {
+          const storeImages = normalizeImages(storeMatch);
+          const currentImages = normalizeImages(normalized);
+
+          if (storeImages.length > currentImages.length) {
+            normalized.images = storeImages;
+          }
+
+          if (!normalized.amenities || normalized.amenities.length === 0) {
+            normalized.amenities = mapRoomFromApi(storeMatch).amenities;
+          }
+        }
+        return normalized;
+      });
+
+      setRooms(mergedRooms);
+    } catch {
+      toast.error("Failed to check room availability");
+      setRooms([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    handleSearch();
+  }, []);
+
+  const handleToggleRoom = (room) => {
+    const isAlreadySelected = selectedRooms.some((r) => r.id === room.id);
+
+    if (isAlreadySelected) {
+      setSelectedRooms((prev) => prev.filter((r) => r.id !== room.id));
+      return;
+    }
+
+    const currentHeadcount = Number(guests) || 1;
+    if (combinedCapacity >= currentHeadcount) {
+      toast.error(
+        `Headcount (${currentHeadcount}) is already fulfilled by selected room(s). Deselect a room first to change.`
+      );
+      return;
+    }
+
+    setSelectedRooms((prev) => [...prev, room]);
+  };
+
+  const handleProceedToBooking = () => {
+    const currentHeadcount = Number(guests) || 1;
+
+    if (selectedRooms.length === 0) {
+      toast.error("Please select at least one room to proceed.");
+      return;
+    }
+
+    if (combinedCapacity < currentHeadcount) {
+      toast.error(
+        `Selected room capacity (${combinedCapacity}) is less than total guests (${currentHeadcount}). Please select additional rooms.`
+      );
+      return;
+    }
+
+    const roomIdsParam = selectedRooms.map((r) => r.id).join(",");
+    const primaryRoomNumber = selectedRooms[0].roomNumber;
+
+    navigate(
+      `/booking/${primaryRoomNumber}?roomIds=${roomIdsParam}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${currentHeadcount}`
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-24">
+      {/* Top Search Strip */}
+      <div className="bg-white border-b border-slate-200 shadow-xs py-4 px-4 sm:px-6">
+        <form
+          onSubmit={handleSearch}
+          className="max-w-7xl mx-auto flex flex-wrap md:flex-nowrap items-center gap-2.5 bg-slate-50 p-2 rounded-2xl border border-slate-200"
+        >
+          {/* Check-In */}
+          <div className="flex-1 min-w-[130px] bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+              Check-In
+            </label>
+            <div className="flex items-center gap-2 mt-0.5">
+              <FaCalendarAlt className="text-[#D96B43] text-xs" />
+              <input
+                type="date"
+                required
+                min={todayStr}
+                value={checkIn}
+                onChange={(e) => setCheckIn(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 outline-none w-full cursor-pointer"
               />
             </div>
           </div>
-        )}
 
-        {/* Room Grid */}
-        <div>
-          {filteredRooms.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
-              <p className="text-gray-500 mb-3">No rooms match your filters.</p>
+          {/* Check-Out */}
+          <div className="flex-1 min-w-[130px] bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+              Check-Out
+            </label>
+            <div className="flex items-center gap-2 mt-0.5">
+              <FaCalendarAlt className="text-[#D96B43] text-xs" />
+              <input
+                type="date"
+                required
+                min={checkIn || todayStr}
+                value={checkOut}
+                onChange={(e) => setCheckOut(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 outline-none w-full cursor-pointer"
+              />
+            </div>
+          </div>
+
+        
+          <div className="w-32 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+              Total Guests
+            </label>
+            <div className="flex items-center gap-2 mt-0.5">
+              <FaUsers className="text-[#D96B43] text-xs shrink-0" />
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="2"
+                value={guests}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setGuests(val === "" ? "" : parseInt(val, 10));
+                }}
+                onBlur={() => {
+                  if (!guests || guests < 1) setGuests(1);
+                }}
+                className="bg-transparent text-xs font-bold text-slate-800 outline-none w-full"
+              />
+            </div>
+          </div>
+
+          {/* Search Button */}
+          <button
+            type="submit"
+            className="px-6 py-3 bg-[#D96B43] hover:bg-[#c45a33] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition shrink-0 cursor-pointer"
+          >
+            <FaSearch className="text-xs" /> Update Search
+          </button>
+        </form>
+      </div>
+
+      {/* Main Results View */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-5">
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">Available Accommodations</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Showing rooms free for <strong>{nights} {nights === 1 ? "Night" : "Nights"}</strong> ({checkIn} to {checkOut})
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                combinedCapacity >= (Number(guests) || 1)
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  : "bg-amber-50 text-amber-800 border-amber-200"
+              }`}
+            >
+              Capacity: {combinedCapacity} / {Number(guests) || 1} Guests
+            </span>
+            <span className="text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+              {rooms.length} {rooms.length === 1 ? "Room" : "Rooms"} Available
+            </span>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-500">
+            <BiLoaderAlt className="animate-spin text-4xl text-[#D96B43]" />
+            <p className="text-xs">Checking real-time calendar availability...</p>
+          </div>
+        ) : rooms.length === 0 ? (
+          <div className="py-16 text-center bg-white rounded-2xl border border-slate-200 p-8 shadow-xs">
+            <FaBed className="text-4xl text-slate-300 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-slate-700">No rooms available for these dates</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              All rooms are booked between {checkIn} and {checkOut}. Try adjusting your check-in date or duration.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {rooms.map((room) => {
+              const isSelected = selectedRooms.some((r) => r.id === room.id);
+              const isCapacityFull = combinedCapacity >= (Number(guests) || 1);
+              const isDisabled = isCapacityFull && !isSelected;
+
+              return (
+                <GuestRoomCard
+                  key={room.id || room.roomNumber}
+                  room={room}
+                  nights={nights}
+                  isSelected={isSelected}
+                  isDisabled={isDisabled}
+                  onToggle={handleToggleRoom}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    
+      {selectedRooms.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-extrabold text-slate-900">
+                {selectedRooms.length} {selectedRooms.length === 1 ? "Room" : "Rooms"} Selected:{" "}
+                <span className="text-[#D96B43]">
+                  {selectedRooms.map((r) => `Room ${r.roomNumber}`).join(", ")}
+                </span>
+              </p>
+              <p className="text-xs text-slate-500">
+                Total Capacity: <strong>{combinedCapacity} Guests</strong> | Headcount:{" "}
+                <strong>{Number(guests) || 1} Guests</strong>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
               <button
-                onClick={clearFilters}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+                type="button"
+                onClick={() => setSelectedRooms([])}
+                className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
               >
-                Clear filters
+                Clear Selection
+              </button>
+
+              <button
+                type="button"
+                disabled={combinedCapacity < (Number(guests) || 1)}
+                onClick={handleProceedToBooking}
+                className="px-6 py-2.5 bg-[#D96B43] hover:bg-[#c45a33] text-white font-extrabold rounded-xl text-xs shadow-md transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              >
+                PROCEED TO BOOKING →
               </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredRooms.map((room) => (
-                <RoomCard
-                  key={room.id}
-                  room={room}
-                  isFavorite={favorites.includes(room.id)}
-                  onToggleFavorite={toggleFavorite}
-                />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
-      </div>
-    </section>
-  )
-}
+      )}
+    </div>
+  );
+};
 
-export default Rooms
+export default Rooms;

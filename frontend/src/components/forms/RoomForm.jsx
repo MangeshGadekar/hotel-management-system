@@ -94,7 +94,7 @@ export const AMENITIES_CATEGORIES = [
 ];
 
 const ROOM_TYPES = ["SINGLE", "DOUBLE", "DELUXE", "SUITE"];
-const ROOM_STATUSES = ["AVAILABLE", "OCCUPIED", "RESERVED", "MAINTENANCE"];
+const ROOM_STATUSES = ["AVAILABLE", "OCCUPIED", "RESERVED", "CLEANING", "MAINTENANCE"];
 
 const EMPTY_FORM = {
   roomNumber: "",
@@ -293,8 +293,6 @@ const RoomForm = ({
 
     try {
       await onSubmit(roomData, imagePayload);
-      
-      // Clean up blobs if adding new
       if (!isEditMode) {
         blobUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
         blobUrlsRef.current = [];

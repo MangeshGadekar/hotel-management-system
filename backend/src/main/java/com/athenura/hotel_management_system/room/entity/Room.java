@@ -60,4 +60,10 @@ public class Room {
     public void preUpdate() {
         updatedAt = Instant.now();
     }
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "room_amenities", joinColumns = @JoinColumn(name = "room_id"))
+    @Column(name = "amenity")
+    @Builder.Default
+    private List<String> amenities = new ArrayList<>();
 }

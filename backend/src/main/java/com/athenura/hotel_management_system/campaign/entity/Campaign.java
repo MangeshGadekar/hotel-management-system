@@ -9,9 +9,6 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-
-
-
 @Entity
 @Table(name = "campaigns")
 @Getter
@@ -35,7 +32,6 @@ public class Campaign {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String emailContent;
 
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TargetAudience targetAudience;
@@ -50,7 +46,6 @@ public class Campaign {
     @Column(nullable = false)
     private CampaignStatus status;
 
-
     private String filterRoomType;
     private LocalDate filterStartDate;
     private LocalDate filterEndDate;
@@ -58,28 +53,14 @@ public class Campaign {
 
     private LocalDateTime createdAt;
 
-    @Builder.Default
-    @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted = false;
-
-
     @PrePersist
-    public void prePersist(){
-        if(this.createdAt == null){
+    public void prePersist() {
+        if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
 
-        if(this.status == null){
+        if (this.status == null) {
             this.status = (this.schedule != null) ? CampaignStatus.SCHEDULED : CampaignStatus.DRAFT;
         }
-
-        if(this.isDeleted == null){
-            this.isDeleted = false;
-        }
     }
-
-
-
-
-
 }

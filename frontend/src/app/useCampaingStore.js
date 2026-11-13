@@ -6,7 +6,6 @@ import {
 } from "../apis/api";
 import { create } from "zustand";
 import { persist, devtools } from "zustand/middleware";
-const token = localStorage.getItem("token");
 
 const campaingsStore = (set) => ({
   campaing: {},
@@ -15,46 +14,47 @@ const campaingsStore = (set) => ({
   addCampaing: async (data) => {
     try {
       const res = await createCampaings(data);
-      const _campaing = res;
       set((state) => ({
-        campaingList: [_campaing, ...state.campaingList],
+        campaingList: [res, ...state.campaingList],
       }));
       return res;
     } catch (error) {
       return error;
     }
   },
-  removeCampaing: async (camapaingId) => {
+
+  removeCampaing: async (campaingId) => {
     try {
-      await deleteCampaign(token, camapaingId);
+      const token = localStorage.getItem("token") || localStorage.getItem("authToken");
+      await deleteCampaign(token, campaingId);
       set((state) => ({
-        campaingList: state.campaingList.filter((c) => {
-          c.id !== camapaingId;
-        }),
+        campaingList: state.campaingList.filter((c) => c.id !== campaingId),
       }));
     } catch (error) {
       return error;
     }
   },
+
   updateCampaing: async (campaingId, payload) => {
     try {
+      const token = localStorage.getItem("token") || localStorage.getItem("authToken");
       const res = await patchCampaing(token, campaingId, payload);
-      const _campaing = res;
       set((state) => ({
-        campaingList: state.campaingList.map((c) => {
-          c.id === campaingId ? _campaing : c;
-        }),
+        campaingList: state.campaingList.map((c) =>
+          c.id === campaingId ? res : c
+        ),
       }));
+      return res;
     } catch (error) {
       return error;
     }
   },
+
   getAllCampaings: async () => {
     try {
       const res = await getAllCampaings();
-      const _allCampaings = res;
       set({
-        campaingList: _allCampaings,
+        campaingList: res || [],
       });
       return res;
     } catch (error) {
@@ -67,8 +67,8 @@ const useCampaingStore = create(
   devtools(
     persist(campaingsStore, {
       name: "campaing",
-    }),
-  ),
+    })
+  )
 );
 
 export default useCampaingStore;

@@ -1,6 +1,7 @@
 package com.athenura.hotel_management_system.coupon.entity;
 
 
+import com.athenura.hotel_management_system.coupon.enums.CouponAudience;
 import com.athenura.hotel_management_system.coupon.enums.DiscountType;
 import com.athenura.hotel_management_system.room.enums.RoomType;
 import jakarta.persistence.*;
@@ -33,11 +34,10 @@ public class Coupon {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private DiscountType discountType; //percentage or flat
+    private DiscountType discountType;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal discountValue; // 10.00 for 10% or 500.00 for rs500 flat
-
+    private BigDecimal discountValue;
     @Column(name = "min_booking_amount", precision = 10, scale= 2)
     private BigDecimal minBookingAmount;
 
@@ -48,7 +48,7 @@ public class Coupon {
     private LocalDate validUntil;
 
     @Column(name = "usage_limit")
-    private Integer usageLimit; //max time coupon can be used
+    private Integer usageLimit;
 
     @Builder.Default
     @Column(name = "times_used")
@@ -72,5 +72,10 @@ public class Coupon {
     @Column(name = "room_type")
     @Builder.Default
     private Set<RoomType> applicableRoomTypes = new HashSet<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_audience", nullable = false)
+    @Builder.Default
+    private CouponAudience targetAudience = CouponAudience.ALL;
 
 }

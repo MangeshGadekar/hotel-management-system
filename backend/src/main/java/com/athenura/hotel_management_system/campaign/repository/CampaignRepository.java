@@ -13,16 +13,7 @@ import java.util.Optional;
 @Repository
 public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
-    List<Campaign> findByIsDeletedFalse();
-
-    List<Campaign> findByIsDeletedTrue();
-
-    Optional<Campaign> findByIdAndIsDeletedFalse(Long id);
+    List<Campaign> findByStatus(CampaignStatus status);
 
     List<Campaign> findByStatusAndScheduleLessThanEqual(CampaignStatus status, LocalDateTime now);
-
-    List<Campaign> findByStatusAndScheduleLessThanEqualAndIsDeletedFalse(
-            CampaignStatus status,
-            LocalDateTime currentDateTime
-    );
 }

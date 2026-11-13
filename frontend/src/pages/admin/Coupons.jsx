@@ -20,6 +20,29 @@ export default function Coupons() {
     await removeCupon(id, token);
   };
 
+  const getAudienceBadge = (audience) => {
+    switch (audience) {
+      case 'GUEST':
+        return (
+          <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-blue-50 text-blue-700 border border-blue-200 uppercase">
+            Guest Online Only
+          </span>
+        );
+      case 'RECEPTIONIST':
+        return (
+          <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-purple-50 text-purple-700 border border-purple-200 uppercase">
+            Desk Walk-In Only
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-50 text-amber-700 border border-amber-200 uppercase">
+            All Channels
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -28,12 +51,12 @@ export default function Coupons() {
             Coupons &amp; Promo Codes
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Create, manage, and track usage for guest discounts
+            Create, manage, and track role-targeted discounts for guests and desk check-ins
           </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white text-sm font-semibold rounded-lg shadow-xs transition"
+          className="px-4 py-2 bg-[#D96B43] hover:bg-[#c25a34] text-white text-sm font-semibold rounded-lg shadow-xs transition cursor-pointer"
         >
           + Create Coupon
         </button>
@@ -47,9 +70,12 @@ export default function Coupons() {
           >
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <span className="text-lg font-bold tracking-wider text-[#D96B43]">
-                  {c.code}
-                </span>
+                <div className="space-y-1">
+                  <span className="text-lg font-bold tracking-wider text-[#D96B43] font-mono block">
+                    {c.code}
+                  </span>
+                  {getAudienceBadge(c.targetAudience)}
+                </div>
                 <span
                   className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
                     c.active
@@ -60,16 +86,17 @@ export default function Coupons() {
                   {c.active ? 'Active' : 'Inactive'}
                 </span>
               </div>
+
               <div className="mt-3 space-y-1">
                 <p className="text-2xl font-bold text-slate-900">
-                  {c.discountType === 'PERCENTAGE'
+                  {c.discountType === 'PERCENTAGE' || c.discountType === 'PERCENT'
                     ? `${c.discountValue}% OFF`
                     : `₹${c.discountValue} OFF`}
                 </p>
                 <p className="text-xs text-slate-500">
                   Min booking:{' '}
                   <span className="font-medium text-slate-700">
-                    ₹{c.minBookingAmount}
+                    ₹{c.minBookingAmount || 0}
                   </span>
                 </p>
                 <p className="text-xs text-slate-500">
@@ -95,10 +122,12 @@ export default function Coupons() {
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-400">{c.discountType}</span>
+              <span className="text-slate-400 uppercase font-medium text-[11px]">
+                {c.discountType}
+              </span>
               <button
                 onClick={() => handleDelete(c.id)}
-                className="text-rose-600 hover:text-rose-800 font-medium"
+                className="text-rose-600 hover:text-rose-800 font-medium cursor-pointer"
               >
                 Remove
               </button>

@@ -2,7 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import BookingForm from '../../components/forms/BookingForm';
 import useBookingStore from '../../app/useBookingStore';
 import toast from 'react-hot-toast';
-import { FiCheckCircle, FiHelpCircle } from 'react-icons/fi';
+import {
+  FiCheckCircle,
+  FiHelpCircle,
+  FiAlertTriangle,
+  FiX,
+  FiInfo,
+} from 'react-icons/fi';
 import BookingDetailsModal from '../../components/modals/BookingDetailsModal';
 
 const STATUS_BADGES = {
@@ -26,12 +32,20 @@ export default function Bookings() {
   const [loading, setLoading] = useState(true);
 
   const [selectedBookingId, setSelectedBookingId] = useState(null);
-  const [confirmCheckoutModal, setConfirmCheckoutModal] = useState({ open: false, booking: null });
+  const [confirmCheckoutModal, setConfirmCheckoutModal] = useState({
+    open: false,
+    booking: null,
+  });
+  const [confirmCancelModal, setConfirmCancelModal] = useState({
+    open: false,
+    booking: null,
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const allBookings = useBookingStore((state) => state.bookingList);
   const getBookingList = useBookingStore((state) => state.getAllBooking);
   const checkInBooking = useBookingStore((state) => state.checkInBooking);
   const checkOutDirect = useBookingStore((state) => state.checkOutDirect);
+  const cancelBookingFromStore = useBookingStore((state) => state.cancelBooking);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -51,30 +65,86 @@ export default function Bookings() {
   const handleCheckIn = async (b) => {
     try {
       await checkInBooking(b.id);
-      toast.success(`Booking #${b.id} checked in! Room ${b.roomNumber} is now OCCUPIED.`);
+      toast.success(
+        `Booking #${b.id} checked in! Room ${b.roomNumber} is now OCCUPIED.`
+      );
+      fetchBookings();
     } catch (err) {
       toast.error(err.message || 'Check-in failed');
     }
   };
 
+  const handleCancelClick = (booking) => {
+    const status = String(
+      booking?.bookingStatus || booking?.status || ''
+    ).toUpperCase();
+
+    if (status === 'CHECKED_IN') {
+      toast.error(
+        'Checked-in guests cannot be cancelled! Please proceed with Checkout / Folio Settlement.'
+      );
+      return;
+    }
+
+    if (status === 'CHECKED_OUT' || status === 'CANCELLED') {
+      toast.error(
+        `Cannot cancel a reservation that is already ${status.toLowerCase()}.`
+      );
+      return;
+    }
+
+    setConfirmCancelModal({ open: true, booking });
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!confirmCancelModal.booking?.id) return;
+    setIsProcessing(true);
+    const bId = confirmCancelModal.booking.id;
+
+    try {
+      await cancelBookingFromStore(bId);
+      toast.success(`Booking #${bId} cancelled successfully. Refund processed.`);
+      setConfirmCancelModal({ open: false, booking: null });
+      fetchBookings();
+    } catch (err) {
+      let errorMsg = 'Cannot cancel this booking.';
+      if (err?.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMsg = err.response.data;
+        } else if (err.response.data.message) {
+          errorMsg = err.response.data.message;
+        }
+      } else if (err?.message) {
+        errorMsg = err.message;
+      }
+      toast.error(errorMsg, { duration: 6000 });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleCheckOutClick = (b) => {
-    const remainingBalance = Number(b.balanceDue ?? 0);
+    const remainingBalance = Number(b.remainingDue ?? b.balanceDue ?? 0);
 
     if (remainingBalance > 0) {
       toast(
         (t) => (
           <div className="flex flex-col gap-2">
             <span className="font-semibold text-slate-800 text-xs">
-              Booking #{b.id} has an outstanding balance of ₹{remainingBalance.toLocaleString()}.
+              Booking #{b.id} has an outstanding balance of ₹
+              {remainingBalance.toLocaleString('en-IN')}.
             </span>
             <span className="text-[11px] text-slate-600">
-              Please collect the remaining balance on the Payments page before checking out.
+              Please collect the remaining balance on the Payments page before
+              checking out.
             </span>
             <div className="flex gap-2 justify-end mt-1">
               <button
                 onClick={() => {
                   toast.dismiss(t.id);
-                  window.location.href = `/admin/payments?bookingId=${b.id}&amount=${remainingBalance}&guest=${encodeURIComponent(b.guestName || '')}`;
+                  window.location.href = `/admin/payments?bookingId=${b.id}&amount=${remainingBalance}&guest=${encodeURIComponent(
+                    b.guestName || ''
+                  )}`;
                 }}
                 className="px-2.5 py-1 bg-[#D96B43] hover:bg-[#c95a34] text-white rounded text-xs font-semibold cursor-pointer transition"
               >
@@ -91,7 +161,6 @@ export default function Bookings() {
     setConfirmCheckoutModal({ open: true, booking: b });
   };
 
-  // Check-out finalized once balance is verified at 0
   const handleConfirmDirectCheckout = async () => {
     if (!confirmCheckoutModal.booking) return;
     setIsProcessing(true);
@@ -99,7 +168,9 @@ export default function Bookings() {
 
     try {
       await checkOutDirect(b.id);
-      toast.success(`Check-out confirmed! Room ${b.roomNumber} is now AVAILABLE.`);
+      toast.success(
+        `Check-out confirmed! Room ${b.roomNumber} is now in CLEANING status.`
+      );
       setConfirmCheckoutModal({ open: false, booking: null });
       fetchBookings();
     } catch (err) {
@@ -116,11 +187,12 @@ export default function Bookings() {
       maximumFractionDigits: 0,
     }).format(Number(amount) || 0);
 
-  const filteredBookings = allBookings
+  const filteredBookings = (allBookings || [])
     .filter((b) => {
       const rawStatus = (b.bookingStatus || '').replace('-', '_');
       const displayStatus = STATUS_MAP[rawStatus] || b.bookingStatus;
-      const matchesStatus = filterStatus === 'All' || displayStatus === filterStatus;
+      const matchesStatus =
+        filterStatus === 'All' || displayStatus === filterStatus;
 
       const q = searchQuery.trim().toLowerCase();
       const matchesSearch =
@@ -131,16 +203,24 @@ export default function Bookings() {
 
       return matchesStatus && matchesSearch;
     })
-    .sort((a, b) => Number(b.id) - Number(a.id)); // <-- Sorts newest / highest ID first
+    .sort((a, b) => Number(b.id) - Number(a.id));
+
+  const today = new Date().toISOString().split('T')[0];
+  const cancelCheckIn = confirmCancelModal.booking?.checkInDate;
+  const isPastArrival = cancelCheckIn && today > cancelCheckIn;
+  const isSameDayArrival = cancelCheckIn && today === cancelCheckIn;
 
   return (
     <div className="space-y-6">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Booking Management</h1>
+          <h1 className="text-xl font-bold text-slate-800">
+            Booking Management
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Click any booking row to inspect complete stay charges, services, and taxes
+            Click any booking row to inspect complete stay charges, services,
+            and taxes
           </p>
         </div>
 
@@ -190,122 +270,155 @@ export default function Bookings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-  {loading ? (
-    <tr>
-      <td colSpan="9" className="px-6 py-8 text-center text-slate-500">
-        Loading reservations…
-      </td>
-    </tr>
-  ) : filteredBookings.length === 0 ? (
-    <tr>
-      <td colSpan="9" className="px-6 py-8 text-center text-slate-500">
-        No bookings found
-      </td>
-    </tr>
-  ) : (
-    filteredBookings.map((b) => {
-      const rawStatus = (b.bookingStatus || '').replace('-', '_');
-      const displayStatus = STATUS_MAP[rawStatus] || b.bookingStatus;
-      const remainingBalance = Number(b.balanceDue ?? 0);
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan="9"
+                    className="px-6 py-8 text-center text-slate-500"
+                  >
+                    Loading reservations…
+                  </td>
+                </tr>
+              ) : filteredBookings.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="9"
+                    className="px-6 py-8 text-center text-slate-500"
+                  >
+                    No bookings found
+                  </td>
+                </tr>
+              ) : (
+                filteredBookings.map((b) => {
+                  const rawStatus = (b.bookingStatus || '').replace('-', '_');
+                  const displayStatus = STATUS_MAP[rawStatus] || b.bookingStatus;
 
-      return (
-        <tr
-          key={b.id}
-          onClick={() => setSelectedBookingId(b.id)}
-          className="hover:bg-orange-50/50 cursor-pointer transition select-none group"
-          title="Click to view full reservation breakdown & charges"
-        >
-          {/* Booking ID */}
-          <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-[#D96B43]">
-            #{b.id}
-          </td>
+                  const displayPaid =
+                    b.totalPaid != null
+                      ? Number(b.totalPaid)
+                      : Number(b.advancePayment || 0);
+                  const displayTotal =
+                    b.netPayable != null
+                      ? Number(b.netPayable)
+                      : Number(b.totalAmount || 0);
+                  const remainingBalance =
+                    b.remainingDue != null
+                      ? Number(b.remainingDue)
+                      : Number(b.balanceDue || 0);
+                  const isSettled =
+                    b.fullySettled != null
+                      ? b.fullySettled
+                      : remainingBalance <= 0;
 
-          {/* Guest Name */}
-          <td className="px-6 py-4 font-medium text-slate-800 group-hover:text-[#D96B43]">
-            {b.guestName}
-          </td>
+                  return (
+                    <tr
+                      key={b.id}
+                      onClick={() => setSelectedBookingId(b.id)}
+                      className="hover:bg-orange-50/50 cursor-pointer transition select-none group"
+                      title="Click to view full reservation breakdown & charges"
+                    >
+                      <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-[#D96B43]">
+                        #{b.id}
+                      </td>
 
-          {/* Room Number */}
-          <td className="px-6 py-4 text-xs font-medium text-slate-700">
-            {b.roomNumber}
-          </td>
+                      <td className="px-6 py-4 font-medium text-slate-800 group-hover:text-[#D96B43]">
+                        {b.guestName}
+                      </td>
 
-          {/* Room Type */}
-          <td className="px-6 py-4 text-xs font-medium text-slate-700">
-            <span className="px-2 py-1 bg-slate-100 rounded-md">
-              {b.roomType}
-            </span>
-          </td>
+                      <td className="px-6 py-4 text-xs font-medium text-slate-700">
+                        {b.roomNumber}
+                      </td>
 
-          {/* Check-In */}
-          <td className="px-6 py-4 text-slate-600">
-            {b.checkInDate}
-          </td>
+                      <td className="px-6 py-4 text-xs font-medium text-slate-700">
+                        <span className="px-2 py-1 bg-slate-100 rounded-md">
+                          {b.roomType}
+                        </span>
+                      </td>
 
-          {/* Check-Out */}
-          <td className="px-6 py-4 text-slate-600">
-            {b.checkOutDate}
-          </td>
+                      <td className="px-6 py-4 text-slate-600">
+                        {b.checkInDate}
+                      </td>
 
-          {/* Payment Status */}
-          <td className="px-6 py-4">
-            <span className="font-semibold text-slate-900 block">
-              {formatCurrency(b.totalAmount)}
-            </span>
-            {remainingBalance > 0 ? (
-              <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block mt-0.5">
-                Due: {formatCurrency(remainingBalance)}
-              </span>
-            ) : (
-              <span className="text-[10px] text-emerald-600 font-medium inline-block mt-0.5">
-                Fully Paid
-              </span>
-            )}
-          </td>
+                      <td className="px-6 py-4 text-slate-600">
+                        {b.checkOutDate}
+                      </td>
 
-          <td className="px-6 py-4">
-            <span
-              className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
-                STATUS_BADGES[rawStatus] || 'bg-gray-50 text-gray-700 border-gray-200'
-              }`}
-            >
-              {displayStatus}
-            </span>
-          </td>
-          <td
-            className="px-6 py-4 text-right cursor-default"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {rawStatus === 'BOOKED' && (
-              <button
-                type="button"
-                onClick={() => handleCheckIn(b)}
-                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
-              >
-                Check-In & Hand Key
-              </button>
-            )}
-            {rawStatus === 'CHECKED_IN' && (
-              <button
-                type="button"
-                onClick={() => handleCheckOutClick(b)}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
-              >
-                Checkout
-              </button>
-            )}
-            {rawStatus === 'CHECKED_OUT' && (
-              <span className="text-xs text-slate-400 font-medium">Completed</span>
-            )}
-          </td>
-        </tr>
-      );
-    })
-  )}
-</tbody>
+                      <td className="px-6 py-4">
+                        <span className="font-semibold text-slate-900 block font-mono">
+                          {formatCurrency(
+                            displayTotal > 0 ? displayTotal : displayPaid
+                          )}
+                        </span>
+                        {rawStatus === 'CANCELLED' ? (
+                          <span className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 inline-block mt-0.5">
+                            Refunded
+                          </span>
+                        ) : !isSettled && remainingBalance > 0 ? (
+                          <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block mt-0.5">
+                            Due: {formatCurrency(remainingBalance)}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-emerald-600 font-medium inline-block mt-0.5">
+                            Fully Paid
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
+                            STATUS_BADGES[rawStatus] ||
+                            'bg-gray-50 text-gray-700 border-gray-200'
+                          }`}
+                        >
+                          {displayStatus}
+                        </span>
+                      </td>
+
+                      <td
+                        className="px-6 py-4 text-right cursor-default"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-end gap-2">
+                          {rawStatus === 'BOOKED' && (
+                            <button
+                              type="button"
+                              onClick={() => handleCheckIn(b)}
+                              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
+                            >
+                              Check-In & Hand Key
+                            </button>
+                          )}
+
+                          {rawStatus === 'CHECKED_IN' && (
+                            <button
+                              type="button"
+                              onClick={() => handleCheckOutClick(b)}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
+                            >
+                              Checkout
+                            </button>
+                          )}
+
+                          {rawStatus === 'BOOKED' && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancelClick(b)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-semibold rounded-lg transition cursor-pointer"
+                            >
+                              Cancel Booking
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
           </table>
         </div>
       </div>
+
       {showBookingForm && (
         <div
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4"
@@ -328,14 +441,13 @@ export default function Bookings() {
       )}
 
       {selectedBookingId && (
-  <BookingDetailsModal
-    bookingId={selectedBookingId}
-    onClose={() => setSelectedBookingId(null)}
-    onUpdated={() => fetchBookings()}
-  />
-)}
-
-      {/* Confirmation Modal for Zero-Balance Departures */}
+        <BookingDetailsModal
+          bookingId={selectedBookingId}
+          onClose={() => setSelectedBookingId(null)}
+          onUpdated={() => fetchBookings()}
+        />
+      )}
+    
       {confirmCheckoutModal.open && confirmCheckoutModal.booking && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200 space-y-4">
@@ -344,46 +456,61 @@ export default function Bookings() {
                 <FiHelpCircle />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-800">Confirm Guest Check-Out</h3>
-                <p className="text-xs text-slate-500">Verify guest departure before releasing inventory</p>
+                <h3 className="text-base font-bold text-slate-800">
+                  Confirm Guest Check-Out
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Verify guest departure before releasing inventory
+                </p>
               </div>
             </div>
 
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-2">
               <div className="flex justify-between">
                 <span className="text-slate-500">Guest Name:</span>
-                <span className="font-semibold text-slate-800">{confirmCheckoutModal.booking.guestName}</span>
+                <span className="font-semibold text-slate-800">
+                  {confirmCheckoutModal.booking.guestName}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Room Departing:</span>
                 <span className="font-semibold text-slate-800">
-                  Room {confirmCheckoutModal.booking.roomNumber} ({confirmCheckoutModal.booking.roomType})
+                  Room {confirmCheckoutModal.booking.roomNumber} (
+                  {confirmCheckoutModal.booking.roomType})
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Total Settled:</span>
                 <span className="font-semibold text-slate-800">
-                  {formatCurrency(confirmCheckoutModal.booking.totalAmount)}
+                  {formatCurrency(
+                    confirmCheckoutModal.booking.netPayable ??
+                      confirmCheckoutModal.booking.totalAmount
+                  )}
                 </span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-2 text-xs font-semibold text-emerald-700">
                 <span>Account Status:</span>
                 <span className="flex items-center gap-1">
-                  <FiCheckCircle className="text-emerald-600" /> Fully Paid (Zero Balance Due)
+                  <FiCheckCircle className="text-emerald-600" /> Fully Paid
+                  (Zero Balance Due)
                 </span>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-              Confirming this will mark Booking <strong>#{confirmCheckoutModal.booking.id}</strong> as{' '}
-              <strong>CHECKED_OUT</strong> and return Room{' '}
-              <strong>{confirmCheckoutModal.booking.roomNumber}</strong> to <strong>AVAILABLE</strong> status.
+              Confirming this will mark Booking{' '}
+              <strong>#{confirmCheckoutModal.booking.id}</strong> as{' '}
+              <strong>CHECKED_OUT</strong> and route Room{' '}
+              <strong>{confirmCheckoutModal.booking.roomNumber}</strong> to{' '}
+              <strong>CLEANING</strong> status for housekeeping.
             </p>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setConfirmCheckoutModal({ open: false, booking: null })}
+                onClick={() =>
+                  setConfirmCheckoutModal({ open: false, booking: null })
+                }
                 disabled={isProcessing}
                 className="px-4 py-2 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
               >
@@ -396,6 +523,130 @@ export default function Bookings() {
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs cursor-pointer disabled:opacity-50"
               >
                 {isProcessing ? 'Checking Out...' : 'Confirm Check-Out'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmCancelModal.open && confirmCancelModal.booking && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+            {/* Header */}
+            <div className="p-6 pb-4">
+              <div className="flex items-start justify-between">
+                <div className="w-11 h-11 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
+                  <FiAlertTriangle size={22} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfirmCancelModal({ open: false, booking: null })
+                  }
+                  disabled={isProcessing}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <FiX size={18} />
+                </button>
+              </div>
+
+              <div className="mt-4">
+                <h3 className="text-base font-bold text-slate-900">
+                  Cancel Booking #{confirmCancelModal.booking.id}?
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Are you sure you want to cancel the reservation for{' '}
+                  <strong className="text-slate-800">
+                    {confirmCancelModal.booking.guestName}
+                  </strong>
+                  ? This will release the room back to available inventory.
+                </p>
+              </div>
+            </div>
+
+            {/* Stay Particulars */}
+            <div className="px-6 py-3 bg-slate-50/75 border-y border-slate-100 space-y-2 text-xs">
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Room Allocation:</span>
+                <span className="font-semibold text-slate-900">
+                  Room {confirmCancelModal.booking.roomNumber} (
+                  {confirmCancelModal.booking.roomType})
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Stay Window:</span>
+                <span className="font-mono text-slate-800">
+                  {confirmCancelModal.booking.checkInDate} &rarr;{' '}
+                  {confirmCancelModal.booking.checkOutDate}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Total Collected:</span>
+                <span className="font-mono font-bold text-emerald-700">
+                  {formatCurrency(
+                    confirmCancelModal.booking.advancePayment ||
+                      confirmCancelModal.booking.totalPaid ||
+                      0
+                  )}
+                </span>
+              </div>
+            </div>
+            
+            <div className="px-6 py-3">
+              {isPastArrival ? (
+                <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 flex gap-2 items-start text-[11px] text-amber-800 leading-tight">
+                  <FiInfo
+                    className="shrink-0 mt-0.5 text-amber-600"
+                    size={14}
+                  />
+                  <span>
+                    <strong>Past Arrival Date:</strong> Scheduled check-in date
+                    has passed. Automated refund is blocked under no-show rules.
+                  </span>
+                </div>
+              ) : isSameDayArrival ? (
+                <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 flex gap-2 items-start text-[11px] text-blue-800 leading-tight">
+                  <FiInfo className="shrink-0 mt-0.5 text-blue-600" size={14} />
+                  <span>
+                    <strong>Same-Day Cancellation:</strong> A 50% retention
+                    charge applies. The remaining 50% will be refunded to source.
+                  </span>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 flex gap-2 items-start text-[11px] text-emerald-800 leading-tight">
+                  <FiCheckCircle
+                    className="shrink-0 mt-0.5 text-emerald-600"
+                    size={14}
+                  />
+                  <span>
+                    <strong>Advance Cancellation:</strong> Eligible for 100% full
+                    refund processed back through the original payment channel.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 bg-white flex justify-end gap-2.5 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmCancelModal({ open: false, booking: null })
+                }
+                disabled={isProcessing}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50"
+              >
+                Keep Reservation
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                disabled={isProcessing}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                {isProcessing ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
             </div>
           </div>

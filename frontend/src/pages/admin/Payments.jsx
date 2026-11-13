@@ -1,9 +1,16 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import usePaymentStore from "../../app/usePaymentStore";
 import PaymentsForm from "../../components/forms/PaymentsForm";
-import { FiSearch, FiRefreshCw, FiPlus } from "react-icons/fi";
+import { FiSearch, FiRefreshCw, FiPlus, FiTag, FiCreditCard } from "react-icons/fi";
 import PaymentTransactionsModal from "../../components/modals/PaymentTransactionsModal";
 import { fetchAllBooking } from "../../apis/api";
+
+const METHOD_BADGES = {
+  RAZORPAY_ONLINE: "bg-purple-50 text-purple-700 border-purple-200",
+  RAZORPAY: "bg-purple-50 text-purple-700 border-purple-200",
+  CARD_MACHINE: "bg-blue-50 text-blue-700 border-blue-200",
+  CASH: "bg-emerald-50 text-emerald-700 border-emerald-200",
+};
 
 export default function Payments() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,7 +36,6 @@ export default function Payments() {
     fetchData();
   }, [fetchData]);
 
-  // Open modal if URL has ?bookingId=XX
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const bkId = params.get("bookingId");
@@ -45,11 +51,9 @@ export default function Payments() {
       maximumFractionDigits: 0,
     }).format(Number(amt) || 0);
 
-  // Group all individual payment slips by Booking ID and correlate with the true Booking record
   const groupedBookings = useMemo(() => {
     const map = {};
 
-    // Create lookup map for bookings so we have accurate totalAmount & balanceDue
     const bookingLookup = {};
     (bookingsList || []).forEach((b) => {
       bookingLookup[b.id] = b;
@@ -60,16 +64,33 @@ export default function Payments() {
       if (!bId) return;
 
       const bk = bookingLookup[bId];
-      const realTotal = bk ? Number(bk.totalAmount || 0) : Number(p.bookingTotal || 0);
-      const realBalance = bk ? Number(bk.balanceDue || 0) : Number(p.balanceDue || 0);
+
+      const guestName = bk?.guestName || (bk?.guest
+        ? `${bk.guest.firstName || ""} ${bk.guest.lastName || ""}`.trim()
+        : p.guestName || "Guest");
+
+      const grossBill = Number(bk?.grossTotal ?? (Number(bk?.taxableAmount || 0) + Number(bk?.taxAmount || 0)));
+      const concessions = Number(bk?.totalConcessions ?? bk?.discountAmount ?? 0);
+      const remainingDue = bk?.remainingDue != null
+        ? Number(bk.remainingDue)
+        : Number(bk?.balanceDue ?? 0);
+      const isSettled = bk?.fullySettled != null
+        ? bk.fullySettled
+        : remainingDue <= 0;
+      
+      const isCancelled = bk?.bookingStatus === "CANCELLED" || bk?.status === "CANCELLED" || p.paymentStatus === "REFUNDED";
 
       if (!map[bId]) {
         map[bId] = {
           bookingId: bId,
+          guestName: guestName,
           latestReceipt: p.receiptNumber || `#${p.id}`,
           totalPaid: 0,
-          totalBill: realTotal,
-          balanceDue: realBalance,
+          grossBill: grossBill,
+          totalConcessions: concessions,
+          remainingDue: remainingDue,
+          isSettled: isSettled,
+          isCancelled: isCancelled,
           slipsCount: 0,
           latestDate: p.paymentDate,
         };
@@ -78,8 +99,13 @@ export default function Payments() {
       map[bId].totalPaid += Number(p.amount || p.amountPaid || 0);
       map[bId].slipsCount += 1;
 
-      if (realTotal > 0) map[bId].totalBill = realTotal;
-      if (bk) map[bId].balanceDue = realBalance;
+      if (grossBill > 0) map[bId].grossBill = grossBill;
+      if (concessions > 0) map[bId].totalConcessions = concessions;
+      if (bk) {
+        map[bId].remainingDue = remainingDue;
+        map[bId].isSettled = isSettled;
+        map[bId].isCancelled = isCancelled;
+      }
 
       if (p.paymentDate) {
         map[bId].latestDate = p.paymentDate;
@@ -87,32 +113,21 @@ export default function Payments() {
     });
 
     return Object.values(map)
-      .map((item) => {
-        // True settlement condition:
-        const remainingDue =
-          item.balanceDue > 0
-            ? item.balanceDue
-            : Math.max(0, item.totalBill - item.totalPaid);
-
-        const isPending = remainingDue > 1;
-
-        return {
-          ...item,
-          settlementStatus: isPending ? "PENDING" : "PAID",
-          remainingDue: remainingDue,
-        };
-      })
+      .map((item) => ({
+        ...item,
+        settlementStatus: item.isCancelled ? "REFUNDED" : (item.isSettled ? "PAID" : "PENDING"),
+      }))
       .sort((a, b) => Number(b.bookingId) - Number(a.bookingId));
-  }, [payments, bookingsList]);
+  }, [payments, bookingsList]);;
 
-  // Search filter definition
   const filteredList = useMemo(() => {
     return groupedBookings.filter((item) => {
       const q = searchQuery.trim().toLowerCase();
       if (!q) return true;
       return (
         String(item.bookingId).toLowerCase().includes(q) ||
-        String(item.latestReceipt).toLowerCase().includes(q)
+        String(item.latestReceipt).toLowerCase().includes(q) ||
+        (item.guestName || "").toLowerCase().includes(q)
       );
     });
   }, [groupedBookings, searchQuery]);
@@ -124,7 +139,7 @@ export default function Payments() {
         <div>
           <h1 className="text-xl font-bold text-slate-800">Payments & Transactions</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Click any row to inspect all receipts, extra services, and settle balances
+            Inspect receipts, discounts, and settle individual extra services
           </p>
         </div>
 
@@ -146,7 +161,7 @@ export default function Payments() {
             <FiSearch className="absolute left-3 top-2.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search Booking # or Receipt..."
+              placeholder="Search Booking #, Guest, Receipt..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#D96B43] w-full sm:w-72"
@@ -162,76 +177,94 @@ export default function Payments() {
             <thead className="bg-slate-50 text-slate-500 font-semibold text-xs uppercase border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3">Booking ID</th>
+                <th className="px-6 py-3">Guest Particulars</th>
                 <th className="px-6 py-3">Latest Receipt</th>
-                <th className="px-6 py-3">Payments Made</th>
-                <th className="px-6 py-3">Date</th>
+                <th className="px-6 py-3">Receipts Count</th>
                 <th className="px-6 py-3">Total Paid</th>
-                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Concession / Discount</th>
+                <th className="px-6 py-3">Status & Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
                     Loading payments…
                   </td>
                 </tr>
               ) : filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
                     No transactions found
                   </td>
                 </tr>
               ) : (
-                filteredList.map((item) => {
-                  const dateStr = item.latestDate
-                    ? new Date(item.latestDate).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "—";
-
-                  return (
-                    <tr
-                      key={item.bookingId}
-                      onClick={() => setSelectedBookingId(item.bookingId)}
-                      className="hover:bg-orange-50/40 transition cursor-pointer group"
-                      title="Click to view all receipts, attached services & settle balance"
-                    >
-                      <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-[#D96B43]">
-                        #{item.bookingId}
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-slate-700">
-                        {item.latestReceipt}
-                      </td>
-                      <td className="px-6 py-4 text-xs font-medium">
-                        <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                          {item.slipsCount} {item.slipsCount === 1 ? "Receipt" : "Receipts"}
+                filteredList.map((item) => (
+                  <tr
+                    key={item.bookingId}
+                    onClick={() => setSelectedBookingId(item.bookingId)}
+                    className="hover:bg-orange-50/40 transition cursor-pointer group"
+                    title="Click to view all receipts, attached services & settle balance"
+                  >
+                    <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-[#D96B43]">
+                      #{item.bookingId}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-slate-800 text-xs block">
+                        {item.guestName || "Guest"}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block">
+                        Total Bill: {formatCurrency(item.grossBill)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-xs text-slate-700">
+                      {item.latestReceipt}
+                    </td>
+                    <td className="px-6 py-4 text-xs font-medium">
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        {item.slipsCount} {item.slipsCount === 1 ? "Receipt" : "Receipts"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-bold text-slate-900">
+                      {formatCurrency(item.totalPaid)}
+                    </td>
+                    <td className="px-6 py-4 text-xs font-semibold text-emerald-600">
+                      {item.totalConcessions > 0 ? (
+                        <span className="inline-flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                          <FiTag size={11} /> -{formatCurrency(item.totalConcessions)}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {dateStr}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-900">
-                        {formatCurrency(item.totalPaid)}
-                      </td>
-                      <td className="px-6 py-4">
-                        {item.settlementStatus === "PAID" ? (
-                          <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Paid
+                      ) : (
+                        <span className="text-slate-400 font-normal">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {item.isCancelled || item.settlementStatus === "REFUNDED" ? (
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                          Refunded
+                        </span>
+                      ) : item.settlementStatus === "PAID" ? (
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Paid Fully
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            Pending ({formatCurrency(item.remainingDue)})
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                            Pending {item.remainingDue > 0 && `(${formatCurrency(item.remainingDue)})`}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedBookingId(item.bookingId);
+                            }}
+                            className="px-2.5 py-1 bg-[#D96B43] hover:bg-[#c95a34] text-white text-[11px] font-bold rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1"
+                          >
+                            <FiCreditCard size={12} /> Settle / Discount
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -251,7 +284,6 @@ export default function Payments() {
         />
       )}
 
-      {/* Manual Counter Payment Slip Entry */}
       {showManualFormModal && (
         <div
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4"
