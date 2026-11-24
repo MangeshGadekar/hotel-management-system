@@ -54,23 +54,22 @@ public class SecurityConfig {
                         // Guest & Staff: Read-only access to view active catalog services
                         .requestMatchers(HttpMethod.GET, "/api/extra-services", "/api/extra-services/**").permitAll()
 
-                        //Guest Verification-Public
+                        // Guest Verification - Public
                         .requestMatchers(HttpMethod.GET, "/guest/check-email", "/guest/search", "/guest/by-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/guest/create", "/guest/send-otp", "/guest/verify-otp").permitAll()
 
-                        //Guest Operations (Staff Only: Admin & Receptionist)
+                        // Guest Operations (Staff Only: Admin & Receptionist)
                         .requestMatchers(HttpMethod.GET, "/guest", "/guest/{id}").hasAnyAuthority(STAFF_ROLES)
                         .requestMatchers(HttpMethod.PATCH, "/guest/update/**").hasAnyAuthority(STAFF_ROLES)
                         .requestMatchers(HttpMethod.DELETE, "/guest/delete/**").hasAnyAuthority(STAFF_ROLES)
 
-                                // Booking Endpoints
-                                // Public: Self-service booking creation & single booking lookups
-                                .requestMatchers(HttpMethod.POST, "/booking/create").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/booking/reference/**").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/booking/{id:[0-9]+}").permitAll()
+                        // Booking Endpoints
+                        // Public: Self-service booking creation & unguessable reference lookups
+                        .requestMatchers(HttpMethod.POST, "/booking/create").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/booking/reference/**").permitAll()
 
-                                // Staff only: Customer reservation histories, check-in, check-out, discounts, settlements
-                                .requestMatchers("/booking", "/booking/**").hasAnyAuthority(STAFF_ROLES)
+                        // Staff only: Customer reservation histories, check-in, check-out, discounts, settlements
+                        .requestMatchers("/booking", "/booking/**").hasAnyAuthority(STAFF_ROLES)
 
                         // Payment Endpoints
                         // Public: Razorpay gateway callbacks & public receipt download

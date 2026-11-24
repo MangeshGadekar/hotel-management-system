@@ -58,4 +58,48 @@ public class JwtService {
         String email = extractUsername(token);
         return email.equals(user.getEmail()) && !isTokenExpired(token);
     }
+
+
+
+    //Guest token
+    public String generateGuestAccessToken(Long bookingId, String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("bookingId", bookingId);
+        claims.put("role", "ROLE_GUEST");
+
+        long thirtyMinutesInMillis = 1000L * 60 * 30;
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(email)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + thirtyMinutesInMillis))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public Long extractBookingId(String token) {
+        Claims claims = extractAllClaims(token);
+        Object bookingIdObj = claims.get("bookingId");
+        if (bookingIdObj instanceof Number number) {
+            return number.longValue();
+        }
+        return null;
+    }
+
+    public boolean isGuestTokenValid(String token, Long bookingId, String email) {
+        if (isTokenExpired(token)) return false;
+
+        Long tokenBookingId = extractBookingId(token);
+        String tokenEmail = extractUsername(token);
+
+        return bookingId != null
+                && bookingId.equals(tokenBookingId)
+                && email != null
+                && email.equalsIgnoreCase(tokenEmail);
+    }
 }
+
+
+
+

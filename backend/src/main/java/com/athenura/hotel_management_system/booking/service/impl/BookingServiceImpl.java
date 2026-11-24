@@ -874,4 +874,25 @@ public class BookingServiceImpl implements BookingService {
         }
         return "Staff";
     }
+
+
+    @Override
+    public Booking resolveBookingEntity(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new RuntimeException("Booking reference cannot be empty");
+        }
+
+        Optional<Booking> byRef = bookingRepository.findByBookingReference(identifier.trim());
+        if (byRef.isPresent()) {
+            return byRef.get();
+        }
+
+        if (identifier.trim().matches("^\\d+$")) {
+            Long numericId = Long.parseLong(identifier.trim());
+            return bookingRepository.findById(numericId)
+                    .orElseThrow(() -> new RuntimeException("Reservation not found for ID: " + identifier));
+        }
+
+        throw new RuntimeException("Reservation not found for reference: " + identifier);
+    }
 }

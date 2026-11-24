@@ -495,4 +495,35 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
     }
+
+
+    @Override
+    @Transactional
+    public PaymentDTO.RazorpayOrderResponse createRazorpayOrderForAmount(BigDecimal amountToPay, String receiptTag) {
+        if (amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Payment must be greater than 0");
+        }
+
+        try {
+            RazorpayClient client = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
+
+            JSONObject orderRequest = new JSONObject();
+            orderRequest.put("amount", amountToPay.multiply(new BigDecimal("100")).setScale(0, RoundingMode.HALF_UP).intValue());
+            orderRequest.put("currency", "INR");
+            orderRequest.put("receipt", receiptTag);
+
+            Order order = client.orders.create(orderRequest);
+
+            return PaymentDTO.RazorpayOrderResponse.builder()
+                    .orderId(order.get("id"))
+                    .amount(amountToPay)
+                    .currency("INR")
+                    .keyId(razorpayKeyId)
+                    .paymentType("FULL")
+                    .build();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error creating Razorpay order: " + e.getMessage(), e);
+        }
+    }
 }

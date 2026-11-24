@@ -3,12 +3,14 @@ package com.athenura.hotel_management_system.booking.repository;
 import com.athenura.hotel_management_system.booking.entity.Booking;
 import com.athenura.hotel_management_system.booking.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -88,4 +90,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     BigDecimal getTotalPendingAmount();
 
     List<Booking> findByGuestIdOrderByCreatedAtDesc(Long guestId);
+
+    @Modifying
+    @Query("DELETE FROM Booking b WHERE b.bookingStatus = :status AND b.createdAt < :cutoff")
+    void deleteStalePendingBookings(@Param("status") BookingStatus status, @Param("cutoff") LocalDateTime cutoff);
+
+    Optional<Object> findByBookingReferenceIgnoreCase(String trim);
 }

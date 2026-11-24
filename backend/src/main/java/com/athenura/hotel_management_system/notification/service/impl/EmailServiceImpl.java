@@ -54,12 +54,21 @@ public class EmailServiceImpl implements EmailService {
         return !full.isEmpty() ? full : "Valued Guest";
     }
 
+    private String resolveBookingReference(Booking booking) {
+        if (booking == null) return "N/A";
+        if (booking.getBookingReference() != null && !booking.getBookingReference().isBlank()) {
+            return booking.getBookingReference();
+        }
+        return String.valueOf(booking.getId());
+    }
+
     // 1. Online Guest Booking
     @Override
     public void sendOnlineBookingWithPaymentSummary(Booking booking, Payment payment) {
         if (booking == null || booking.getGuest() == null || booking.getGuest().getEmail() == null) return;
 
         String guestName = resolveGuestName(booking);
+        String bookingRef = resolveBookingReference(booking);
         String roomNumber = getRoomDisplay(booking);
         String roomType = (booking.getRoom() != null && booking.getRoom().getRoomType() != null)
                 ? booking.getRoom().getRoomType().name() : "DELUXE";
@@ -68,7 +77,7 @@ public class EmailServiceImpl implements EmailService {
                 : (booking.getAdvancePayment() != null ? booking.getAdvancePayment() : BigDecimal.ZERO);
         BigDecimal balanceDue = booking.getBalanceDue() != null ? booking.getBalanceDue() : BigDecimal.ZERO;
         String channel = payment != null && payment.getPaymentMethod() != null ? payment.getPaymentMethod().replace("_", " ") : "UPI / Net Banking";
-        String txnRef = payment != null && payment.getTransactionReference() != null ? payment.getTransactionReference() : ("TXN-" + booking.getId());
+        String txnRef = payment != null && payment.getTransactionReference() != null ? payment.getTransactionReference() : ("TXN-" + bookingRef);
 
         String statusBadge = balanceDue.compareTo(BigDecimal.ZERO) <= 0
                 ? "<span style='color: #16a34a; font-weight: bold;'>Fully Settled</span>"
@@ -83,7 +92,7 @@ public class EmailServiceImpl implements EmailService {
                 
                 <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 18px 0;">
                     <h3 style="margin-top: 0; font-size: 14px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">Reservation Details</h3>
-                    <p style="margin: 6px 0;"><b>Booking Ref:</b> #%d</p>
+                    <p style="margin: 6px 0;"><b>Booking Ref:</b> %s</p>
                     <p style="margin: 6px 0;"><b>Room:</b> Room %s (%s)</p>
                     <p style="margin: 6px 0;"><b>Check-In:</b> %s (From 2:00 PM)</p>
                     <p style="margin: 6px 0;"><b>Check-Out:</b> %s (Until 12:00 PM)</p>
@@ -101,7 +110,7 @@ public class EmailServiceImpl implements EmailService {
             </div>
             """.formatted(
                 guestName,
-                booking.getId(),
+                bookingRef,
                 roomNumber,
                 roomType,
                 booking.getCheckInDate(),
@@ -115,7 +124,7 @@ public class EmailServiceImpl implements EmailService {
         sendEmailViaBrevo(
                 booking.getGuest().getEmail(),
                 guestName,
-                "Booking Confirmed: Room " + roomNumber + " - Hotel Athitya",
+                "Booking Confirmed: " + bookingRef + " (Room " + roomNumber + ") - Hotel Athitya",
                 htmlContent,
                 null
         );
@@ -127,6 +136,7 @@ public class EmailServiceImpl implements EmailService {
         if (booking == null || booking.getGuest() == null || booking.getGuest().getEmail() == null) return;
 
         String guestName = resolveGuestName(booking);
+        String bookingRef = resolveBookingReference(booking);
         String roomNumber = getRoomDisplay(booking);
         String roomType = booking.getRoom() != null && booking.getRoom().getRoomType() != null ? booking.getRoom().getRoomType().name() : "DELUXE";
         BigDecimal advancePaid = booking.getAdvancePayment() != null ? booking.getAdvancePayment() : BigDecimal.ZERO;
@@ -141,7 +151,7 @@ public class EmailServiceImpl implements EmailService {
                 
                 <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 18px 0;">
                     <h3 style="margin-top: 0; font-size: 14px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">Check-In Particulars</h3>
-                    <p style="margin: 6px 0;"><b>Booking ID:</b> #%d</p>
+                    <p style="margin: 6px 0;"><b>Booking Ref:</b> %s</p>
                     <p style="margin: 6px 0;"><b>Room Assigned:</b> Room %s (%s)</p>
                     <p style="margin: 6px 0;"><b>Stay Window:</b> %s to %s</p>
                     
@@ -155,7 +165,7 @@ public class EmailServiceImpl implements EmailService {
             </div>
             """.formatted(
                 guestName,
-                booking.getId(),
+                bookingRef,
                 roomNumber,
                 roomType,
                 booking.getCheckInDate(),
@@ -167,7 +177,7 @@ public class EmailServiceImpl implements EmailService {
         List attachments = null;
         if (pdfBytes != null && pdfBytes.length > 0) {
             attachments = List.of(Map.of(
-                    "name", "CheckIn_Receipt_" + booking.getId() + ".pdf",
+                    "name", "CheckIn_Receipt_" + bookingRef + ".pdf",
                     "content", Base64.getEncoder().encodeToString(pdfBytes)
             ));
         }
@@ -175,7 +185,7 @@ public class EmailServiceImpl implements EmailService {
         sendEmailViaBrevo(
                 booking.getGuest().getEmail(),
                 guestName,
-                "Check-In Receipt: Room " + roomNumber + " - Hotel Athitya",
+                "Check-In Receipt: " + bookingRef + " (Room " + roomNumber + ") - Hotel Athitya",
                 htmlContent,
                 attachments
         );
@@ -239,13 +249,14 @@ public class EmailServiceImpl implements EmailService {
         if (booking == null || booking.getGuest() == null || booking.getGuest().getEmail() == null) return;
 
         String guestName = resolveGuestName(booking);
+        String bookingRef = resolveBookingReference(booking);
 
         String htmlContent = """
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; color: #1e293b;">
                 <h2 style="color: #D96B43; margin-top: 0;">Hotel Athitya</h2>
                 <p style="font-size: 15px; margin-bottom: 20px;">Cancellation & Refund Credit</p>
                 <p>Dear <b>%s</b>,</p>
-                <p>Your reservation <b>#%d</b> has been cancelled. Your refund has been initiated to your original payment channel.</p>
+                <p>Your reservation <b>%s</b> has been cancelled. Your refund has been initiated to your original payment channel.</p>
                 
                 <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 18px 0;">
                     <p style="margin: 6px 0;"><b>Refund Amount Credited:</b> <span style="color: #16a34a; font-size: 16px; font-weight: bold;">₹%s</span></p>
@@ -258,7 +269,7 @@ public class EmailServiceImpl implements EmailService {
             </div>
             """.formatted(
                 guestName,
-                booking.getId(),
+                bookingRef,
                 refundAmount,
                 refundId
         );
@@ -266,7 +277,7 @@ public class EmailServiceImpl implements EmailService {
         List attachments = null;
         if (refundPdf != null && refundPdf.length > 0) {
             attachments = List.of(Map.of(
-                    "name", "Refund_Advice_" + booking.getId() + ".pdf",
+                    "name", "Refund_Advice_" + bookingRef + ".pdf",
                     "content", Base64.getEncoder().encodeToString(refundPdf)
             ));
         }
@@ -274,7 +285,7 @@ public class EmailServiceImpl implements EmailService {
         sendEmailViaBrevo(
                 booking.getGuest().getEmail(),
                 guestName,
-                "Credit Alert: ₹" + refundAmount + " Refund Processed - Booking #" + booking.getId(),
+                "Credit Alert: ₹" + refundAmount + " Refund Processed - Booking " + bookingRef,
                 htmlContent,
                 attachments
         );
@@ -317,7 +328,6 @@ public class EmailServiceImpl implements EmailService {
 
         sendEmailViaBrevo(toEmail, recipientName, "Account Created - Hotel Athitya Staff", htmlContent, null);
     }
-
 
     @Override
     public void sendPasswordResetEmail(String toEmail, String resetToken, String firstName) {
@@ -382,6 +392,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendManageBookingAccessOtp(Booking booking, String otp) {
         if (booking == null || booking.getGuest() == null || booking.getGuest().getEmail() == null) return;
         String guestName = resolveGuestName(booking);
+        String bookingRef = resolveBookingReference(booking);
 
         String htmlContent = """
             <html>
@@ -397,7 +408,7 @@ public class EmailServiceImpl implements EmailService {
             </html>
             """.formatted(guestName, otp);
 
-        sendEmailViaBrevo(booking.getGuest().getEmail(), guestName, "Reservation Access Code - #" + booking.getId(), htmlContent, null);
+        sendEmailViaBrevo(booking.getGuest().getEmail(), guestName, "Reservation Access Code - " + bookingRef, htmlContent, null);
     }
 
     private void sendEmailViaBrevo(String recipientEmail, String recipientName, String subject, String htmlContent, List attachments) {
@@ -421,6 +432,57 @@ public class EmailServiceImpl implements EmailService {
                     .toBodilessEntity();
         } catch (Exception e) {
             log.error("Brevo dispatch failed: {}", e.getMessage());
+        }
+
+
+    }
+
+    @Override
+    public void sendContactInquiry(String guestName, String guestEmail, String phone, String subject, String message) {
+        String safePhone = (phone != null && !phone.isBlank()) ? phone.trim() : "Not provided";
+        String safeSubject = (subject != null && !subject.isBlank()) ? subject.trim() : "General Inquiry";
+
+        String htmlContent = """
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; color: #1e293b;">
+                <h2 style="color: #D96B43; margin-top: 0;">Hotel Athitya — Website Inquiry</h2>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <p style="margin: 6px 0;"><b>Inquiry Type:</b> %s</p>
+                    <p style="margin: 6px 0;"><b>Guest Name:</b> %s</p>
+                    <p style="margin: 6px 0;"><b>Guest Email:</b> %s</p>
+                    <p style="margin: 6px 0;"><b>Phone Number:</b> %s</p>
+                </div>
+                <p style="font-weight: bold; margin-bottom: 6px;">Message:</p>
+                <div style="background-color: #fffbeb; border-left: 3px solid #D96B43; padding: 12px 16px; border-radius: 6px; white-space: pre-line;">%s</div>
+                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+                <p style="font-size: 11px; color: #94a3b8; margin: 0;">Reply directly to: %s</p>
+            </div>
+            """.formatted(
+                safeSubject,
+                guestName.trim(),
+                guestEmail.trim(),
+                safePhone,
+                message.trim(),
+                guestEmail.trim()
+        );
+
+        Map requestBody = new HashMap();
+        requestBody.put("sender", Map.of("name", senderName, "email", senderEmail));
+        requestBody.put("to", List.of(Map.of("name", "Hotel Athitya Front Desk", "email", senderEmail)));
+        requestBody.put("replyTo", Map.of("name", guestName.trim(), "email", guestEmail.trim()));
+        requestBody.put("subject", "[Hotel Athitya - " + safeSubject + "] Inquiry from " + guestName.trim());
+        requestBody.put("htmlContent", htmlContent);
+
+        try {
+            restClient.post()
+                    .uri("https://api.brevo.com/v3/smtp/email")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("api-key", apiKey)
+                    .body(requestBody)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Brevo contact inquiry dispatch failed: {}", e.getMessage());
+            throw new RuntimeException("Unable to send inquiry right now. Please try again later.");
         }
     }
 }

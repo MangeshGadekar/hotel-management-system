@@ -2,6 +2,7 @@ package com.athenura.hotel_management_system.payment.service;
 
 import com.athenura.hotel_management_system.payment.dto.PaymentDTO;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -20,4 +21,7 @@ public interface PaymentService {
     void processRefundForBooking(Long bookingId);
 
     void processRefundForBookingWithPolicy(Long bookingId, BigDecimal refundRatio);
+
+    @Transactional
+    PaymentDTO.RazorpayOrderResponse createRazorpayOrderForAmount(BigDecimal amountToPay, String receiptTag);
 }

@@ -5,10 +5,13 @@ import com.athenura.hotel_management_system.booking.dto.GuestBookingRequest;
 import com.athenura.hotel_management_system.booking.dto.GuestBookingResponse;
 import com.athenura.hotel_management_system.booking.entity.Booking;
 import com.athenura.hotel_management_system.booking.entity.BookingDiscount;
+import com.athenura.hotel_management_system.booking.entity.CheckoutSession;
 import com.athenura.hotel_management_system.booking.enums.BookingStatus;
 import com.athenura.hotel_management_system.booking.mapper.BookingMapper;
 import com.athenura.hotel_management_system.booking.repository.BookingDiscountRepository;
 import com.athenura.hotel_management_system.booking.repository.BookingRepository;
+import com.athenura.hotel_management_system.booking.repository.CheckoutSessionRepository;
+import com.athenura.hotel_management_system.booking.service.BookingService;
 import com.athenura.hotel_management_system.booking.service.PublicBookingService;
 import com.athenura.hotel_management_system.common.exception.BookingOverlapException;
 import com.athenura.hotel_management_system.coupon.service.CouponService;
@@ -23,8 +26,11 @@ import com.athenura.hotel_management_system.payment.service.PaymentService;
 import com.athenura.hotel_management_system.room.entity.Room;
 import com.athenura.hotel_management_system.room.enums.RoomStatus;
 import com.athenura.hotel_management_system.room.repository.RoomRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,13 +50,20 @@ public class PublicBookingServiceImpl implements PublicBookingService {
     private final GuestRepository guestRepository;
     private final RoomRepository roomRepository;
     private final PaymentService paymentService;
+    private final BookingService bookingService;
     private final ExtraServiceRepository extraServiceRepository;
     private final CouponService couponService;
     private final BookingDiscountRepository bookingDiscountRepository;
     private final EmailService emailNotificationService;
     private final BookingMapper bookingMapper;
+    private final CheckoutSessionRepository checkoutSessionRepository;
+    private final BookingRepository bookingRepo;
+
+
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private static final BigDecimal GST_RATE = new BigDecimal("0.18");
+
 
     @Override
     @Transactional
@@ -85,60 +98,140 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             }
         }
 
-        if (selectedRooms.isEmpty()) {
-            throw new IllegalArgumentException("No valid rooms resolved for booking.");
-        }
-
         for (Room r : selectedRooms) {
             if (r.getRoomStatus() == RoomStatus.MAINTENANCE) {
                 throw new RuntimeException("Room " + r.getRoomNumber() + " is under MAINTENANCE.");
             }
-
             if (isToday && r.getRoomStatus() != RoomStatus.AVAILABLE) {
                 throw new RuntimeException("Room " + r.getRoomNumber() + " is not ready for check-in today.");
             }
-
             boolean isOverlapping = bookingRepository.existsOverlappingBooking(
                     r.getId(),
                     activeStatuses,
                     req.getCheckInDate(),
                     req.getCheckOutDate()
             );
-
             if (isOverlapping) {
                 throw new BookingOverlapException("Room " + r.getRoomNumber() + " is already booked for these dates.");
             }
         }
 
-        int guestHeadcount = (req.getTotalGuests() != null && req.getTotalGuests() > 0)
-                ? req.getTotalGuests()
-                : selectedRooms.size() * 2;
+        long nights = Math.max(1, ChronoUnit.DAYS.between(req.getCheckInDate(), req.getCheckOutDate()));
+        BigDecimal totalRoomCharges = BigDecimal.ZERO;
+        for (Room rm : selectedRooms) {
+            totalRoomCharges = totalRoomCharges.add(rm.getPricePerNight().multiply(BigDecimal.valueOf(nights)));
+        }
 
-        int totalCombinedCapacity = selectedRooms.stream()
-                .mapToInt(rm -> rm.getCapacity() != null ? rm.getCapacity() : 2)
-                .sum();
+        BigDecimal extraServicesTotal = BigDecimal.ZERO;
+        BigDecimal servicesGst = BigDecimal.ZERO;
+        if (req.getServiceIds() != null && !req.getServiceIds().isEmpty()) {
+            List<ExtraService> selectedServices = extraServiceRepository.findAllById(req.getServiceIds());
+            for (ExtraService service : selectedServices) {
+                if (service.getPrice() != null && Boolean.TRUE.equals(service.getActive())) {
+                    BigDecimal itemCost = (service.getPriceType() == ServicePriceType.PER_NIGHT)
+                            ? service.getPrice().multiply(BigDecimal.valueOf(nights))
+                            : service.getPrice();
+                    extraServicesTotal = extraServicesTotal.add(itemCost);
 
-        if (guestHeadcount > totalCombinedCapacity) {
-            throw new IllegalArgumentException(
-                    "Selected rooms accommodate up to " + totalCombinedCapacity + " guests, but entered headcount is " +
-                            guestHeadcount + ". Please select an additional room."
+                    BigDecimal serviceTaxRate = (service.getTaxRate() != null ? service.getTaxRate() : new BigDecimal("18.00"))
+                            .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+                    servicesGst = servicesGst.add(itemCost.multiply(serviceTaxRate).setScale(0, RoundingMode.HALF_UP));
+                }
+            }
+        }
+
+        BigDecimal subtotal = totalRoomCharges.add(extraServicesTotal);
+        BigDecimal roomGst = totalRoomCharges.multiply(GST_RATE).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal taxAmount = roomGst.add(servicesGst).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal grossBeforeDeductions = subtotal.add(taxAmount);
+
+        BigDecimal couponDiscount = BigDecimal.ZERO;
+        if (req.getCouponCode() != null && !req.getCouponCode().trim().isEmpty()) {
+            couponDiscount = couponService.calculateDiscount(
+                    req.getCouponCode().trim().toUpperCase(),
+                    totalRoomCharges,
+                    selectedRooms.get(0).getRoomType(),
+                    "GUEST"
             );
         }
 
-        String cleanEmail = req.getEmail().trim().toLowerCase();
-        Guest guest = guestRepository.findByEmail(cleanEmail)
+        BigDecimal totalAmount = grossBeforeDeductions.subtract(couponDiscount).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
+
+        // 1. Create Razorpay order directly without touching the Booking table!
+        String generatedSessionId = "SES_" + UUID.randomUUID().toString().replace("-", "");
+        PaymentDTO.RazorpayOrderResponse order = paymentService.createRazorpayOrderForAmount(totalAmount, generatedSessionId);
+
+        // 2. Persist to temporary checkout session
+        try {
+            CheckoutSession session = CheckoutSession.builder()
+                    .sessionId(generatedSessionId)
+                    .razorpayOrderId(order.getOrderId())
+                    .bookingRequestJson(objectMapper.writeValueAsString(req))
+                    .totalAmount(totalAmount)
+                    .build();
+            checkoutSessionRepository.save(session);
+        } catch (Exception e) {
+            throw new RuntimeException("Could not initialize checkout session: " + e.getMessage());
+        }
+
+        return GuestBookingResponse.builder()
+                .sessionId(generatedSessionId)
+                .bookingId(null) // No booking exists yet!
+                .razorpayOrderId(order.getOrderId())
+                .razorpayKeyId(order.getKeyId())
+                .amountToPay(totalAmount)
+                .currency("INR")
+                .guestEmail(req.getEmail().trim())
+                .guestName(req.getFirstName().trim() + " " + req.getLastName().trim())
+                .guestPhone(req.getPhone() != null ? req.getPhone().trim() : "")
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public PaymentDTO.ReceiptResponse verifyPublicBookingPayment(PaymentDTO.RazorpayVerifyRequest request) {
+
+        CheckoutSession session = checkoutSessionRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
                 .orElseGet(() -> {
-                    Guest newGuest = Guest.builder()
-                            .firstName(req.getFirstName().trim())
-                            .lastName(req.getLastName().trim())
-                            .email(cleanEmail)
-                            .phone(req.getPhone() != null ? req.getPhone().trim() : "")
-                            .build();
-                    return guestRepository.save(newGuest);
+                    if (request.getSessionId() != null) {
+                        return checkoutSessionRepository.findById(request.getSessionId()).orElse(null);
+                    }
+                    return null;
                 });
 
-        long nights = Math.max(1, ChronoUnit.DAYS.between(req.getCheckInDate(), req.getCheckOutDate()));
+        if (session == null) {
+            throw new RuntimeException("Checkout session expired or not found. Please re-initiate booking.");
+        }
 
+        // 1. Deserialize the stored request
+        GuestBookingRequest req;
+        try {
+            req = objectMapper.readValue(session.getBookingRequestJson(), GuestBookingRequest.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Error retrieving booking payload: " + e.getMessage());
+        }
+
+        // 2. Resolve guest
+        String cleanEmail = req.getEmail().trim().toLowerCase();
+        Guest guest = guestRepository.findByEmail(cleanEmail)
+                .orElseGet(() -> guestRepository.save(Guest.builder()
+                        .firstName(req.getFirstName().trim())
+                        .lastName(req.getLastName().trim())
+                        .email(cleanEmail)
+                        .phone(req.getPhone() != null ? req.getPhone().trim() : "")
+                        .build()));
+
+        // 3. Resolve rooms
+        List<Room> selectedRooms = new ArrayList<>();
+        if (req.getRoomIds() != null && !req.getRoomIds().isEmpty()) {
+            selectedRooms = roomRepository.findAllById(req.getRoomIds());
+        } else {
+            for (String rNum : req.resolveRoomNumbers()) {
+                roomRepository.findByRoomNumber(rNum).ifPresent(selectedRooms::add);
+            }
+        }
+
+        long nights = Math.max(1, ChronoUnit.DAYS.between(req.getCheckInDate(), req.getCheckOutDate()));
         BigDecimal totalRoomCharges = BigDecimal.ZERO;
         for (Room rm : selectedRooms) {
             totalRoomCharges = totalRoomCharges.add(rm.getPricePerNight().multiply(BigDecimal.valueOf(nights)));
@@ -147,7 +240,6 @@ public class PublicBookingServiceImpl implements PublicBookingService {
         List<ExtraService> selectedServices = new ArrayList<>();
         BigDecimal extraServicesTotal = BigDecimal.ZERO;
         BigDecimal servicesGst = BigDecimal.ZERO;
-
         if (req.getServiceIds() != null && !req.getServiceIds().isEmpty()) {
             selectedServices = extraServiceRepository.findAllById(req.getServiceIds());
             for (ExtraService service : selectedServices) {
@@ -171,7 +263,6 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         BigDecimal couponDiscount = BigDecimal.ZERO;
         String couponCode = null;
-
         if (req.getCouponCode() != null && !req.getCouponCode().trim().isEmpty()) {
             couponCode = req.getCouponCode().trim().toUpperCase();
             couponDiscount = couponService.calculateDiscount(
@@ -182,10 +273,10 @@ public class PublicBookingServiceImpl implements PublicBookingService {
             );
         }
 
-        BigDecimal totalAmount = grossBeforeDeductions.subtract(couponDiscount).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
-
+        BigDecimal totalAmount = session.getTotalAmount();
         Room primaryRoom = selectedRooms.get(0);
 
+        // 4. INSERT INTO BOOKING TABLE FOR THE VERY FIRST TIME!
         Booking booking = Booking.builder()
                 .bookingReference("BOOKING-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .guest(guest)
@@ -193,7 +284,7 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .rooms(selectedRooms)
                 .checkInDate(req.getCheckInDate())
                 .checkOutDate(req.getCheckOutDate())
-                .totalGuests(guestHeadcount)
+                .totalGuests((req.getTotalGuests() != null && req.getTotalGuests() > 0) ? req.getTotalGuests() : selectedRooms.size() * 2)
                 .roomCharges(totalRoomCharges)
                 .extraServicesTotal(extraServicesTotal)
                 .subtotal(subtotal)
@@ -202,13 +293,19 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                 .taxableAmount(subtotal)
                 .taxAmount(taxAmount)
                 .totalAmount(totalAmount)
-                .advancePayment(BigDecimal.ZERO)
-                .balanceDue(totalAmount)
+                .advancePayment(totalAmount)
+                .balanceDue(BigDecimal.ZERO)
                 .bookingStatus(BookingStatus.BOOKED)
                 .selectedExtraServices(selectedServices)
                 .build();
 
         Booking savedBooking = bookingRepository.save(booking);
+
+        // 5. Update room statuses to RESERVED
+        for (Room rm : selectedRooms) {
+            rm.setRoomStatus(RoomStatus.RESERVED);
+            roomRepository.save(rm);
+        }
 
         if (couponDiscount.compareTo(BigDecimal.ZERO) > 0) {
             bookingDiscountRepository.save(BookingDiscount.builder()
@@ -220,55 +317,39 @@ public class PublicBookingServiceImpl implements PublicBookingService {
                     .calculatedAmount(couponDiscount)
                     .reason("Promotional Coupon: " + couponCode)
                     .build());
-        }
-
-        PaymentDTO.RazorpayOrderResponse order = paymentService.createRazorpayOrder(savedBooking.getId(), "FULL");
-
-        return GuestBookingResponse.builder()
-                .bookingId(savedBooking.getId())
-                .razorpayOrderId(order.getOrderId())
-                .razorpayKeyId(order.getKeyId())
-                .amountToPay(totalAmount)
-                .currency("INR")
-                .guestEmail(guest.getEmail())
-                .guestName(guest.getFirstName() + " " + guest.getLastName())
-                .guestPhone(guest.getPhone())
-                .build();
-    }
-
-    @Override
-    @Transactional
-    public PaymentDTO.ReceiptResponse verifyPublicBookingPayment(PaymentDTO.RazorpayVerifyRequest request) {
-
-        PaymentDTO.ReceiptResponse receipt = paymentService.verifyRazorpayPayment(request);
-
-        Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + request.getBookingId()));
-
-        booking.setAdvancePayment(booking.getTotalAmount());
-        booking.setBalanceDue(BigDecimal.ZERO);
-        booking.setBookingStatus(BookingStatus.BOOKED);
-
-        List<Room> allRooms = (booking.getRooms() != null && !booking.getRooms().isEmpty())
-                ? booking.getRooms()
-                : (booking.getRoom() != null ? List.of(booking.getRoom()) : List.of());
-
-        for (Room rm : allRooms) {
-            rm.setRoomStatus(RoomStatus.RESERVED);
-            roomRepository.save(rm);
-        }
-
-        bookingRepository.save(booking);
-
-        if (booking.getCouponCode() != null && !booking.getCouponCode().isBlank()) {
             try {
-                couponService.incrementUsage(booking.getCouponCode());
+                couponService.incrementUsage(couponCode);
             } catch (Exception ex) {
                 log.warn("Could not increment coupon usage: {}", ex.getMessage());
             }
         }
 
+        // 6. Record Payment
+        request.setBookingId(savedBooking.getId());
+        PaymentDTO.ReceiptResponse receipt = paymentService.verifyRazorpayPayment(request);
+
+        // 7. Cleanup the temporary session
+        checkoutSessionRepository.delete(session);
+
         return receipt;
+    }
+
+    @Override
+    @Transactional
+    public void abandonPendingBooking(Long bookingId) {
+        // Obsolete because no booking is saved before payment, but kept for interface compatibility
+    }
+
+    // Sweeps temporary sessions older than 30 minutes
+    @Scheduled(fixedRate = 1800000)
+    @Transactional
+    public void sweepExpiredCheckoutSessions() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(30);
+        try {
+            checkoutSessionRepository.deleteExpiredSessions(cutoff);
+        } catch (Exception e) {
+            log.warn("Error sweeping checkout sessions: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -381,6 +462,20 @@ public class PublicBookingServiceImpl implements PublicBookingService {
 
         if (booking.getGuest() == null || !email.trim().equalsIgnoreCase(booking.getGuest().getEmail().trim())) {
             throw new RuntimeException("You are not authorized to cancel this booking.");
+        }
+    }
+
+
+    @Override
+    public Booking findByBookingReference(String bookingIdentifier) {
+        try {
+            Long id = Long.parseLong(bookingIdentifier.replace("#", "").trim());
+            return bookingRepository.findById(id)
+                    .orElseGet(() -> bookingRepository.findByBookingReference(bookingIdentifier)
+                            .orElseThrow(() -> new RuntimeException("Booking not found with ID or reference: " + bookingIdentifier)));
+        } catch (NumberFormatException e) {
+            return bookingRepository.findByBookingReference(bookingIdentifier)
+                    .orElseThrow(() -> new RuntimeException("Booking not found with reference: " + bookingIdentifier));
         }
     }
 }

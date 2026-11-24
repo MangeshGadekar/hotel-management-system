@@ -51,6 +51,7 @@ public class MasterReceiptPdfService {
     public byte[] generateCheckInReceipt(Booking booking, String staffName) {
         long nights = computeNights(booking);
         List<Room> rooms = resolveRooms(booking);
+        String displayRef = getDisplayReference(booking);
 
         List<LineItem> items = new ArrayList<>();
         BigDecimal totalRoomTariff = BigDecimal.ZERO;
@@ -120,7 +121,7 @@ public class MasterReceiptPdfService {
                 String.valueOf(booking.getCheckInDate()),
                 String.valueOf(booking.getCheckOutDate()),
                 nights,
-                booking.getId(),
+                displayRef,
                 "INV-" + booking.getId() + "-CHECKIN",
                 paymentMode,
                 cleanStaffName(staffName, booking),
@@ -138,6 +139,7 @@ public class MasterReceiptPdfService {
     public byte[] generateMasterFolioPdf(Booking booking, String staffName) {
         long nights = computeNights(booking);
         List<Room> rooms = resolveRooms(booking);
+        String displayRef = getDisplayReference(booking);
 
         List<LineItem> items = new ArrayList<>();
         BigDecimal totalRoomTariff = BigDecimal.ZERO;
@@ -193,7 +195,7 @@ public class MasterReceiptPdfService {
                 String.valueOf(booking.getCheckInDate()),
                 String.valueOf(booking.getCheckOutDate()),
                 nights,
-                booking.getId(),
+                displayRef,
                 "INV-" + booking.getId() + "-MASTER",
                 "SETTLED",
                 cleanStaffName(staffName, booking),
@@ -211,11 +213,72 @@ public class MasterReceiptPdfService {
     public byte[] generateRefundReceipt(Booking booking, Payment refundPayment, String staffName) {
         long nights = computeNights(booking);
         List<Room> rooms = resolveRooms(booking);
+        String displayRef = getDisplayReference(booking);
 
-        BigDecimal refundAmt = refundPayment.getAmountPaid() != null ? refundPayment.getAmountPaid().abs()
-                : (refundPayment.getAmount() != null ? refundPayment.getAmount().abs() : BigDecimal.ZERO);
+        List<LineItem> items = new ArrayList<>();
+        BigDecimal totalRoomTariff = BigDecimal.ZERO;
 
-        List<LineItem> items = List.of(new LineItem("Cancellation Refund", refundAmt, "1", BigDecimal.ZERO, refundAmt));
+        // 1. Add Room itemized entry
+        for (Room r : rooms) {
+            BigDecimal rTotal = r.getPricePerNight().multiply(BigDecimal.valueOf(nights));
+            items.add(new LineItem(
+                    "Room " + r.getRoomNumber() + " (" + r.getRoomType() + ")",
+                    r.getPricePerNight(),
+                    String.valueOf(nights),
+                    new BigDecimal("18"),
+                    rTotal
+            ));
+            totalRoomTariff = totalRoomTariff.add(rTotal);
+        }
+
+        // 2. Add Extra Services (e.g., Airport Pickup) itemized entry
+        Map<String, ServiceAggregator> serviceMap = new LinkedHashMap<>();
+        if (booking != null && booking.getSelectedExtraServices() != null) {
+            for (ExtraService s : booking.getSelectedExtraServices()) {
+                if (s.getPrice() != null) {
+                    BigDecimal rate = s.getTaxRate() != null ? s.getTaxRate() : new BigDecimal("18");
+                    String key = s.getName().trim().toLowerCase() + "_" + s.getPrice();
+                    serviceMap.putIfAbsent(key, new ServiceAggregator(s.getName().trim(), s.getPrice(), rate));
+                    serviceMap.get(key).add();
+                }
+            }
+        }
+
+        BigDecimal servicesBase = BigDecimal.ZERO;
+        BigDecimal servicesTax = BigDecimal.ZERO;
+        for (ServiceAggregator agg : serviceMap.values()) {
+            items.add(new LineItem(agg.name, agg.unitPrice, String.valueOf(agg.quantity), agg.taxRate, agg.totalAmount));
+            servicesBase = servicesBase.add(agg.totalAmount);
+            servicesTax = servicesTax.add(agg.totalTax);
+        }
+
+        // 3. Exact Subtotal and 18% GST match
+        BigDecimal taxableSubtotal = totalRoomTariff.add(servicesBase);
+        BigDecimal roomGst = totalRoomTariff.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = roomGst.add(servicesTax).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal grossTotal = taxableSubtotal.add(totalTax);
+
+        DiscountsResolved discounts = resolveDiscounts(booking);
+        BigDecimal netPayable = grossTotal.subtract(discounts.couponDiscount).subtract(discounts.deskDiscount).max(BigDecimal.ZERO);
+
+        // 4. Resolve refund amount & payment method
+        BigDecimal refundAmt = netPayable;
+        String refundMethod = "ORIGINAL PAYMENT SOURCE";
+
+        if (refundPayment != null) {
+            if (refundPayment.getAmountPaid() != null && refundPayment.getAmountPaid().compareTo(BigDecimal.ZERO) != 0) {
+                refundAmt = refundPayment.getAmountPaid().abs();
+            } else if (refundPayment.getAmount() != null && refundPayment.getAmount().compareTo(BigDecimal.ZERO) != 0) {
+                refundAmt = refundPayment.getAmount().abs();
+            }
+            if (refundPayment.getPaymentMethod() != null && !refundPayment.getPaymentMethod().isBlank()) {
+                refundMethod = refundPayment.getPaymentMethod().replace("_", " ").toUpperCase();
+            }
+        } else if (booking != null && booking.getAdvancePayment() != null && booking.getAdvancePayment().compareTo(BigDecimal.ZERO) > 0) {
+            refundAmt = booking.getAdvancePayment();
+        } else if (booking != null && booking.getTotalAmount() != null) {
+            refundAmt = booking.getTotalAmount();
+        }
 
         InvoiceMeta meta = new InvoiceMeta(
                 getGuestName(booking),
@@ -226,16 +289,24 @@ public class MasterReceiptPdfService {
                 booking != null ? String.valueOf(booking.getCheckInDate()) : "-",
                 booking != null ? String.valueOf(booking.getCheckOutDate()) : "-",
                 nights,
-                booking != null ? booking.getId() : 0L,
+                displayRef,
                 "REFUND-" + (booking != null ? booking.getId() : ""),
-                "REFUND",
+                refundMethod,
                 cleanStaffName(staffName, booking),
                 "Cancellation Policy"
         );
 
         FinancialSummary finances = new FinancialSummary(
-                refundAmt, BigDecimal.ZERO, refundAmt, BigDecimal.ZERO, null,
-                BigDecimal.ZERO, "Cancellation Refund", refundAmt, refundAmt, BigDecimal.ZERO
+                taxableSubtotal,
+                totalTax,
+                grossTotal,
+                discounts.couponDiscount,
+                discounts.couponCode,
+                discounts.deskDiscount,
+                "Cancellation Refund",
+                netPayable,
+                refundAmt,
+                BigDecimal.ZERO
         );
 
         return pdfBuilder.renderReceipt("CANCELLATION & REFUND ADVICE", meta, items, finances);
@@ -254,6 +325,7 @@ public class MasterReceiptPdfService {
         Booking booking = payment.getBooking();
         long nights = computeNights(booking);
         List<Room> rooms = resolveRooms(booking);
+        String displayRef = getDisplayReference(booking);
 
         BigDecimal gross = payment.getGrossAmount() != null ? payment.getGrossAmount() : payment.getAmount();
         BigDecimal taxEst = gross.multiply(new BigDecimal("0.18")).divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
@@ -270,7 +342,7 @@ public class MasterReceiptPdfService {
                 String.valueOf(booking.getCheckInDate()),
                 String.valueOf(booking.getCheckOutDate()),
                 nights,
-                booking.getId(),
+                displayRef,
                 payment.getReceiptNumber(),
                 payment.getPaymentMethod(),
                 cleanStaffName(staffName, booking),
@@ -283,6 +355,14 @@ public class MasterReceiptPdfService {
         );
 
         return pdfBuilder.renderReceipt("SETTLEMENT RECEIPT SLIP", meta, items, finances);
+    }
+
+    private String getDisplayReference(Booking booking) {
+        if (booking == null) return "N/A";
+        if (booking.getBookingReference() != null && !booking.getBookingReference().isBlank()) {
+            return booking.getBookingReference();
+        }
+        return "#" + booking.getId();
     }
 
     private List<Room> resolveRooms(Booking b) {
@@ -323,8 +403,21 @@ public class MasterReceiptPdfService {
     }
 
     private String cleanStaffName(String staffName, Booking booking) {
-        if (staffName != null && !staffName.isBlank() && !staffName.contains("@")) return staffName.trim();
-        return "Front Desk Attendant";
+        if (staffName == null || staffName.isBlank() || "ONLINE".equalsIgnoreCase(staffName.trim())) {
+            return null;
+        }
+
+        if (staffName.contains("@")) {
+            if (booking != null && booking.getReceptionist() != null) {
+                String recName = ((booking.getReceptionist().getFirstName() != null ? booking.getReceptionist().getFirstName() : "")
+                        + " "
+                        + (booking.getReceptionist().getLastName() != null ? booking.getReceptionist().getLastName() : "")).trim();
+                if (!recName.isBlank()) return recName;
+            }
+            return null;
+        }
+
+        return staffName.trim();
     }
 
     private long computeNights(Booking b) {

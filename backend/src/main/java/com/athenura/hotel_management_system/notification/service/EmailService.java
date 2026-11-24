@@ -17,4 +17,6 @@ public interface EmailService {
     void sendTransactionalEmail(String toEmail, String toName, String subject, String htmlContent);
     void sendManageBookingAccessOtp(Booking booking, String otp);
     void sendPasswordResetEmail(String toEmail, String resetToken, String firstName);
+
+    void sendContactInquiry(String guestName, String guestEmail, String phone, String subject, String message);
 }
