@@ -160,7 +160,7 @@ export default function Sidebar() {
           <span
             className={`text-sm font-bold tracking-widest ${theme.brandText} uppercase`}
           >
-            Paradise
+            Hotel Athiyta
           </span>
         </div>
       </div>

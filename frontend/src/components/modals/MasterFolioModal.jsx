@@ -4,10 +4,13 @@ import { downloadMasterFolioReceiptApi } from "../../apis/api";
 import toast from "react-hot-toast";
 
 export default function MasterFolioModal({ booking, payments = [], onClose }) {
+  const displayRef = booking.bookingReference || booking.id;
+
   const handlePrintMasterReceipt = async () => {
     const toastId = toast.loading("Generating Master Folio PDF...");
     try {
-      await downloadMasterFolioReceiptApi(booking.id);
+      // Pass the reference string instead of raw numeric ID
+      await downloadMasterFolioReceiptApi(displayRef);
       toast.success("Master Folio downloaded!", { id: toastId });
     } catch {
       toast.error("Could not download Master Folio PDF.", { id: toastId });
@@ -105,8 +108,9 @@ export default function MasterFolioModal({ booking, payments = [], onClose }) {
               </p>
             </div>
             <div className="text-right">
+              {/* Show Booking Reference instead of internal DB ID */}
               <span className="inline-block px-3 py-1 bg-slate-100 text-slate-800 font-mono font-bold text-xs rounded-md border border-slate-200">
-                BOOKING ID: #{booking.id}
+                REF: {displayRef}
               </span>
               <p className="text-[11px] text-slate-500 mt-1.5">
                 Date:{" "}

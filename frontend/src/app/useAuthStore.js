@@ -25,6 +25,7 @@ const authStore = (set) => ({
       return error;
     }
   },
+
   login: async (data) => {
     try {
       const res = await userLogin(data);
@@ -43,9 +44,10 @@ const authStore = (set) => ({
       localStorage.setItem("token", `Bearer ${res.data.accessToken}`);
       return res;
     } catch (error) {
-      return error;
+      throw error;
     }
   },
+
   logout: async () => {
     try {
       const token = localStorage.getItem("token")

@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FiLogIn, FiMail, FiLock, FiHome, FiEye, FiEyeOff } from "react-icons/fi";
 import {
-  Athenura_Circle_Logo,
-  Bedroom_image_login_Register,
-} from "../../assets";
+  FiLogIn,
+  FiMail,
+  FiLock,
+  FiHome,
+  FiEye,
+  FiEyeOff,
+  FiShield,
+  FiClock,
+} from "react-icons/fi";
+import { Athenura_Circle_Logo } from "../../assets";
 import useAuthStore from "../../app/useAuthStore";
 import toast from "react-hot-toast";
 
@@ -59,97 +65,110 @@ const Login = () => {
       };
 
       const res = await login(payload);
-      console.log("vlogin", res)
-      if(res.success && res.success === true) {
-        toast.success(` ${res.message}`);
+      console.log("vlogin", res);
+
+      // Verify that response and role exist before navigating
+      if (res && res.success && res.data?.role) {
+        toast.success(res.message || "Login successful!");
+        navigate(`/${res.data.role.toLowerCase()}/dashboard`);
+      } else {
+        const errorMsg = res?.message || "Invalid email or password. Please try again.";
+        setServerError(errorMsg);
+        toast.error(errorMsg);
       }
-      navigate(`/${res.data?.role?.toLowerCase()}/dashboard`);
     } catch (err) {
-      setServerError(
-        err?.response?.data?.message ||
-          "Invalid email or password. Please try again.",
-      );
+      let errorMsg = "Invalid email or password. Please try again.";
+      try {
+        if (err?.response) {
+          const errorData = await err.response.json();
+          errorMsg = errorData.message || errorMsg;
+        } else if (err?.message) {
+          errorMsg = err.message;
+        }
+      } catch {
+        // Fallback if parsing fails
+      }
+      setServerError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-3 md:p-4 relative overflow-hidden">
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `url(${Bedroom_image_login_Register})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          filter: "blur(6px)",
-          transform: "scale(1.08)",
-        }}
-      />
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-amber-50/70 via-stone-50 to-orange-50/50 relative overflow-hidden">
+      {/* Subtle decorative background accents */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-amber-200/25 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-orange-200/25 blur-3xl pointer-events-none" />
 
-      <div className="absolute inset-0 z-0 bg-black/60" />
+      <div className="relative z-10 w-full max-w-5xl flex flex-col md:flex-row rounded-3xl overflow-hidden bg-white border border-amber-100 shadow-2xl shadow-stone-900/10">
+        {/* Left Brand Panel */}
+        <div className="hidden md:flex w-full md:w-1/2 p-10 lg:p-12 flex-col justify-between bg-gradient-to-br from-stone-900 via-stone-900 to-amber-950 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full -mr-24 -mt-24 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/10 rounded-full -ml-20 -mb-20 pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row rounded-2xl md:rounded-3xl overflow-hidden backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl">
-        <div className="hidden md:flex w-full md:w-1/2 p-8 lg:p-12 flex-col justify-between bg-black/30 backdrop-blur-sm border-r border-white/10">
-          <div>
-            <div className="flex items-center gap-2 mb-10 lg:mb-12">
-              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center shadow-lg">
-                <img src={Athenura_Circle_Logo} alt="" />
+          <div className="relative">
+            <div className="flex items-center gap-2.5 mb-10">
+              <div className="w-10 h-10 rounded-xl bg-white/10 p-1.5 flex items-center justify-center border border-white/10">
+                <img
+                  src={Athenura_Circle_Logo}
+                  alt="Hotel Athitya"
+                  className="w-full h-full object-contain"
+                />
               </div>
-              <span className="text-white font-bold text-2xl lg:text-2xl tracking-tight">
+              <span className="text-white font-bold text-2xl tracking-tight">
                 आतिथ्य
               </span>
-              <span className="text-amber-400 text-[10px] lg:text-xs font-semibold uppercase tracking-wider ml-1 lg:ml-2 bg-amber-400/20 px-2 py-1 rounded-full">
-                Premium
+              <span className="text-amber-400 text-[11px] font-bold uppercase tracking-wider ml-1 bg-amber-400/15 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+                Hotel Athitya
               </span>
             </div>
 
-            <h1 className="text-3xl lg:text-5xl font-bold text-white mb-3 lg:mb-4 leading-tight">
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-4 leading-tight">
               Welcome Back to
               <br />
-              <span className="text-amber-400">Luxury Living</span>
+              <span className="text-amber-400">Hotel Athitya</span>
             </h1>
-            <p className="text-amber-100/80 text-base lg:text-lg mb-6 lg:mb-8 max-w-sm">
-              Sign in to manage your bookings, access premium services, and
-              experience world-class hospitality.
+            <p className="text-stone-300 text-sm lg:text-base mb-8 max-w-sm leading-relaxed">
+              Sign in to manage front-desk operations, reservations, guest
+              services, and property insights in Nagpur.
             </p>
 
-            <div className="space-y-3 lg:space-y-4">
-              <div className="flex items-center gap-3 text-amber-100">
-                <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <FiHome className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400" />
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-3 text-stone-200">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/20 flex items-center justify-center shrink-0">
+                  <FiHome className="w-4 h-4 text-amber-400" />
                 </div>
-                <span className="text-sm lg:text-base">
-                  Manage your reservations
+                <span className="text-sm">
+                  Real-time room &amp; reservation management
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-amber-100">
-                <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <FiHome className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400" />
+              <div className="flex items-center gap-3 text-stone-200">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/20 flex items-center justify-center shrink-0">
+                  <FiClock className="w-4 h-4 text-amber-400" />
                 </div>
-                <span className="text-sm lg:text-base">
-                  24/7 concierge services
+                <span className="text-sm">
+                  Seamless check-in, billing &amp; service tracking
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-amber-100">
-                <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <FiHome className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400" />
+              <div className="flex items-center gap-3 text-stone-200">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/20 flex items-center justify-center shrink-0">
+                  <FiShield className="w-4 h-4 text-amber-400" />
                 </div>
-                <span className="text-sm lg:text-base">
-                  Instant support & assistance
+                <span className="text-sm">
+                  Role-based staff &amp; administrator portal
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-8">
-            <p className="text-amber-200/60 text-xs lg:text-sm">
+          <div className="relative mt-8 pt-6 border-t border-white/10">
+            <p className="text-stone-400 text-xs">
               By signing in, you agree to our{" "}
               <Link to="/terms" className="text-amber-400 hover:underline">
                 Terms of Service
               </Link>{" "}
-              &{" "}
+              &amp;{" "}
               <Link to="/privacy" className="text-amber-400 hover:underline">
                 Privacy Policy
               </Link>
@@ -157,145 +176,148 @@ const Login = () => {
           </div>
         </div>
 
-        <div className="w-full md:w-1/2 p-5 sm:p-8 md:p-10 lg:p-12 bg-black/20 backdrop-blur-sm">
-          <div className="flex flex-col h-full justify-center">
-            <div className="flex items-center justify-center gap-2 mb-6 md:hidden">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center shadow-lg">
-                <img src={Athenura_Circle_Logo} alt="" />
-              </div>
-              <span className="text-white text-2xl font-bold text-lg tracking-tight">
-                आतिथ्य
-              </span>
-              <span className="text-amber-400 text-[10px] font-semibold uppercase tracking-wider ml-1 bg-amber-400/20 px-2 py-0.5 rounded-full">
-                Premium
-              </span>
+        {/* Right Form Panel */}
+        <div className="w-full md:w-1/2 p-6 sm:p-10 lg:p-12 bg-white flex flex-col justify-center">
+          <div className="flex items-center justify-center gap-2 mb-6 md:hidden">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 p-1.5 flex items-center justify-center border border-amber-200">
+              <img
+                src={Athenura_Circle_Logo}
+                alt="Hotel Athitya"
+                className="w-full h-full object-contain"
+              />
             </div>
+            <span className="text-stone-900 text-xl font-bold tracking-tight">
+              आतिथ्य
+            </span>
+            <span className="text-amber-700 text-[10px] font-bold uppercase tracking-wider bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+              Hotel Athitya
+            </span>
+          </div>
 
-            <div className="text-center mb-6 md:mb-8">
-              <h2 className="text-xl sm:text-2xl font-semibold text-white mb-1">
-                Welcome to the Hotel Portal
-              </h2>
-              <p className="text-amber-200/70 text-xs sm:text-sm">
-                Enter your credentials to continue to the hotel management
-                portal
-              </p>
-            </div>
-
-            <form
-              onSubmit={handleSubmit}
-              noValidate
-              className="w-full max-w-sm mx-auto space-y-4 sm:space-y-5"
-            >
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="email"
-                  className="text-white/80 text-xs sm:text-sm font-medium block text-left"
-                >
-                  Email Address
-                </label>
-                <div className="relative group">
-                  <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="guest@luxestay.com"
-                    className={`w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-transparent backdrop-blur-sm border rounded-xl text-white placeholder-white/30 text-sm sm:text-base focus:outline-none focus:ring-2 transition-all ${
-                      errors.email
-                        ? "border-red-400/70 focus:border-red-400 focus:ring-red-400/30"
-                        : "border-white/10 focus:border-amber-400 focus:ring-amber-400/30"
-                    }`}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-red-300 text-xs text-left">
-                    {errors.email}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label
-                    htmlFor="password"
-                    className="text-white/80 text-xs sm:text-sm font-medium block"
-                  >
-                    Password
-                  </label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-amber-400 text-xs sm:text-sm hover:text-amber-300 transition-colors hover:underline"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-                <div className="relative group">
-                  <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    className={`w-full pl-9 sm:pl-10 pr-10 sm:pr-11 py-2.5 sm:py-3 bg-transparent backdrop-blur-sm border rounded-xl text-white placeholder-white/30 text-sm sm:text-base focus:outline-none focus:ring-2 transition-all ${
-                      errors.password
-                        ? "border-red-400/70 focus:border-red-400 focus:ring-red-400/30"
-                        : "border-white/10 focus:border-amber-400 focus:ring-amber-400/30"
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 hover:text-amber-300 focus:outline-none focus:text-amber-300 transition-colors"
-                  >
-                    {showPassword ? (
-                      <FiEyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      <FiEye className="w-4 h-4 sm:w-5 sm:h-5" />
-                    )}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-red-300 text-xs text-left">
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-
-              {serverError && (
-                <div className="text-red-300 text-xs sm:text-sm bg-red-500/10 border border-red-400/30 rounded-lg px-3 py-2 text-left">
-                  {serverError}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 sm:py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <FiLogIn className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {loading ? "Signing In..." : "Sign In to Dashboard"}
-                </span>
-              </button>
-            </form>
-
-            <p className="text-center text-amber-200/60 text-xs sm:text-sm mt-6 sm:mt-8">
-              New to LuxeStay?{" "}
-              <Link
-                to="/register"
-                className="text-amber-400 font-semibold hover:text-amber-300 transition-colors hover:underline"
-              >
-                Create Account
-              </Link>
+          <div className="text-center mb-8">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200/80">
+              Staff &amp; Admin Access
+            </span>
+            <h2 className="text-2xl font-bold text-stone-900 mt-3 mb-1">
+              Sign In to Portal
+            </h2>
+            <p className="text-stone-500 text-xs sm:text-sm">
+              Enter your credentials to access the management dashboard
             </p>
           </div>
+
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="w-full max-w-sm mx-auto space-y-5"
+          >
+            <div className="space-y-1.5">
+              <label
+                htmlFor="email"
+                className="text-stone-700 text-xs font-semibold uppercase tracking-wider block text-left"
+              >
+                Email Address
+              </label>
+              <div className="relative group">
+                <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 group-focus-within:text-amber-600 transition-colors" />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="staff@hotelathitya.com"
+                  className={`w-full pl-10 pr-4 py-3 bg-stone-50 border rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:ring-2 transition-all ${
+                    errors.email
+                      ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20"
+                      : "border-stone-200 focus:border-amber-600 focus:ring-amber-600/20"
+                  }`}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-rose-600 text-xs text-left">{errors.email}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label
+                  htmlFor="password"
+                  className="text-stone-700 text-xs font-semibold uppercase tracking-wider block"
+                >
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-amber-700 text-xs font-semibold hover:text-amber-800 hover:underline"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+              <div className="relative group">
+                <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 group-focus-within:text-amber-600 transition-colors" />
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className={`w-full pl-10 pr-11 py-3 bg-stone-50 border rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:ring-2 transition-all ${
+                    errors.password
+                      ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20"
+                      : "border-stone-200 focus:border-amber-600 focus:ring-amber-600/20"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-600 focus:outline-none transition-colors cursor-pointer"
+                >
+                  {showPassword ? (
+                    <FiEyeOff className="w-4 h-4" />
+                  ) : (
+                    <FiEye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-rose-600 text-xs text-left">
+                  {errors.password}
+                </p>
+              )}
+            </div>
+
+            {serverError && (
+              <div className="text-rose-700 text-xs bg-rose-50 border border-rose-200 rounded-xl px-3.5 py-2.5 text-left">
+                {serverError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold rounded-xl shadow-lg shadow-amber-600/20 transition-all duration-200 text-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <FiLogIn className="w-4 h-4" />
+                {loading ? "Signing In..." : "Sign In to Dashboard"}
+              </span>
+            </button>
+          </form>
+
+          <p className="text-center text-stone-500 text-xs sm:text-sm mt-7">
+            New to Hotel Athitya?{" "}
+            <Link
+              to="/register"
+              className="text-amber-700 font-bold hover:text-amber-800 hover:underline"
+            >
+              Create Account
+            </Link>
+          </p>
         </div>
       </div>
     </div>

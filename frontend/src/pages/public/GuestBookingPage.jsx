@@ -14,6 +14,7 @@ import useRoomStore from "../../app/useRoomStore";
 import {
   initiateGuestBookingApi,
   verifyGuestPaymentApi,
+  abandonGuestBookingApi,
   fetchActiveExtraServices,
   fetchPublicGuestCouponsApi,
 } from "../../apis/api";
@@ -104,7 +105,7 @@ const GuestBookingPage = () => {
             try {
               singleRoom = await getRoom(targetRoomKey);
             } catch {
-             
+              // room fetch error ignored
             }
           }
 
@@ -327,7 +328,7 @@ const GuestBookingPage = () => {
         key: res.razorpayKeyId,
         amount: Math.round(res.amountToPay * 100),
         currency: res.currency || "INR",
-        name: "Paradise Hotel & Suites",
+        name: "Hotel Athitya",
         description: `Booking for Room(s) ${roomsDisplay} (${nights} nights)`,
         order_id: res.razorpayOrderId,
         prefill: {
@@ -341,8 +342,8 @@ const GuestBookingPage = () => {
         handler: async (verifyResponse) => {
           const verifyToast = toast.loading("Confirming your transaction...");
           try {
-            await verifyGuestPaymentApi({
-              bookingId: res.bookingId,
+            const verifyRes = await verifyGuestPaymentApi({
+              sessionId: res.sessionId,
               razorpayOrderId: verifyResponse.razorpay_order_id,
               razorpayPaymentId: verifyResponse.razorpay_payment_id,
               razorpaySignature: verifyResponse.razorpay_signature,
@@ -353,7 +354,8 @@ const GuestBookingPage = () => {
 
             navigate("/booking/success", {
               state: {
-                bookingId: res.bookingId,
+                bookingReference: verifyRes?.bookingReference || verifyRes?.receipt?.bookingReference,
+                bookingId: verifyRes?.bookingId || verifyRes?.receipt?.bookingId,
                 roomNumber: roomsDisplay,
                 checkInDate: form.checkInDate,
                 checkOutDate: form.checkOutDate,
@@ -371,7 +373,10 @@ const GuestBookingPage = () => {
           }
         },
         modal: {
-          ondismiss: () => {
+          ondismiss: async () => {
+            if (res?.bookingId) {
+              await abandonGuestBookingApi(res.bookingId);
+            }
             toast.error("Payment cancelled");
             setSubmitting(false);
           },
@@ -434,8 +439,6 @@ const GuestBookingPage = () => {
                 </h1>
               </div>
 
-              
-
               <form onSubmit={handleBookingSubmit} className="space-y-5">
                 <div className="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -475,7 +478,6 @@ const GuestBookingPage = () => {
                         {form.totalGuests} Guests
                       </strong>
                     </div>
-
                   </div>
                 </div>
 
