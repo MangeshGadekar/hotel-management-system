@@ -8,6 +8,8 @@ import java.util.List;
 
 @Repository
 public interface ExtraServiceRepository extends JpaRepository<ExtraService, Long> {
-    List<ExtraService> findByActiveTrue();
-    List<ExtraService> findByCategoryAndActiveTrue(String category);
+
+    List<ExtraService> findByBookingIdIsNull();
+    List<ExtraService> findByActiveTrueAndBookingIdIsNull();
+    List<ExtraService> findByCategoryAndActiveTrueAndBookingIdIsNull(String category);
 }

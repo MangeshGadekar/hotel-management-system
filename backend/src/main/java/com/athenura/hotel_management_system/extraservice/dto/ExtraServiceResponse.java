@@ -22,6 +22,10 @@ public class ExtraServiceResponse {
     private BigDecimal taxRate;
     private String category;
     private Boolean active;
+
+    private Boolean paid;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String imageUrl;
+
 }

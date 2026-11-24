@@ -59,6 +59,7 @@ export default function Sidebar() {
       path: `/receptionist/payments`,
       icon: HiOutlineCreditCard,
     },
+    { label: "Reports", path: `/receptionist/reports`, icon: HiOutlineChartBar },
     { label: "Coupons", path: `/receptionist/coupons`, icon: HiOutlineTicket },
     { label: "Home", path: "/", icon: HiOutlineHome },
   ];

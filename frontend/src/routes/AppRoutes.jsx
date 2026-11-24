@@ -36,6 +36,7 @@ const Navbar = lazy(() => import("../ui/Navbar"));
 
 const GuestBookingPage = lazy(() => import("../pages/public/GuestBookingPage"));
 const BookingSuccessPage = lazy(() => import("../pages/public/BookingSuccessPage"));
+const ReceptionistReports = lazy(() => import("../pages/receptionist/Reports"));
 
 
 
@@ -83,6 +84,7 @@ export default function AppRoutes() {
             <Route path="customers" element={<Customers />} />
             <Route path="payments" element={<Payments />} />
             <Route path="coupons" element={<Coupons />} />
+            <Route path="reports" element={<ReceptionistReports />} />
           </Route>
 
           {/* Auth Routes */}

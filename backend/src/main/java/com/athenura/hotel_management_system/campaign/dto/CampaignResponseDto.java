@@ -8,8 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-
 
 @Data
 @NoArgsConstructor
@@ -26,4 +26,8 @@ public class CampaignResponseDto {
     private LocalDateTime schedule;
     private CampaignStatus status;
     private LocalDateTime createdAt;
+    private String filterRoomType;
+    private LocalDate filterStartDate;
+    private LocalDate filterEndDate;
+    private Double filterMinSpending;
 }

@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,7 +42,25 @@ public class CouponController {
 
     @PostMapping("/validate")
     public ResponseEntity<CouponApplyResponse> validateCoupon(
-            @Valid @RequestBody ValidateCouponRequest request) {
+            @Valid @RequestBody ValidateCouponRequest request,
+            Authentication authentication) {
+
+        if (request.getRole() == null && authentication != null && authentication.getAuthorities() != null) {
+            boolean isAdmin = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(auth -> auth.equalsIgnoreCase("ROLE_ADMIN") || auth.equalsIgnoreCase("ADMIN"));
+
+            boolean isReceptionist = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(auth -> auth.equalsIgnoreCase("ROLE_RECEPTIONIST") || auth.equalsIgnoreCase("RECEPTIONIST"));
+
+            if (isAdmin) {
+                request.setRole("ADMIN");
+            } else if (isReceptionist) {
+                request.setRole("RECEPTIONIST");
+            }
+        }
+
         return ResponseEntity.ok(couponService.validateAndApplyCoupon(request));
     }
 
@@ -48,5 +68,23 @@ public class CouponController {
     public ResponseEntity<String> deleteCoupon(@PathVariable Long id) {
         couponService.deleteCoupon(id);
         return ResponseEntity.ok("Coupon deleted successfully");
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<List<CouponResponse>> getStaffCoupons(Authentication authentication) {
+        String role = "RECEPTIONIST";
+
+        if (authentication != null && authentication.getAuthorities() != null && !authentication.getAuthorities().isEmpty()) {
+            // Check if any authority matches ADMIN (handling ROLE_ADMIN or ADMIN)
+            boolean isAdmin = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(auth -> auth.equalsIgnoreCase("ROLE_ADMIN") || auth.equalsIgnoreCase("ADMIN"));
+
+            if (isAdmin) {
+                role = "ADMIN";
+            }
+        }
+
+        return ResponseEntity.ok(couponService.getActiveCouponsForRole(role));
     }
 }

@@ -1,24 +1,29 @@
 package com.athenura.hotel_management_system.extraservice.controller;
 
+import com.athenura.hotel_management_system.cloudinary.service.CloudinaryService;
 import com.athenura.hotel_management_system.extraservice.dto.ExtraServiceRequest;
 import com.athenura.hotel_management_system.extraservice.dto.ExtraServiceResponse;
 import com.athenura.hotel_management_system.extraservice.service.ExtraServiceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/extra-services")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class ExtraServiceController {
 
     private final ExtraServiceService extraServiceService;
+    private final CloudinaryService cloudinaryService;
 
-    // Public / Receptionist: Get all active services
+
     @GetMapping
     public ResponseEntity<List<ExtraServiceResponse>> getActiveServices(
             @RequestParam(required = false) String category) {
@@ -28,39 +33,49 @@ public class ExtraServiceController {
         return ResponseEntity.ok(extraServiceService.getActiveServices());
     }
 
-    // Get specific service details
+
     @GetMapping("/{id}")
     public ResponseEntity<ExtraServiceResponse> getServiceById(@PathVariable Long id) {
         return ResponseEntity.ok(extraServiceService.getServiceById(id));
     }
 
-    // Admin: Get all services (active + inactive)
     @GetMapping("/admin/all")
     public ResponseEntity<List<ExtraServiceResponse>> getAllServicesForAdmin() {
         return ResponseEntity.ok(extraServiceService.getAllServices());
     }
 
-    // Admin: Create new extra service
-    @PostMapping("/admin")
-    public ResponseEntity<ExtraServiceResponse> createService(@Valid @RequestBody ExtraServiceRequest request) {
+    @PostMapping(value = "/admin", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ExtraServiceResponse> createService(
+            @ModelAttribute @Valid ExtraServiceRequest request,
+            @RequestParam(value = "image", required = false) MultipartFile imageFile) {
+
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String imageUrl = cloudinaryService.uploadImage(imageFile, "extra-services");
+            request.setImageUrl(imageUrl);
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(extraServiceService.createService(request));
     }
 
-    // Admin: Update service details / tax rate / price
-    @PutMapping("/admin/{id}")
+    @PutMapping(value = "/admin/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ExtraServiceResponse> updateService(
             @PathVariable Long id,
-            @Valid @RequestBody ExtraServiceRequest request) {
+            @ModelAttribute @Valid ExtraServiceRequest request,
+            @RequestParam(value = "image", required = false) MultipartFile imageFile) {
+
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String imageUrl = cloudinaryService.uploadImage(imageFile, "extra-services");
+            request.setImageUrl(imageUrl);
+        }
+
         return ResponseEntity.ok(extraServiceService.updateService(id, request));
     }
 
-    // Admin: Toggle active/inactive status
     @PatchMapping("/admin/{id}/toggle-status")
     public ResponseEntity<ExtraServiceResponse> toggleStatus(@PathVariable Long id) {
         return ResponseEntity.ok(extraServiceService.toggleServiceStatus(id));
     }
 
-    // Admin: Delete service
     @DeleteMapping("/admin/{id}")
     public ResponseEntity<String> deleteService(@PathVariable Long id) {
         extraServiceService.deleteService(id);
