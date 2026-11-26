@@ -3,6 +3,7 @@ package com.athenura.hotel_management_system.booking.service;
 import com.athenura.hotel_management_system.booking.dto.BookingResponse;
 import com.athenura.hotel_management_system.booking.dto.GuestBookingRequest;
 import com.athenura.hotel_management_system.booking.dto.GuestBookingResponse;
+import com.athenura.hotel_management_system.booking.entity.Booking;
 import com.athenura.hotel_management_system.payment.dto.PaymentDTO;
 import com.athenura.hotel_management_system.room.entity.Room;
 
@@ -22,4 +23,7 @@ public interface PublicBookingService {
     BookingResponse verifyManageBookingOtp(String bookingIdentifier, String email, String otp);
 
     void validateGuestBookingOwnership(Long bookingId, String email);
+
+    void abandonPendingBooking(Long bookingId);
+    Booking findByBookingReference(String bookingReference);
 }

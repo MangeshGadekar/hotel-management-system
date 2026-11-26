@@ -75,6 +75,7 @@ public class PaymentDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RazorpayVerifyRequest {
+        private String sessionId;
         private Long bookingId;
         private String razorpayOrderId;
         private String razorpayPaymentId;

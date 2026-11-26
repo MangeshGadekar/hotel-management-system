@@ -1,6 +1,7 @@
 package com.athenura.hotel_management_system.booking.service;
 
 import com.athenura.hotel_management_system.booking.dto.*;
+import com.athenura.hotel_management_system.booking.entity.Booking;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -61,4 +62,9 @@ public interface BookingService {
     byte[] generateReceiptByNumberPdf(String receiptNumber, String preparedBy, String userEmail);
 
     byte[] generateCancellationSlipPdf(Long bookingId, String preparedBy, String userEmail);
+
+    Booking resolveBookingEntity(String identifier);
+    byte[] generateBookingSlipPdf(Long bookingId, String preparedBy, String userEmail);
+
+
 }

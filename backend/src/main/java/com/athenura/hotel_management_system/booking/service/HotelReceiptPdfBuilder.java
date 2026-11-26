@@ -56,7 +56,7 @@ public class HotelReceiptPdfBuilder {
             String checkInDate,
             String checkOutDate,
             long nights,
-            Long bookingId,
+            String bookingRef,
             String invoiceNumber,
             String paymentMode,
             String preparedBy,
@@ -89,6 +89,10 @@ public class HotelReceiptPdfBuilder {
             PdfWriter.getInstance(document, out);
             document.open();
 
+            boolean isRefundDoc = billTitle != null &&
+                    (billTitle.toUpperCase().contains("REFUND") || billTitle.toUpperCase().contains("CANCEL"));
+
+            // --- 1. TOP BRAND HEADER ---
             PdfPTable topHeader = new PdfPTable(2);
             topHeader.setWidthPercentage(100);
             topHeader.setWidths(new float[]{55f, 45f});
@@ -116,6 +120,7 @@ public class HotelReceiptPdfBuilder {
             document.add(topHeader);
             addSolidRule(document, 1.5f, DARK_NAVY);
 
+            // --- 2. DOCUMENT TITLE ---
             Paragraph docTitle = new Paragraph(billTitle.toUpperCase(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, DARK_NAVY));
             docTitle.setAlignment(Element.ALIGN_CENTER);
             docTitle.setSpacingBefore(4f);
@@ -123,33 +128,34 @@ public class HotelReceiptPdfBuilder {
             document.add(docTitle);
             addSolidRule(document, 1.0f, DARK_NAVY);
 
+            // --- 3. METADATA GRID ---
             PdfPTable metaGrid = new PdfPTable(4);
             metaGrid.setWidthPercentage(100);
             metaGrid.setWidths(new float[]{18f, 32f, 18f, 32f});
             metaGrid.setSpacingBefore(6f);
             metaGrid.setSpacingAfter(10f);
 
+            // Row 1: Billed To & Booking Ref
             addMetaField(metaGrid, "Billed To", ": " + (meta.guestName() != null ? meta.guestName() : "Guest"), true);
-            addMetaField(metaGrid, "Invoice Number", ": " + (meta.invoiceNumber() != null ? meta.invoiceNumber() : "—"), true);
+            addMetaField(metaGrid, "Booking Ref", ": " + (meta.bookingRef() != null ? meta.bookingRef() : "—"), true);
 
+            // Row 2: Room Assigned & Date
             addMetaField(metaGrid, "Room Assigned", ": " + (meta.roomDisplay() != null ? meta.roomDisplay() : "—"), false);
-            addMetaField(metaGrid, "Booking Ref", ": #" + (meta.bookingId() != null ? meta.bookingId() : "—"), true);
-
-            addMetaField(metaGrid, "Check-In", ": " + (meta.checkInDate() != null ? meta.checkInDate() : "—"), false);
             String nowTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm a"));
-            addMetaField(metaGrid, "Invoice Date", ": " + nowTime, false);
+            addMetaField(metaGrid, isRefundDoc ? "Refund Date" : "Date", ": " + nowTime, false);
 
+            // Row 3: Check-In & Check-Out
+            addMetaField(metaGrid, "Check-In", ": " + (meta.checkInDate() != null ? meta.checkInDate() : "—"), false);
             addMetaField(metaGrid, "Check-Out", ": " + meta.checkOutDate() + " (" + meta.nights() + (meta.nights() == 1 ? " Night)" : " Nights)"), false);
-            addMetaField(metaGrid, "ID Proof", ": " + (meta.idProof() != null ? meta.idProof() : "On File"), false);
 
+            // Row 4: Contact Details & ID Proof
             addMetaField(metaGrid, "Contact Details", ": " + (meta.phone() != null && !meta.phone().isBlank() ? meta.phone() : (meta.email() != null ? meta.email() : "—")), false);
-
-            boolean isFullySettled = finances.balanceAmount() == null || finances.balanceAmount().compareTo(BigDecimal.ZERO) <= 0;
-            addMetaField(metaGrid, "Billing Status", ": " + (isFullySettled ? "Settled" : "Partially Paid (Balance Pending)"), isFullySettled);
+            addMetaField(metaGrid, "ID Proof", ": " + (meta.idProof() != null ? meta.idProof() : "On File"), false);
 
             document.add(metaGrid);
             addSolidRule(document, 0.75f, DARK_NAVY);
 
+            // --- 4. LINE ITEMS TABLE ---
             PdfPTable itemsTable = new PdfPTable(6);
             itemsTable.setWidthPercentage(100);
             itemsTable.setWidths(new float[]{8f, 44f, 16f, 10f, 10f, 12f});
@@ -186,26 +192,51 @@ public class HotelReceiptPdfBuilder {
             document.add(itemsTable);
             addSolidRule(document, 0.75f, BORDER_GRAY);
 
+            // --- 5. FOOTER GRID (LEDGER & SETTLEMENT) ---
             PdfPTable footerGrid = new PdfPTable(2);
             footerGrid.setWidthPercentage(100);
             footerGrid.setWidths(new float[]{46f, 54f});
             footerGrid.setSpacingBefore(6f);
             footerGrid.setSpacingAfter(15f);
 
+            // Left Side: Operational Info
             PdfPCell leftFoot = new PdfPCell();
             leftFoot.setBorder(Rectangle.NO_BORDER);
 
             PdfPTable staffTable = new PdfPTable(2);
             staffTable.setWidthPercentage(100);
-            staffTable.setWidths(new float[]{38f, 62f});
+            staffTable.setWidths(new float[]{42f, 58f});
 
-            addSimpleRow(staffTable, "Payment Mode", ": " + (meta.paymentMode() != null ? meta.paymentMode() : "CASH"), false);
-            addSimpleRow(staffTable, "Paid Amount", ": Rs. " + formatInr(finances.paidAmount()), true);
-            addSimpleRow(staffTable, "Bill Prepared By", ": " + (meta.preparedBy() != null ? meta.preparedBy() : "Front Desk Staff"), true);
+            if (isRefundDoc) {
+                addSimpleRow(staffTable, "Refund Method", ": " + (meta.paymentMode() != null ? meta.paymentMode() : "ORIGINAL PAYMENT SOURCE"), false);
+                addSimpleRow(staffTable, "Refund Amount", ": Rs. " + formatInr(finances.paidAmount()), true);
+
+                // Show Processed By ONLY if explicitly prepared by staff; hide completely if online/self-service
+                boolean hasStaffPreparer = meta.preparedBy() != null
+                        && !meta.preparedBy().isBlank()
+                        && !"ONLINE".equalsIgnoreCase(meta.preparedBy().trim())
+                        && !"Front Desk Staff".equalsIgnoreCase(meta.preparedBy().trim());
+
+                if (hasStaffPreparer) {
+                    addSimpleRow(staffTable, "Processed By", ": " + meta.preparedBy(), true);
+                }
+            } else {
+                addSimpleRow(staffTable, "Payment Mode", ": " + (meta.paymentMode() != null ? meta.paymentMode() : "CASH"), false);
+                addSimpleRow(staffTable, "Paid Amount", ": Rs. " + formatInr(finances.paidAmount()), true);
+
+                boolean hasStaffPreparer = meta.preparedBy() != null
+                        && !meta.preparedBy().isBlank()
+                        && !"ONLINE".equalsIgnoreCase(meta.preparedBy().trim());
+
+                if (hasStaffPreparer) {
+                    addSimpleRow(staffTable, "Bill Prepared By", ": " + meta.preparedBy(), true);
+                }
+            }
 
             leftFoot.addElement(staffTable);
             footerGrid.addCell(leftFoot);
 
+            // Right Side: Financial Breakdown
             PdfPCell rightFoot = new PdfPCell();
             rightFoot.setBorder(Rectangle.NO_BORDER);
 
@@ -213,60 +244,102 @@ public class HotelReceiptPdfBuilder {
             ledgerTable.setWidthPercentage(100);
             ledgerTable.setWidths(new float[]{55f, 5f, 40f});
 
-            addLedgerRow(ledgerTable, "Taxable Subtotal", ":", formatInr(finances.taxableSubtotal()), false, null);
-            addLedgerRow(ledgerTable, "Total Tax (GST)", ":", formatInr(finances.taxAmount()), false, null);
-            addLedgerRow(ledgerTable, "Total Bill (Gross)", ":", formatInr(finances.grossTotal()), true, null);
+            if (isRefundDoc) {
+                // Itemized Breakdown for Refund Slip
+                addLedgerRow(ledgerTable, "Taxable Subtotal", ":", formatInr(finances.taxableSubtotal()), false, null);
+                addLedgerRow(ledgerTable, "Total GST (18%)", ":", formatInr(finances.taxAmount()), false, null);
+                addLedgerRow(ledgerTable, "Total Booking Value", ":", formatInr(finances.grossTotal()), true, null);
 
-            if (finances.couponDiscount() != null && finances.couponDiscount().compareTo(BigDecimal.ZERO) > 0) {
-                String cpnLabel = (finances.couponCode() != null && !finances.couponCode().isBlank())
-                        ? "- Less Coupon Discount (" + finances.couponCode() + ")"
-                        : "- Less Coupon Discount";
-                addLedgerRow(ledgerTable, cpnLabel, ":", "- " + formatInr(finances.couponDiscount()), false, SUCCESS_GREEN);
+                if (finances.couponDiscount() != null && finances.couponDiscount().compareTo(BigDecimal.ZERO) > 0) {
+                    String cpnLabel = (finances.couponCode() != null && !finances.couponCode().isBlank())
+                            ? "- Less Promo/Coupon (" + finances.couponCode() + ")"
+                            : "- Less Promo/Coupon";
+                    addLedgerRow(ledgerTable, cpnLabel, ":", "- " + formatInr(finances.couponDiscount()), false, MUTED_GRAY);
+                }
+
+                // Highlighted Green Refund Row
+                PdfPCell bLabel = new PdfPCell(new Phrase("Net Refund Issued", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, SUCCESS_GREEN)));
+                bLabel.setBackgroundColor(BAR_BG);
+                bLabel.setBorder(Rectangle.NO_BORDER);
+                bLabel.setPadding(4f);
+
+                PdfPCell bColon = new PdfPCell(new Phrase(":", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, SUCCESS_GREEN)));
+                bColon.setBackgroundColor(BAR_BG);
+                bColon.setBorder(Rectangle.NO_BORDER);
+                bColon.setPadding(4f);
+
+                PdfPCell bVal = new PdfPCell(new Phrase("Rs. " + formatInr(finances.paidAmount()), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, SUCCESS_GREEN)));
+                bVal.setBackgroundColor(BAR_BG);
+                bVal.setBorder(Rectangle.NO_BORDER);
+                bVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                bVal.setPadding(4f);
+
+                ledgerTable.addCell(bLabel);
+                ledgerTable.addCell(bColon);
+                ledgerTable.addCell(bVal);
+
+            } else {
+                // Standard Check-in / Final Checkout Accounting
+                addLedgerRow(ledgerTable, "Taxable Subtotal", ":", formatInr(finances.taxableSubtotal()), false, null);
+                addLedgerRow(ledgerTable, "Total Tax (GST)", ":", formatInr(finances.taxAmount()), false, null);
+                addLedgerRow(ledgerTable, "Total Bill (Gross)", ":", formatInr(finances.grossTotal()), true, null);
+
+                if (finances.couponDiscount() != null && finances.couponDiscount().compareTo(BigDecimal.ZERO) > 0) {
+                    String cpnLabel = (finances.couponCode() != null && !finances.couponCode().isBlank())
+                            ? "- Less Coupon Discount (" + finances.couponCode() + ")"
+                            : "- Less Coupon Discount";
+                    addLedgerRow(ledgerTable, cpnLabel, ":", "- " + formatInr(finances.couponDiscount()), false, SUCCESS_GREEN);
+                }
+
+                if (finances.discountAmount() != null && finances.discountAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    addLedgerRow(ledgerTable, "- Less Discount / Concession", ":", "- " + formatInr(finances.discountAmount()), false, null);
+                    String reason = finances.discountReason() != null && !finances.discountReason().isBlank()
+                            ? finances.discountReason() : "Desk Concession";
+                    addLedgerRow(ledgerTable, "  Discount Reason", ":", reason, false, MUTED_GRAY);
+                }
+
+                addLedgerRow(ledgerTable, "Net Payable Amount", ":", formatInr(finances.netPayable()), true, null);
+                addLedgerRow(ledgerTable, "Less Paid Amount", ":", formatInr(finances.paidAmount()), false, null);
+
+                boolean isFullySettled = finances.balanceAmount() == null || finances.balanceAmount().compareTo(BigDecimal.ZERO) <= 0;
+                Color balanceTextColor = isFullySettled ? DARK_NAVY : ALERT_RED;
+                PdfPCell bLabel = new PdfPCell(new Phrase("Balance Due", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, balanceTextColor)));
+                bLabel.setBackgroundColor(BAR_BG);
+                bLabel.setBorder(Rectangle.NO_BORDER);
+                bLabel.setPadding(4f);
+
+                PdfPCell bColon = new PdfPCell(new Phrase(":", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, balanceTextColor)));
+                bColon.setBackgroundColor(BAR_BG);
+                bColon.setBorder(Rectangle.NO_BORDER);
+                bColon.setPadding(4f);
+
+                BigDecimal finalBalance = finances.balanceAmount() != null ? finances.balanceAmount().max(BigDecimal.ZERO) : BigDecimal.ZERO;
+                PdfPCell bVal = new PdfPCell(new Phrase(formatInr(finalBalance), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, balanceTextColor)));
+                bVal.setBackgroundColor(BAR_BG);
+                bVal.setBorder(Rectangle.NO_BORDER);
+                bVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                bVal.setPadding(4f);
+
+                ledgerTable.addCell(bLabel);
+                ledgerTable.addCell(bColon);
+                ledgerTable.addCell(bVal);
             }
-
-            if (finances.discountAmount() != null && finances.discountAmount().compareTo(BigDecimal.ZERO) > 0) {
-                addLedgerRow(ledgerTable, "- Less Discount / Concession", ":", "- " + formatInr(finances.discountAmount()), false, null);
-                String reason = finances.discountReason() != null && !finances.discountReason().isBlank()
-                        ? finances.discountReason() : "Desk Concession";
-                addLedgerRow(ledgerTable, "  Discount Reason", ":", reason, false, MUTED_GRAY);
-            }
-
-            addLedgerRow(ledgerTable, "Net Payable Amount", ":", formatInr(finances.netPayable()), true, null);
-            addLedgerRow(ledgerTable, "Less Paid Amount", ":", formatInr(finances.paidAmount()), false, null);
-
-            Color balanceTextColor = isFullySettled ? DARK_NAVY : ALERT_RED;
-            PdfPCell bLabel = new PdfPCell(new Phrase("Balance Due", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, balanceTextColor)));
-            bLabel.setBackgroundColor(BAR_BG);
-            bLabel.setBorder(Rectangle.NO_BORDER);
-            bLabel.setPadding(4f);
-
-            PdfPCell bColon = new PdfPCell(new Phrase(":", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, balanceTextColor)));
-            bColon.setBackgroundColor(BAR_BG);
-            bColon.setBorder(Rectangle.NO_BORDER);
-            bColon.setPadding(4f);
-
-            BigDecimal finalBalance = finances.balanceAmount() != null ? finances.balanceAmount().max(BigDecimal.ZERO) : BigDecimal.ZERO;
-            PdfPCell bVal = new PdfPCell(new Phrase(formatInr(finalBalance), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, balanceTextColor)));
-            bVal.setBackgroundColor(BAR_BG);
-            bVal.setBorder(Rectangle.NO_BORDER);
-            bVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            bVal.setPadding(4f);
-
-            ledgerTable.addCell(bLabel);
-            ledgerTable.addCell(bColon);
-            ledgerTable.addCell(bVal);
 
             rightFoot.addElement(ledgerTable);
             footerGrid.addCell(rightFoot);
 
             document.add(footerGrid);
 
+            // --- 6. SIGNATURE BLOCK ---
             PdfPTable signTable = new PdfPTable(2);
             signTable.setWidthPercentage(100);
             signTable.setWidths(new float[]{50f, 50f});
             signTable.setSpacingBefore(12f);
 
-            PdfPCell thankYouCell = new PdfPCell(new Phrase("Thank You for choosing Hotel Athitya!", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, DARK_NAVY)));
+            PdfPCell thankYouCell = new PdfPCell(new Phrase(
+                    isRefundDoc ? "We hope to welcome you again at Hotel Athitya!" : "Thank You for choosing Hotel Athitya!",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, DARK_NAVY)
+            ));
             thankYouCell.setBorder(Rectangle.NO_BORDER);
             thankYouCell.setVerticalAlignment(Element.ALIGN_BOTTOM);
             signTable.addCell(thankYouCell);
@@ -283,6 +356,7 @@ public class HotelReceiptPdfBuilder {
 
             document.add(signTable);
 
+            // --- 7. FOOTER BAR ---
             addSolidRule(document, 1.0f, DARK_NAVY);
             PdfPTable baseMeta = new PdfPTable(2);
             baseMeta.setWidthPercentage(100);

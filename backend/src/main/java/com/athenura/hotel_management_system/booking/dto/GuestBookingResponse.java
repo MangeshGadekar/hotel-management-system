@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 @Setter
 @Builder
 public class GuestBookingResponse {
+    private String sessionId;
     private Long bookingId;
     private String razorpayOrderId;
     private String razorpayKeyId;

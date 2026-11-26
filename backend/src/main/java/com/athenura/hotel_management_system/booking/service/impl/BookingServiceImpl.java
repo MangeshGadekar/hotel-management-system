@@ -380,6 +380,14 @@ public class BookingServiceImpl implements BookingService {
         }
 
         Booking savedBooking = bookingRepository.saveAndFlush(booking);
+
+        try {
+            byte[] masterPdf = masterReceiptPdfService.generateMasterFolioPdf(savedBooking, null);
+            emailService.sendCheckOutMasterReceipt(savedBooking, masterPdf);
+        } catch (Exception e) {
+            log.error("Master receipt generation or checkout email failed for booking #{}: {}", bookingId, e.getMessage());
+        }
+
         return enrichWithLedger(savedBooking);
     }
 
@@ -873,5 +881,33 @@ public class BookingServiceImpl implements BookingService {
                     .orElse("Staff");
         }
         return "Staff";
+    }
+
+
+    @Override
+    public Booking resolveBookingEntity(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new RuntimeException("Booking reference cannot be empty");
+        }
+
+        Optional<Booking> byRef = bookingRepository.findByBookingReference(identifier.trim());
+        if (byRef.isPresent()) {
+            return byRef.get();
+        }
+
+        if (identifier.trim().matches("^\\d+$")) {
+            Long numericId = Long.parseLong(identifier.trim());
+            return bookingRepository.findById(numericId)
+                    .orElseThrow(() -> new RuntimeException("Reservation not found for ID: " + identifier));
+        }
+
+        throw new RuntimeException("Reservation not found for reference: " + identifier);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generateBookingSlipPdf(Long bookingId, String preparedBy, String userEmail) {
+        return masterReceiptPdfService.generateBookingPdf(getBookingEntity(bookingId), resolveStaffName(preparedBy, userEmail));
     }
 }

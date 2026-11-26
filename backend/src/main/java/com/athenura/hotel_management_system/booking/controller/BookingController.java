@@ -1,6 +1,7 @@
 package com.athenura.hotel_management_system.booking.controller;
 
 import com.athenura.hotel_management_system.booking.dto.*;
+import com.athenura.hotel_management_system.booking.entity.Booking;
 import com.athenura.hotel_management_system.booking.service.BookingService;
 import com.athenura.hotel_management_system.booking.service.PublicBookingService;
 import com.athenura.hotel_management_system.room.entity.Room;
@@ -169,41 +170,50 @@ public class BookingController {
 
     //pdf-----
 
-    @GetMapping("/{bookingId}/check-in-receipt-pdf")
+
+    @GetMapping("/{identifier}/check-in-receipt-pdf")
     public ResponseEntity<byte[]> downloadCheckInReceipt(
-            @PathVariable Long bookingId,
+            @PathVariable String identifier,
             @RequestParam(required = false) String preparedBy,
             Principal principal) {
-        byte[] pdf = bookingService.generateCheckInSlipPdf(bookingId, preparedBy, principal != null ? principal.getName() : null);
-        return buildPdfResponse(pdf, "CheckIn_Receipt_" + bookingId + ".pdf");
+        Booking booking = bookingService.resolveBookingEntity(identifier);
+        byte[] pdf = bookingService.generateCheckInSlipPdf(booking.getId(), preparedBy, principal != null ? principal.getName() : null);
+        String displayRef = booking.getBookingReference() != null ? booking.getBookingReference() : String.valueOf(booking.getId());
+        return buildPdfResponse(pdf, "CheckIn_Receipt_" + displayRef + ".pdf");
     }
 
-    @GetMapping("/{bookingId}/service-receipt-pdf")
+    @GetMapping("/{identifier}/service-receipt-pdf")
     public ResponseEntity<byte[]> downloadServiceReceipt(
-            @PathVariable Long bookingId,
+            @PathVariable String identifier,
             @RequestParam(required = false) String preparedBy,
             Principal principal) {
-        byte[] pdf = bookingService.generateServiceSlipPdf(bookingId, preparedBy, principal != null ? principal.getName() : null);
-        return buildPdfResponse(pdf, "Service_Receipt_" + bookingId + ".pdf");
+        Booking booking = bookingService.resolveBookingEntity(identifier);
+        byte[] pdf = bookingService.generateServiceSlipPdf(booking.getId(), preparedBy, principal != null ? principal.getName() : null);
+        String displayRef = booking.getBookingReference() != null ? booking.getBookingReference() : String.valueOf(booking.getId());
+        return buildPdfResponse(pdf, "Service_Receipt_" + displayRef + ".pdf");
     }
 
-    @GetMapping("/{bookingId}/master-receipt-pdf")
+    @GetMapping("/{identifier}/master-receipt-pdf")
     public ResponseEntity<byte[]> downloadMasterReceipt(
-            @PathVariable Long bookingId,
+            @PathVariable String identifier,
             @RequestParam(required = false) String preparedBy,
             Principal principal) {
-        byte[] pdf = bookingService.generateMasterFolioPdf(bookingId, preparedBy, principal != null ? principal.getName() : null);
-        return buildPdfResponse(pdf, "Master_Folio_" + bookingId + ".pdf");
+        Booking booking = bookingService.resolveBookingEntity(identifier);
+        byte[] pdf = bookingService.generateMasterFolioPdf(booking.getId(), preparedBy, principal != null ? principal.getName() : null);
+        String displayRef = booking.getBookingReference() != null ? booking.getBookingReference() : String.valueOf(booking.getId());
+        return buildPdfResponse(pdf, "Master_Folio_" + displayRef + ".pdf");
     }
 
-    @GetMapping("/{bookingId}/payment/{paymentId}/receipt-pdf")
+    @GetMapping("/{identifier}/payment/{paymentId}/receipt-pdf")
     public ResponseEntity<byte[]> downloadPaymentReceipt(
-            @PathVariable Long bookingId,
+            @PathVariable String identifier,
             @PathVariable Long paymentId,
             @RequestParam(required = false) String preparedBy,
             Principal principal) {
-        byte[] pdf = bookingService.generatePaymentSlipPdf(bookingId, paymentId, preparedBy, principal != null ? principal.getName() : null);
-        return buildPdfResponse(pdf, "Receipt_" + paymentId + ".pdf");
+        Booking booking = bookingService.resolveBookingEntity(identifier);
+        byte[] pdf = bookingService.generatePaymentSlipPdf(booking.getId(), paymentId, preparedBy, principal != null ? principal.getName() : null);
+        String displayRef = booking.getBookingReference() != null ? booking.getBookingReference() : String.valueOf(booking.getId());
+        return buildPdfResponse(pdf, "Receipt_" + displayRef + "_" + paymentId + ".pdf");
     }
 
     @GetMapping("/receipt-by-number/{receiptNumber}/pdf")
@@ -215,13 +225,15 @@ public class BookingController {
         return buildPdfResponse(pdf, receiptNumber + ".pdf");
     }
 
-    @GetMapping("/{bookingId}/cancellation-receipt-pdf")
+    @GetMapping("/{identifier}/cancellation-receipt-pdf")
     public ResponseEntity<byte[]> downloadCancellationReceiptPdf(
-            @PathVariable Long bookingId,
+            @PathVariable String identifier,
             @RequestParam(required = false) String preparedBy,
             Principal principal) {
-        byte[] pdf = bookingService.generateCancellationSlipPdf(bookingId, preparedBy, principal != null ? principal.getName() : null);
-        return buildPdfResponse(pdf, "Cancellation_Slip_" + bookingId + ".pdf");
+        Booking booking = bookingService.resolveBookingEntity(identifier);
+        byte[] pdf = bookingService.generateCancellationSlipPdf(booking.getId(), preparedBy, principal != null ? principal.getName() : null);
+        String displayRef = booking.getBookingReference() != null ? booking.getBookingReference() : String.valueOf(booking.getId());
+        return buildPdfResponse(pdf, "Cancellation_Slip_" + displayRef + ".pdf");
     }
 
     private ResponseEntity<byte[]> buildPdfResponse(byte[] pdf, String filename) {
@@ -229,5 +241,20 @@ public class BookingController {
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                 .body(pdf);
+    }
+
+    @GetMapping("/{identifier}/booking-receipt-pdf")
+    public ResponseEntity<byte[]> downloadBookingReceipt(
+            @PathVariable String identifier,
+            @RequestParam(required = false) String preparedBy,
+            Principal principal) {
+        Booking booking = bookingService.resolveBookingEntity(identifier);
+        byte[] pdf = bookingService.generateBookingSlipPdf(
+                booking.getId(),
+                preparedBy,
+                principal != null ? principal.getName() : null
+        );
+        String displayRef = booking.getBookingReference() != null ? booking.getBookingReference() : String.valueOf(booking.getId());
+        return buildPdfResponse(pdf, "Booking_Receipt_" + displayRef + ".pdf");
     }
 }
