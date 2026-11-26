@@ -242,4 +242,19 @@ public class BookingController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                 .body(pdf);
     }
+
+    @GetMapping("/{identifier}/booking-receipt-pdf")
+    public ResponseEntity<byte[]> downloadBookingReceipt(
+            @PathVariable String identifier,
+            @RequestParam(required = false) String preparedBy,
+            Principal principal) {
+        Booking booking = bookingService.resolveBookingEntity(identifier);
+        byte[] pdf = bookingService.generateBookingSlipPdf(
+                booking.getId(),
+                preparedBy,
+                principal != null ? principal.getName() : null
+        );
+        String displayRef = booking.getBookingReference() != null ? booking.getBookingReference() : String.valueOf(booking.getId());
+        return buildPdfResponse(pdf, "Booking_Receipt_" + displayRef + ".pdf");
+    }
 }

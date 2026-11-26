@@ -326,7 +326,8 @@ public class PaymentServiceImpl implements PaymentService {
             bookingRepository.save(booking);
 
             try {
-                emailNotificationService.sendOnlineBookingWithPaymentSummary(booking, savedPayment);
+                byte[] bookingPdf = masterReceiptPdfService.generateBookingPdf(booking, "ONLINE_GUEST");
+                emailNotificationService.sendOnlineBookingWithPaymentSummary(booking, savedPayment, bookingPdf);
             } catch (Exception mailEx) {
                 log.warn("Failed to dispatch unified booking confirmation email: {}", mailEx.getMessage());
             }

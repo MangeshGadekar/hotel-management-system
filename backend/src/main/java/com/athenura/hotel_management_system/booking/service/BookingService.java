@@ -64,4 +64,7 @@ public interface BookingService {
     byte[] generateCancellationSlipPdf(Long bookingId, String preparedBy, String userEmail);
 
     Booking resolveBookingEntity(String identifier);
+    byte[] generateBookingSlipPdf(Long bookingId, String preparedBy, String userEmail);
+
+
 }

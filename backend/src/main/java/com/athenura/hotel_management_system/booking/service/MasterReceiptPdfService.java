@@ -357,6 +357,109 @@ public class MasterReceiptPdfService {
         return pdfBuilder.renderReceipt("SETTLEMENT RECEIPT SLIP", meta, items, finances);
     }
 
+
+    public byte[] generateBookingPdf(Booking booking, String staffName) {
+        long nights = computeNights(booking);
+        List<Room> rooms = resolveRooms(booking);
+        String displayRef = getDisplayReference(booking);
+
+        List<LineItem> items = new ArrayList<>();
+        BigDecimal totalRoomTariff = BigDecimal.ZERO;
+
+        for (Room r : rooms) {
+            BigDecimal rTotal = r.getPricePerNight().multiply(BigDecimal.valueOf(nights));
+            items.add(new LineItem(
+                    "Room " + r.getRoomNumber() + " (" + r.getRoomType() + ")",
+                    r.getPricePerNight(),
+                    String.valueOf(nights),
+                    new BigDecimal("18"),
+                    rTotal
+            ));
+            totalRoomTariff = totalRoomTariff.add(rTotal);
+        }
+
+        List<Payment> payments = paymentRepository.findByBookingId(booking.getId());
+        Payment latestPayment = payments.isEmpty() ? null : payments.get(payments.size() - 1);
+
+        Map<String, ServiceAggregator> serviceMap = new LinkedHashMap<>();
+        if (booking.getSelectedExtraServices() != null) {
+            for (ExtraService s : booking.getSelectedExtraServices()) {
+                boolean isMidStay = s.getBookingId() != null || Boolean.FALSE.equals(s.getActive());
+                if (!isMidStay && s.getPrice() != null) {
+                    BigDecimal rate = s.getTaxRate() != null ? s.getTaxRate() : new BigDecimal("18");
+                    String key = s.getName().trim().toLowerCase() + "_" + s.getPrice();
+                    serviceMap.putIfAbsent(key, new ServiceAggregator(s.getName().trim(), s.getPrice(), rate));
+                    serviceMap.get(key).add();
+                }
+            }
+        }
+
+        BigDecimal servicesBase = BigDecimal.ZERO;
+        BigDecimal servicesTax = BigDecimal.ZERO;
+        for (ServiceAggregator agg : serviceMap.values()) {
+            items.add(new LineItem(agg.name, agg.unitPrice, String.valueOf(agg.quantity), agg.taxRate, agg.totalAmount));
+            servicesBase = servicesBase.add(agg.totalAmount);
+            servicesTax = servicesTax.add(agg.totalTax);
+        }
+
+        BigDecimal subtotal = totalRoomTariff.add(servicesBase);
+        BigDecimal roomGst = totalRoomTariff.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = roomGst.add(servicesTax).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal grossTotal = subtotal.add(totalTax);
+
+        DiscountsResolved discounts = resolveDiscounts(booking);
+        BigDecimal couponVal = discounts.couponDiscount;
+        BigDecimal deskDiscountVal = discounts.deskDiscount;
+
+        if (latestPayment != null) {
+            if (latestPayment.getCouponDeducted() != null && latestPayment.getCouponDeducted().compareTo(BigDecimal.ZERO) > 0) {
+                couponVal = latestPayment.getCouponDeducted();
+            }
+            if (latestPayment.getDiscountDeducted() != null && latestPayment.getDiscountDeducted().compareTo(BigDecimal.ZERO) > 0) {
+                deskDiscountVal = latestPayment.getDiscountDeducted();
+            }
+        }
+
+        BigDecimal netPayable = booking.getTotalAmount() != null
+                ? booking.getTotalAmount()
+                : grossTotal.subtract(couponVal).subtract(deskDiscountVal).max(BigDecimal.ZERO);
+
+        BigDecimal paidAmount = latestPayment != null && latestPayment.getAmountPaid() != null
+                ? latestPayment.getAmountPaid()
+                : (booking.getAdvancePayment() != null ? booking.getAdvancePayment() : BigDecimal.ZERO);
+
+        BigDecimal balanceDue = booking.getBalanceDue() != null
+                ? booking.getBalanceDue()
+                : netPayable.subtract(paidAmount).max(BigDecimal.ZERO);
+
+        String paymentMode = latestPayment != null && latestPayment.getPaymentMethod() != null
+                ? latestPayment.getPaymentMethod().replace("_", " ").toUpperCase()
+                : "ONLINE";
+
+        InvoiceMeta meta = new InvoiceMeta(
+                getGuestName(booking),
+                getGuestPhone(booking),
+                getGuestEmail(booking),
+                getIdProof(booking),
+                formatRoomsDisplay(rooms),
+                String.valueOf(booking.getCheckInDate()),
+                String.valueOf(booking.getCheckOutDate()),
+                nights,
+                displayRef,
+                "INV-" + booking.getId() + "-BOOKING",
+                paymentMode,
+                cleanStaffName(staffName, booking),
+                discounts.deskDiscountReason
+        );
+
+        FinancialSummary finances = new FinancialSummary(
+                subtotal, totalTax, grossTotal, couponVal, discounts.couponCode,
+                deskDiscountVal, discounts.deskDiscountReason, netPayable, paidAmount, balanceDue
+        );
+
+        return pdfBuilder.renderReceipt("BOOKING CONFIRMATION & PAYMENT RECEIPT", meta, items, finances);
+    }
+
     private String getDisplayReference(Booking booking) {
         if (booking == null) return "N/A";
         if (booking.getBookingReference() != null && !booking.getBookingReference().isBlank()) {

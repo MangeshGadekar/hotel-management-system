@@ -53,7 +53,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/extra-services/admin/**").hasAnyAuthority(ADMIN_ONLY)
                         // Guest & Staff: Read-only access to view active catalog services
                         .requestMatchers(HttpMethod.GET, "/api/extra-services", "/api/extra-services/**").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/booking/*/booking-receipt-pdf").permitAll()
                         // Guest Verification - Public
                         .requestMatchers(HttpMethod.GET, "/guest/check-email", "/guest/search", "/guest/by-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/guest/create", "/guest/send-otp", "/guest/verify-otp").permitAll()

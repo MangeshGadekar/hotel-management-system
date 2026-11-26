@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 public interface EmailService {
 
     void sendOnlineBookingWithPaymentSummary(Booking booking, Payment payment);
+    void sendOnlineBookingWithPaymentSummary(Booking booking, Payment payment, byte[] pdfBytes);
     void sendBookingConfirmationWithReceipt(Booking booking, byte[] pdfBytes);
     void sendServiceSettlementReceipt(Booking booking, Payment payment, byte[] servicePdf);
     void sendRefundNotificationWithPdf(Booking booking, BigDecimal refundAmount, String refundId, byte[] refundPdf);
@@ -17,6 +18,9 @@ public interface EmailService {
     void sendTransactionalEmail(String toEmail, String toName, String subject, String htmlContent);
     void sendManageBookingAccessOtp(Booking booking, String otp);
     void sendPasswordResetEmail(String toEmail, String resetToken, String firstName);
-
     void sendContactInquiry(String guestName, String guestEmail, String phone, String subject, String message);
+
+    void sendCheckOutMasterReceipt(Booking booking, byte[] masterPdfBytes);
+
+
 }

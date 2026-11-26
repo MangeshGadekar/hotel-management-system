@@ -62,74 +62,6 @@ public class EmailServiceImpl implements EmailService {
         return String.valueOf(booking.getId());
     }
 
-    // 1. Online Guest Booking
-    @Override
-    public void sendOnlineBookingWithPaymentSummary(Booking booking, Payment payment) {
-        if (booking == null || booking.getGuest() == null || booking.getGuest().getEmail() == null) return;
-
-        String guestName = resolveGuestName(booking);
-        String bookingRef = resolveBookingReference(booking);
-        String roomNumber = getRoomDisplay(booking);
-        String roomType = (booking.getRoom() != null && booking.getRoom().getRoomType() != null)
-                ? booking.getRoom().getRoomType().name() : "DELUXE";
-
-        BigDecimal paidAmount = payment != null && payment.getAmountPaid() != null ? payment.getAmountPaid()
-                : (booking.getAdvancePayment() != null ? booking.getAdvancePayment() : BigDecimal.ZERO);
-        BigDecimal balanceDue = booking.getBalanceDue() != null ? booking.getBalanceDue() : BigDecimal.ZERO;
-        String channel = payment != null && payment.getPaymentMethod() != null ? payment.getPaymentMethod().replace("_", " ") : "UPI / Net Banking";
-        String txnRef = payment != null && payment.getTransactionReference() != null ? payment.getTransactionReference() : ("TXN-" + bookingRef);
-
-        String statusBadge = balanceDue.compareTo(BigDecimal.ZERO) <= 0
-                ? "<span style='color: #16a34a; font-weight: bold;'>Fully Settled</span>"
-                : "<span style='color: #ea580c; font-weight: bold;'>Partially Paid (₹" + balanceDue + " due at desk)</span>";
-
-        String htmlContent = """
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; color: #1e293b;">
-                <h2 style="color: #D96B43; margin-top: 0;">Hotel Athitya</h2>
-                <p style="font-size: 15px; margin-bottom: 20px;">Reservation Confirmation & Payment Receipt</p>
-                <p>Dear <b>%s</b>,</p>
-                <p>Thank you for choosing Hotel Athitya! Your booking has been confirmed and payment processed successfully.</p>
-                
-                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 18px 0;">
-                    <h3 style="margin-top: 0; font-size: 14px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">Reservation Details</h3>
-                    <p style="margin: 6px 0;"><b>Booking Ref:</b> %s</p>
-                    <p style="margin: 6px 0;"><b>Room:</b> Room %s (%s)</p>
-                    <p style="margin: 6px 0;"><b>Check-In:</b> %s (From 2:00 PM)</p>
-                    <p style="margin: 6px 0;"><b>Check-Out:</b> %s (Until 12:00 PM)</p>
-                    
-                    <h3 style="margin-top: 14px; font-size: 14px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">Payment Summary</h3>
-                    <p style="margin: 6px 0;"><b>Amount Paid:</b> ₹%s</p>
-                    <p style="margin: 6px 0;"><b>Payment Mode:</b> %s</p>
-                    <p style="margin: 6px 0;"><b>Transaction ID:</b> %s</p>
-                    <p style="margin: 6px 0;"><b>Status:</b> %s</p>
-                </div>
-                
-                <p style="font-size: 13px; color: #64748b;">We look forward to welcoming you!</p>
-                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
-                <p style="font-size: 11px; color: #94a3b8; margin: 0;">Hotel Athitya Management • athitya@gmail.com</p>
-            </div>
-            """.formatted(
-                guestName,
-                bookingRef,
-                roomNumber,
-                roomType,
-                booking.getCheckInDate(),
-                booking.getCheckOutDate(),
-                paidAmount,
-                channel,
-                txnRef,
-                statusBadge
-        );
-
-        sendEmailViaBrevo(
-                booking.getGuest().getEmail(),
-                guestName,
-                "Booking Confirmed: " + bookingRef + " (Room " + roomNumber + ") - Hotel Athitya",
-                htmlContent,
-                null
-        );
-    }
-
     // 2. Reception Check-In
     @Override
     public void sendBookingConfirmationWithReceipt(Booking booking, byte[] pdfBytes) {
@@ -484,5 +416,144 @@ public class EmailServiceImpl implements EmailService {
             log.error("Brevo contact inquiry dispatch failed: {}", e.getMessage());
             throw new RuntimeException("Unable to send inquiry right now. Please try again later.");
         }
+    }
+
+    @Override
+    public void sendCheckOutMasterReceipt(Booking booking, byte[] masterPdfBytes) {
+        if (booking == null || booking.getGuest() == null || booking.getGuest().getEmail() == null) return;
+
+        String guestName = resolveGuestName(booking);
+        String bookingRef = resolveBookingReference(booking);
+        String roomNumber = getRoomDisplay(booking);
+        String roomType = booking.getRoom() != null && booking.getRoom().getRoomType() != null
+                ? booking.getRoom().getRoomType().name() : "DELUXE";
+        BigDecimal totalBill = booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal balanceDue = booking.getBalanceDue() != null ? booking.getBalanceDue() : BigDecimal.ZERO;
+
+        String htmlContent = """
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; color: #1e293b;">
+                <h2 style="color: #D96B43; margin-top: 0;">Hotel Athitya</h2>
+                <p style="font-size: 15px; margin-bottom: 20px;">Check-Out Summary & Final Master Receipt</p>
+                <p>Dear <b>%s</b>,</p>
+                <p>Thank you for staying with Hotel Athitya. Your check-out has been completed.</p>
+                
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 18px 0;">
+                    <p style="margin: 6px 0;"><b>Booking Ref:</b> %s</p>
+                    <p style="margin: 6px 0;"><b>Room:</b> Room %s (%s)</p>
+                    <p style="margin: 6px 0;"><b>Stay Window:</b> %s to %s</p>
+                    <p style="margin: 6px 0;"><b>Total Bill:</b> ₹%s</p>
+                    <p style="margin: 6px 0;"><b>Balance Due:</b> ₹%s</p>
+                </div>
+                
+                <p>Your final master receipt PDF has been attached to this email for your records.</p>
+                <p style="font-size: 13px; color: #64748b;">We hope to welcome you again soon!</p>
+            </div>
+            """.formatted(
+                guestName,
+                bookingRef,
+                roomNumber,
+                roomType,
+                booking.getCheckInDate(),
+                booking.getCheckOutDate(),
+                totalBill,
+                balanceDue
+        );
+
+        List attachments = null;
+        if (masterPdfBytes != null && masterPdfBytes.length > 0) {
+            attachments = List.of(Map.of(
+                    "name", "Master_Receipt_" + bookingRef + ".pdf",
+                    "content", Base64.getEncoder().encodeToString(masterPdfBytes)
+            ));
+        }
+
+        sendEmailViaBrevo(
+                booking.getGuest().getEmail(),
+                guestName,
+                "Check-Out Receipt: " + bookingRef + " (Room " + roomNumber + ") - Hotel Athitya",
+                htmlContent,
+                attachments
+        );
+    }
+
+    @Override
+    public void sendOnlineBookingWithPaymentSummary(Booking booking, Payment payment) {
+        sendOnlineBookingWithPaymentSummary(booking, payment, null);
+    }
+
+    @Override
+    public void sendOnlineBookingWithPaymentSummary(Booking booking, Payment payment, byte[] pdfBytes) {
+        if (booking == null || booking.getGuest() == null || booking.getGuest().getEmail() == null) return;
+
+        String guestName = resolveGuestName(booking);
+        String bookingRef = resolveBookingReference(booking);
+        String roomNumber = getRoomDisplay(booking);
+        String roomType = (booking.getRoom() != null && booking.getRoom().getRoomType() != null)
+                ? booking.getRoom().getRoomType().name() : "DELUXE";
+
+        BigDecimal paidAmount = payment != null && payment.getAmountPaid() != null ? payment.getAmountPaid()
+                : (booking.getAdvancePayment() != null ? booking.getAdvancePayment() : BigDecimal.ZERO);
+        BigDecimal balanceDue = booking.getBalanceDue() != null ? booking.getBalanceDue() : BigDecimal.ZERO;
+        String channel = payment != null && payment.getPaymentMethod() != null ? payment.getPaymentMethod().replace("_", " ") : "UPI / Net Banking";
+        String txnRef = payment != null && payment.getTransactionReference() != null ? payment.getTransactionReference() : ("TXN-" + bookingRef);
+
+        String statusBadge = balanceDue.compareTo(BigDecimal.ZERO) <= 0
+                ? "<span style='color: #16a34a; font-weight: bold;'>Fully Settled</span>"
+                : "<span style='color: #ea580c; font-weight: bold;'>Partially Paid (₹" + balanceDue + " due at desk)</span>";
+
+        String htmlContent = """
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; color: #1e293b;">
+                <h2 style="color: #D96B43; margin-top: 0;">Hotel Athitya</h2>
+                <p style="font-size: 15px; margin-bottom: 20px;">Reservation Confirmation & Payment Receipt</p>
+                <p>Dear <b>%s</b>,</p>
+                <p>Thank you for choosing Hotel Athitya! Your booking has been confirmed and payment processed successfully.</p>
+                
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 18px 0;">
+                    <h3 style="margin-top: 0; font-size: 14px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">Reservation Details</h3>
+                    <p style="margin: 6px 0;"><b>Booking Ref:</b> %s</p>
+                    <p style="margin: 6px 0;"><b>Room:</b> Room %s (%s)</p>
+                    <p style="margin: 6px 0;"><b>Check-In:</b> %s (From 2:00 PM)</p>
+                    <p style="margin: 6px 0;"><b>Check-Out:</b> %s (Until 12:00 PM)</p>
+                    
+                    <h3 style="margin-top: 14px; font-size: 14px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">Payment Summary</h3>
+                    <p style="margin: 6px 0;"><b>Amount Paid:</b> ₹%s</p>
+                    <p style="margin: 6px 0;"><b>Payment Mode:</b> %s</p>
+                    <p style="margin: 6px 0;"><b>Transaction ID:</b> %s</p>
+                    <p style="margin: 6px 0;"><b>Status:</b> %s</p>
+                </div>
+                
+                <p>Your booking confirmation PDF has been attached to this email for your records.</p>
+                <p style="font-size: 13px; color: #64748b;">We look forward to welcoming you!</p>
+                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+                <p style="font-size: 11px; color: #94a3b8; margin: 0;">Hotel Athitya Management • athitya@gmail.com</p>
+            </div>
+            """.formatted(
+                guestName,
+                bookingRef,
+                roomNumber,
+                roomType,
+                booking.getCheckInDate(),
+                booking.getCheckOutDate(),
+                paidAmount,
+                channel,
+                txnRef,
+                statusBadge
+        );
+
+        List attachments = null;
+        if (pdfBytes != null && pdfBytes.length > 0) {
+            attachments = List.of(Map.of(
+                    "name", "Booking_Receipt_" + bookingRef + ".pdf",
+                    "content", Base64.getEncoder().encodeToString(pdfBytes)
+            ));
+        }
+
+        sendEmailViaBrevo(
+                booking.getGuest().getEmail(),
+                guestName,
+                "Booking Confirmed: " + bookingRef + " (Room " + roomNumber + ") - Hotel Athitya",
+                htmlContent,
+                attachments
+        );
     }
 }

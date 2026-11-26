@@ -174,4 +174,15 @@ public class PublicBookingController {
                 .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }
+
+    @GetMapping("/{bookingIdentifier}/booking-receipt-pdf")
+    public ResponseEntity<byte[]> downloadPublicBookingReceipt(@PathVariable String bookingIdentifier) {
+        Booking booking = publicBookingService.findByBookingReference(bookingIdentifier);
+        byte[] pdfBytes = masterReceiptPdfService.generateBookingPdf(booking, "ONLINE_GUEST");
+
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=Booking_" + bookingIdentifier + ".pdf")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
+    }
 }

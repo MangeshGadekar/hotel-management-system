@@ -380,6 +380,14 @@ public class BookingServiceImpl implements BookingService {
         }
 
         Booking savedBooking = bookingRepository.saveAndFlush(booking);
+
+        try {
+            byte[] masterPdf = masterReceiptPdfService.generateMasterFolioPdf(savedBooking, null);
+            emailService.sendCheckOutMasterReceipt(savedBooking, masterPdf);
+        } catch (Exception e) {
+            log.error("Master receipt generation or checkout email failed for booking #{}: {}", bookingId, e.getMessage());
+        }
+
         return enrichWithLedger(savedBooking);
     }
 
@@ -894,5 +902,12 @@ public class BookingServiceImpl implements BookingService {
         }
 
         throw new RuntimeException("Reservation not found for reference: " + identifier);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generateBookingSlipPdf(Long bookingId, String preparedBy, String userEmail) {
+        return masterReceiptPdfService.generateBookingPdf(getBookingEntity(bookingId), resolveStaffName(preparedBy, userEmail));
     }
 }
