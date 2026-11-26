@@ -18,6 +18,7 @@ import {
   addCustomServiceToBookingApi,
   addExtraServicesToBookingApi,
   removeExtraServiceFromBookingApi,
+  downloadBookingReceiptApi,
   downloadCheckInReceiptApi,
   downloadCancellationReceiptPdf,
   checkInGuestApi,
@@ -308,28 +309,34 @@ export default function BookingDetailsModal({
   };
 
   const rawStatus = String(activeBooking?.bookingStatus || activeBooking?.status || "").toUpperCase();
+  const isBooked = rawStatus === "BOOKED";
   const isCancelled = rawStatus === "CANCELLED";
   const isCheckedOut = rawStatus === "CHECKED_OUT";
   const isClosed = isCheckedOut || isCancelled;
   const canExtend = !isClosed && (rawStatus === "BOOKED" || rawStatus === "CHECKED_IN");
   const canSwitchRoom = !isClosed && rawStatus === "CHECKED_IN";
+
   const handleDownloadPdf = async () => {
     const targetId = activeBooking?.id || bookingId;
     if (!targetId) return;
 
     setIsDownloadingPdf(true);
-    const toastId = toast.loading(
-      isCancelled ? "Downloading Cancellation Slip..." : "Downloading Check-In Slip..."
-    );
+    const slipLabel = isCancelled
+      ? "Cancellation Slip"
+      : isBooked
+      ? "Booking Receipt"
+      : "Check-In Slip";
+    const toastId = toast.loading(`Downloading ${slipLabel}...`);
 
     try {
       if (isCancelled) {
         await downloadCancellationReceiptPdf(targetId);
-        toast.success("Cancellation Slip downloaded!", { id: toastId });
+      } else if (isBooked) {
+        await downloadBookingReceiptApi(targetId);
       } else {
         await downloadCheckInReceiptApi(targetId);
-        toast.success("Check-In Slip downloaded!", { id: toastId });
       }
+      toast.success(`${slipLabel} downloaded!`, { id: toastId });
     } catch {
       toast.error("Failed to download PDF slip. Check server logs.", { id: toastId });
     } finally {
@@ -357,8 +364,8 @@ export default function BookingDetailsModal({
 
   const paidAddons = calcServicesTotal(paidMidStayServices);
   const unpaidAddons = calcServicesTotal(unpaidMidStayServices);
-  const allocatedRooms = activeBooking?.rooms && activeBooking.rooms.length > 0 
-    ? activeBooking.rooms 
+  const allocatedRooms = activeBooking?.rooms && activeBooking.rooms.length > 0
+    ? activeBooking.rooms
     : (activeBooking?.room ? [activeBooking.room] : []);
 
   const totalGuestsCount = activeBooking?.totalGuests || 2;
@@ -497,6 +504,8 @@ export default function BookingDetailsModal({
                   ? "Downloading..."
                   : isCancelled
                   ? "Download Cancellation Slip"
+                  : isBooked
+                  ? "Download Booking Receipt"
                   : "Download Check-In Slip"}
               </span>
             </button>

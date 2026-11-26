@@ -90,6 +90,14 @@ const Navbar = () => {
                   Manage Booking
                 </NavLink>
               </li>
+
+
+              <li>
+  <NavLink to="/extra-services" className={getActiveClass}>
+    Extra Services
+  </NavLink>
+</li> 
+
               <li>
                 <NavLink to="/about" className={getActiveClass}>
                   About
@@ -172,7 +180,25 @@ const Navbar = () => {
                 Manage Booking
               </NavLink>
             </li>
+
             <li>
+  <NavLink
+    to="/extra-services"
+    className={({ isActive }) =>
+      `block font-medium py-2 px-3 rounded-lg text-sm transition-colors ${
+        isActive
+          ? "text-amber-600 font-semibold bg-amber-50"
+          : "text-gray-600 hover:text-amber-600"
+      }`
+    }
+    onClick={toggleMenu}
+  >
+    Extra Services
+  </NavLink>
+</li>
+            <li>
+
+              
               <NavLink
                 to="/about"
                 className={({ isActive }) =>
