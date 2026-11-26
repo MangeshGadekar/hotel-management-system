@@ -1,7 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import usePaymentStore from "../../app/usePaymentStore";
 import PaymentsForm from "../../components/forms/PaymentsForm";
-import { FiSearch, FiRefreshCw, FiPlus, FiTag, FiCreditCard } from "react-icons/fi";
+import {
+  FiSearch,
+  FiRefreshCw,
+  FiPlus,
+  FiTag,
+  FiCreditCard,
+  FiChevronLeft,
+  FiChevronRight,
+} from "react-icons/fi";
 import PaymentTransactionsModal from "../../components/modals/PaymentTransactionsModal";
 import { fetchAllBooking } from "../../apis/api";
 
@@ -17,6 +25,10 @@ export default function Payments() {
   const [showManualFormModal, setShowManualFormModal] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState(null);
   const [bookingsList, setBookingsList] = useState([]);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const payments = usePaymentStore((state) => state.payments);
   const loading = usePaymentStore((state) => state.loading);
@@ -35,6 +47,11 @@ export default function Payments() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Reset to page 1 whenever search query or items per page change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, itemsPerPage]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -65,20 +82,30 @@ export default function Payments() {
 
       const bk = bookingLookup[bId];
 
-      const guestName = bk?.guestName || (bk?.guest
-        ? `${bk.guest.firstName || ""} ${bk.guest.lastName || ""}`.trim()
-        : p.guestName || "Guest");
+      const guestName =
+        bk?.guestName ||
+        (bk?.guest
+          ? `${bk.guest.firstName || ""} ${bk.guest.lastName || ""}`.trim()
+          : p.guestName || "Guest");
 
-      const grossBill = Number(bk?.grossTotal ?? (Number(bk?.taxableAmount || 0) + Number(bk?.taxAmount || 0)));
-      const concessions = Number(bk?.totalConcessions ?? bk?.discountAmount ?? 0);
-      const remainingDue = bk?.remainingDue != null
-        ? Number(bk.remainingDue)
-        : Number(bk?.balanceDue ?? 0);
-      const isSettled = bk?.fullySettled != null
-        ? bk.fullySettled
-        : remainingDue <= 0;
-      
-      const isCancelled = bk?.bookingStatus === "CANCELLED" || bk?.status === "CANCELLED" || p.paymentStatus === "REFUNDED";
+      const grossBill = Number(
+        bk?.grossTotal ??
+          (Number(bk?.taxableAmount || 0) + Number(bk?.taxAmount || 0))
+      );
+      const concessions = Number(
+        bk?.totalConcessions ?? bk?.discountAmount ?? 0
+      );
+      const remainingDue =
+        bk?.remainingDue != null
+          ? Number(bk.remainingDue)
+          : Number(bk?.balanceDue ?? 0);
+      const isSettled =
+        bk?.fullySettled != null ? bk.fullySettled : remainingDue <= 0;
+
+      const isCancelled =
+        bk?.bookingStatus === "CANCELLED" ||
+        bk?.status === "CANCELLED" ||
+        p.paymentStatus === "REFUNDED";
 
       if (!map[bId]) {
         map[bId] = {
@@ -115,10 +142,14 @@ export default function Payments() {
     return Object.values(map)
       .map((item) => ({
         ...item,
-        settlementStatus: item.isCancelled ? "REFUNDED" : (item.isSettled ? "PAID" : "PENDING"),
+        settlementStatus: item.isCancelled
+          ? "REFUNDED"
+          : item.isSettled
+          ? "PAID"
+          : "PENDING",
       }))
       .sort((a, b) => Number(b.bookingId) - Number(a.bookingId));
-  }, [payments, bookingsList]);;
+  }, [payments, bookingsList]);
 
   const filteredList = useMemo(() => {
     return groupedBookings.filter((item) => {
@@ -132,18 +163,59 @@ export default function Payments() {
     });
   }, [groupedBookings, searchQuery]);
 
+  // Pagination calculations
+  const totalItems = filteredList.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const paginatedList = filteredList.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (safeCurrentPage <= 3) {
+      pages.push(1, 2, 3, 4, "...", totalPages);
+    } else if (safeCurrentPage >= totalPages - 2) {
+      pages.push(
+        1,
+        "...",
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages
+      );
+    } else {
+      pages.push(
+        1,
+        "...",
+        safeCurrentPage - 1,
+        safeCurrentPage,
+        safeCurrentPage + 1,
+        "...",
+        totalPages
+      );
+    }
+    return pages;
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Payments & Transactions</h1>
+          <h1 className="text-xl font-bold text-slate-800">
+            Payments & Transactions
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Inspect receipts, discounts, and settle individual extra services
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setShowManualFormModal(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#D96B43] hover:bg-[#c95a34] text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
@@ -192,14 +264,14 @@ export default function Payments() {
                     Loading payments…
                   </td>
                 </tr>
-              ) : filteredList.length === 0 ? (
+              ) : paginatedList.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
                     No transactions found
                   </td>
                 </tr>
               ) : (
-                filteredList.map((item) => (
+                paginatedList.map((item) => (
                   <tr
                     key={item.bookingId}
                     onClick={() => setSelectedBookingId(item.bookingId)}
@@ -269,6 +341,80 @@ export default function Payments() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {!loading && totalItems > 0 && (
+          <div className="px-6 py-3.5 bg-slate-50/70 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <span>
+                Showing{" "}
+                <strong className="text-slate-700">{startIndex + 1}</strong>–
+                <strong className="text-slate-700">
+                  {Math.min(startIndex + itemsPerPage, totalItems)}
+                </strong>{" "}
+                of <strong className="text-slate-700">{totalItems}</strong>{" "}
+                transactions
+              </span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="px-2 py-1 border border-slate-200 rounded-md bg-white text-slate-700 text-xs focus:outline-none focus:ring-1 focus:ring-[#D96B43] cursor-pointer"
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safeCurrentPage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
+                aria-label="Previous page"
+              >
+                <FiChevronLeft className="w-4 h-4" />
+              </button>
+
+              {getPageNumbers().map((page, idx) =>
+                page === "..." ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="px-2 py-1 text-xs text-slate-400 select-none"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`min-w-[30px] px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      safeCurrentPage === page
+                        ? "bg-[#D96B43] text-white shadow-xs"
+                        : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={safeCurrentPage === totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
+                aria-label="Next page"
+              >
+                <FiChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedBookingId && (
@@ -276,7 +422,11 @@ export default function Payments() {
           bookingId={selectedBookingId}
           onClose={() => {
             setSelectedBookingId(null);
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname
+            );
           }}
           onPaymentSettled={() => {
             fetchData();

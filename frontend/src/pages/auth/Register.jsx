@@ -9,11 +9,10 @@ import {
   FiUserPlus,
   FiEye,
   FiEyeOff,
+  FiShield,
+  FiCheckCircle,
 } from "react-icons/fi";
-import {
-  Athenura_Circle_Logo,
-  Bedroom_image_login_Register,
-} from "../../assets";
+import { Athenura_Circle_Logo } from "../../assets";
 import useAuthStore from "../../app/useAuthStore";
 import toast from "react-hot-toast";
 
@@ -31,128 +30,113 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSecretKey, setShowSecretKey] = useState(false);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
-    let role = "ADMIN";
-    let payload = {
-      firstName, lastName, email, password, secretKey, role
+    try {
+      const role = "ADMIN";
+      const payload = {
+        firstName,
+        lastName,
+        email,
+        password,
+        secretKey,
+        role,
+      };
+      const res = await register(payload);
+
+      if (res?.success === true) {
+        toast.success(res.message);
+        navigate("/login");
+      }
+    } finally {
+      setLoading(false);
     }
-    const res = await register(payload);
-    console.log("res : ", res)
-
-
-    if(res.success && res.success === true) {
-      toast.success(res.message)
-
-      navigate(`/login`)
-    }
-
-    setLoading(false);
   };
 
-  // Shared input classes (keeps things DRY)
   const inputClasses =
-    "w-full pl-9 sm:pl-10 pr-10 sm:pr-12 py-2.5 sm:py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder-white/30 text-sm sm:text-base focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 transition-all autofill-dark";
+    "w-full pl-10 pr-10 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:bg-white focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all";
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-3 md:p-4 relative overflow-hidden">
-      {/* Fix browser autofill white background */}
-      <style>{`
-        input.autofill-dark:-webkit-autofill,
-        input.autofill-dark:-webkit-autofill:hover,
-        input.autofill-dark:-webkit-autofill:focus,
-        input.autofill-dark:-webkit-autofill:active {
-          -webkit-text-fill-color: #ffffff !important;
-          -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.05) inset !important;
-          box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.05) inset !important;
-          caret-color: #ffffff;
-          transition: background-color 9999s ease-in-out 0s;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
-          border-radius: 0.75rem !important;
-        }
-        input.autofill-dark:-webkit-autofill::first-line {
-          font-size: inherit;
-          color: #ffffff !important;
-        }
-      `}</style>
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-amber-50/70 via-stone-50 to-orange-50/50 relative overflow-hidden">
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-amber-200/25 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-orange-200/25 blur-3xl pointer-events-none" />
 
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `url(${Bedroom_image_login_Register})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          filter: "blur(6px)",
-          transform: "scale(1.08)",
-        }}
-      />
+      <div className="relative z-10 w-full max-w-5xl flex flex-col md:flex-row rounded-3xl overflow-hidden bg-white border border-amber-100 shadow-2xl shadow-stone-900/10">
+        {/* Left Brand Panel */}
+        <div className="hidden md:flex w-full md:w-1/2 p-10 lg:p-12 flex-col justify-between bg-gradient-to-br from-stone-900 via-stone-900 to-amber-950 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full -mr-24 -mt-24 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/10 rounded-full -ml-20 -mb-20 pointer-events-none" />
 
-      <div className="absolute inset-0 z-0 bg-black/60" />
-
-      <div className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row rounded-2xl md:rounded-3xl overflow-hidden backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl">
-        <div className="hidden md:flex w-full md:w-1/2 p-8 lg:p-12 flex-col justify-between bg-black/30 backdrop-blur-sm border-r border-white/10">
-          <div>
-            <div className="flex items-center gap-2 mb-10 lg:mb-12">
-              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center shadow-lg">
-                <img src={Athenura_Circle_Logo} alt="" />
+          <div className="relative">
+            <div className="flex items-center gap-2.5 mb-10">
+              <div className="w-10 h-10 rounded-xl bg-white/10 p-1.5 flex items-center justify-center border border-white/10">
+                <img
+                  src={Athenura_Circle_Logo}
+                  alt="Hotel Athitya"
+                  className="w-full h-full object-contain"
+                />
               </div>
-              <span className="text-white font-bold text-xl lg:text-2xl tracking-tight">
+              <span className="text-white font-bold text-2xl tracking-tight">
                 आतिथ्य
               </span>
-              <span className="text-amber-400 text-[10px] lg:text-xs font-semibold uppercase tracking-wider ml-1 lg:ml-2 bg-amber-400/20 px-2 py-1 rounded-full">
-                Premium
+              <span className="text-amber-400 text-[11px] font-bold uppercase tracking-wider ml-1 bg-amber-400/15 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+                Hotel Athitya
               </span>
             </div>
 
-            <h1 className="text-3xl lg:text-5xl font-bold text-white mb-3 lg:mb-4 leading-tight">
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-4 leading-tight">
               Join the
               <br />
-              <span className="text-amber-400">Luxury Experience</span>
+              <span className="text-amber-400">Athitya Team</span>
             </h1>
-            <p className="text-amber-100/80 text-base lg:text-lg mb-6 lg:mb-8 max-w-sm">
-              Create your account to manage bookings, access premium services,
-              and experience world-class hospitality.
+            <p className="text-stone-300 text-sm lg:text-base mb-8 max-w-sm leading-relaxed">
+              Create your account to manage reservations, guest check-ins, and
+              hospitality services at Hotel Athitya, Nagpur.
             </p>
 
-            <div className="space-y-3 lg:space-y-4">
-              <div className="flex items-center gap-3 text-amber-100">
-                <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <FiHome className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400" />
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-3 text-stone-200">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/20 flex items-center justify-center shrink-0">
+                  <FiHome className="w-4 h-4 text-amber-400" />
                 </div>
-                <span className="text-sm lg:text-base">
-                  Exclusive member benefits
+                <span className="text-sm">
+                  Centralized front-desk &amp; room control
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-amber-100">
-                <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <FiHome className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400" />
+              <div className="flex items-center gap-3 text-stone-200">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/20 flex items-center justify-center shrink-0">
+                  <FiCheckCircle className="w-4 h-4 text-amber-400" />
                 </div>
-                <span className="text-sm lg:text-base">
-                  Priority booking & upgrades
+                <span className="text-sm">
+                  Instant invoicing, GST receipts &amp; settlements
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-amber-100">
-                <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <FiHome className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400" />
+              <div className="flex items-center gap-3 text-stone-200">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/20 flex items-center justify-center shrink-0">
+                  <FiShield className="w-4 h-4 text-amber-400" />
                 </div>
-                <span className="text-sm lg:text-base">
-                  Personalized concierge services
+                <span className="text-sm">
+                  Protected administrator registration
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-8">
-            <p className="text-amber-200/60 text-xs lg:text-sm">
+          <div className="relative mt-8 pt-6 border-t border-white/10">
+            <p className="text-stone-400 text-xs">
               By creating an account, you agree to our{" "}
               <Link to="/terms" className="text-amber-400 hover:underline">
                 Terms of Service
               </Link>{" "}
-              &{" "}
+              &amp;{" "}
               <Link to="/privacy" className="text-amber-400 hover:underline">
                 Privacy Policy
               </Link>
@@ -160,206 +144,210 @@ const Register = () => {
           </div>
         </div>
 
-        <div className="w-full md:w-1/2 p-5 sm:p-8 md:p-10 lg:p-12 bg-black/20 backdrop-blur-sm">
-          <div className="flex flex-col h-full justify-center">
-            <div className="flex items-center justify-center gap-2 mb-6 md:hidden">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center shadow-lg">
-                <img src={Athenura_Circle_Logo} alt="" />
-              </div>
-              <span className="text-white font-bold text-lg tracking-tight">
-                आतिथ्य
-              </span>
-              <span className="text-amber-400 text-[10px] font-semibold uppercase tracking-wider ml-1 bg-amber-400/20 px-2 py-0.5 rounded-full">
-                Premium
-              </span>
+        {/* Right Form Panel */}
+        <div className="w-full md:w-1/2 p-6 sm:p-10 lg:p-12 bg-white flex flex-col justify-center">
+          <div className="flex items-center justify-center gap-2 mb-6 md:hidden">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 p-1.5 flex items-center justify-center border border-amber-200">
+              <img
+                src={Athenura_Circle_Logo}
+                alt="Hotel Athitya"
+                className="w-full h-full object-contain"
+              />
             </div>
+            <span className="text-stone-900 font-bold text-xl tracking-tight">
+              आतिथ्य
+            </span>
+            <span className="text-amber-700 text-[10px] font-bold uppercase tracking-wider bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+              Hotel Athitya
+            </span>
+          </div>
 
-            <div className="text-center mb-6 md:mb-8">
-              <h2 className="text-xl sm:text-2xl font-semibold text-white mb-1">
-                Join Us Today
-              </h2>
-              <p className="text-amber-200/70 text-xs sm:text-sm">
-                Join Athenura and experience luxury, comfort, and exceptional
-                service
-              </p>
-            </div>
+          <div className="text-center mb-6">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200/80">
+              Account Setup
+            </span>
+            <h2 className="text-2xl font-bold text-stone-900 mt-3 mb-1">
+              Create Your Account
+            </h2>
+            <p className="text-stone-500 text-xs sm:text-sm">
+              Register to access the Hotel Athitya management portal
+            </p>
+          </div>
 
-            <form
-              className="w-full max-w-sm mx-auto space-y-4 sm:space-y-5"
-              onSubmit={handleRegister}
-            >
-              {/* First Name */}
-              <div className="flex gap-3">
-                <div className="space-y-1.5">
-                <label className="text-white/80 text-xs sm:text-sm font-medium block text-left">
+          <form
+            className="w-full max-w-sm mx-auto space-y-4"
+            onSubmit={handleRegister}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-stone-700 text-xs font-semibold uppercase tracking-wider block text-left">
                   First Name
                 </label>
                 <div className="relative group">
-                  <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
+                  <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 group-focus-within:text-amber-600 transition-colors" />
                   <input
                     type="text"
+                    required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="John"
+                    placeholder="Rohan"
                     className={inputClasses}
                   />
                 </div>
               </div>
 
-              {/* Last Name */}
-              <div className="space-y-1.5">
-                <label className="text-white/80 text-xs sm:text-sm font-medium block text-left">
+              <div className="space-y-1">
+                <label className="text-stone-700 text-xs font-semibold uppercase tracking-wider block text-left">
                   Last Name
                 </label>
                 <div className="relative group">
-                  <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
+                  <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 group-focus-within:text-amber-600 transition-colors" />
                   <input
                     type="text"
+                    required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Doe"
+                    placeholder="Sharma"
                     className={inputClasses}
                   />
                 </div>
               </div>
-              </div>
+            </div>
 
-              {/* Email */}
-              <div className="space-y-1.5">
-                <label className="text-white/80 text-xs sm:text-sm font-medium block text-left">
-                  Email Address
-                </label>
-                <div className="relative group">
-                  <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="guest@luxestay.com"
-                    className={inputClasses}
-                  />
-                </div>
+            <div className="space-y-1">
+              <label className="text-stone-700 text-xs font-semibold uppercase tracking-wider block text-left">
+                Email Address
+              </label>
+              <div className="relative group">
+                <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 group-focus-within:text-amber-600 transition-colors" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="staff@hotelathitya.com"
+                  className={inputClasses}
+                />
               </div>
+            </div>
 
-              {/* Password */}
-              <div className="space-y-1.5">
-                <label className="text-white/80 text-xs sm:text-sm font-medium block text-left">
-                  Password
-                </label>
-                <div className="relative group">
-                  <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={inputClasses}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 hover:text-amber-300 transition-colors"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? (
-                      <FiEyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      <FiEye className="w-4 h-4 sm:w-5 sm:h-5" />
-                    )}
-                  </button>
-                </div>
+            <div className="space-y-1">
+              <label className="text-stone-700 text-xs font-semibold uppercase tracking-wider block text-left">
+                Password
+              </label>
+              <div className="relative group">
+                <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 group-focus-within:text-amber-600 transition-colors" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className={inputClasses}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-600 transition-colors cursor-pointer"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <FiEyeOff className="w-4 h-4" />
+                  ) : (
+                    <FiEye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
+            </div>
 
-              {/* Confirm Password */}
-              <div className="space-y-1.5">
-                <label className="text-white/80 text-xs sm:text-sm font-medium block text-left">
-                  Confirm Password
-                </label>
-                <div className="relative group">
-                  <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={inputClasses}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((s) => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 hover:text-amber-300 transition-colors"
-                    aria-label={
-                      showConfirmPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    {showConfirmPassword ? (
-                      <FiEyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      <FiEye className="w-4 h-4 sm:w-5 sm:h-5" />
-                    )}
-                  </button>
-                </div>
+            <div className="space-y-1">
+              <label className="text-stone-700 text-xs font-semibold uppercase tracking-wider block text-left">
+                Confirm Password
+              </label>
+              <div className="relative group">
+                <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 group-focus-within:text-amber-600 transition-colors" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className={inputClasses}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((s) => !s)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-600 transition-colors cursor-pointer"
+                  aria-label={
+                    showConfirmPassword ? "Hide password" : "Show password"
+                  }
+                >
+                  {showConfirmPassword ? (
+                    <FiEyeOff className="w-4 h-4" />
+                  ) : (
+                    <FiEye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
+            </div>
 
-              {/* Secret Key */}
-              <div className="space-y-1.5">
-                <label className="text-white/80 text-xs sm:text-sm font-medium block text-left">
-                  Secret Key{" "}
-                  <span className="text-amber-400/50 text-[10px]">
-                    (Optional - Admin only)
-                  </span>
-                </label>
-                <div className="relative group">
-                  <FiKey className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4 sm:w-5 sm:h-5 group-focus-within:text-amber-300 transition-colors" />
-                  <input
-                    value={secretKey}
-                    onChange={(e) => setSecretKey(e.target.value)}
-                    type={showSecretKey ? "text" : "password"}
-                    placeholder="Enter admin secret key"
-                    className={inputClasses}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSecretKey((s) => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 hover:text-amber-300 transition-colors"
-                    aria-label={
-                      showSecretKey ? "Hide secret key" : "Show secret key"
-                    }
-                  >
-                    {showSecretKey ? (
-                      <FiEyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      <FiEye className="w-4 h-4 sm:w-5 sm:h-5" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-amber-200/40 text-[10px] text-left mt-1">
-                  * Leave empty to create a regular user account
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 sm:py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <FiUserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {loading ? "Creating Account..." : "Create Account"}
+            <div className="space-y-1">
+              <label className="text-stone-700 text-xs font-semibold uppercase tracking-wider block text-left">
+                Secret Key{" "}
+                <span className="text-amber-700/70 text-[10px] normal-case font-medium">
+                  (Optional — Admin only)
                 </span>
-              </button>
-            </form>
+              </label>
+              <div className="relative group">
+                <FiKey className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 group-focus-within:text-amber-600 transition-colors" />
+                <input
+                  value={secretKey}
+                  onChange={(e) => setSecretKey(e.target.value)}
+                  type={showSecretKey ? "text" : "password"}
+                  placeholder="Enter admin secret key"
+                  className={inputClasses}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecretKey((s) => !s)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-600 transition-colors cursor-pointer"
+                  aria-label={
+                    showSecretKey ? "Hide secret key" : "Show secret key"
+                  }
+                >
+                  {showSecretKey ? (
+                    <FiEyeOff className="w-4 h-4" />
+                  ) : (
+                    <FiEye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-stone-400 text-[11px] text-left">
+                * Leave empty to create a regular account
+              </p>
+            </div>
 
-            <p className="text-center text-amber-200/60 text-xs sm:text-sm mt-6 sm:mt-8">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="text-amber-400 font-semibold hover:text-amber-300 transition-colors hover:underline"
-              >
-                Sign In
-              </Link>
-            </p>
-          </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold rounded-xl shadow-lg shadow-amber-600/20 transition-all duration-200 text-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <FiUserPlus className="w-4 h-4" />
+                {loading ? "Creating Account..." : "Create Account"}
+              </span>
+            </button>
+          </form>
+
+          <p className="text-center text-stone-500 text-xs sm:text-sm mt-6">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="text-amber-700 font-bold hover:text-amber-800 hover:underline"
+            >
+              Sign In
+            </Link>
+          </p>
         </div>
       </div>
     </div>

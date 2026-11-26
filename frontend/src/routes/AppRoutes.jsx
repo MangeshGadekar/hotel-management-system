@@ -30,6 +30,7 @@ const Rooms = lazy(() => import("../pages/common/Rooms"));
 const Home = lazy(() => import("../pages/common/Home"));
 const About = lazy(() => import("../pages/common/About"));
 const Contact = lazy(() => import("../pages/common/Contact"));
+const PublicExtraServices = lazy(() => import("../pages/common/ExtraServices"));
 
 const Footer = lazy(() => import("../ui/Footer"));
 const Navbar = lazy(() => import("../ui/Navbar"));
@@ -100,9 +101,11 @@ export default function AppRoutes() {
           <Route path="/rooms-suites" element={<RoomsAndSuits />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          
         
 <Route path="/booking/success" element={<BookingSuccessPage />} />
 <Route path="/manage-booking" element={<ManageBooking />} />
+<Route path="/extra-services" element={<PublicExtraServices />} />
 
           {/* Guest Direct Online Booking */}
           <Route path="/booking/:roomNumber" element={<GuestBookingPage />} />

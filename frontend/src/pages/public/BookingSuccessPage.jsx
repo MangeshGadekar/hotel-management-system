@@ -1,14 +1,17 @@
 import React, { useState } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { FaCheckCircle, FaDownload, FaBed, FaCalendarAlt } from "react-icons/fa";
-import { downloadCheckInReceiptApi } from "../../apis/api";
+import { downloadPublicReceiptApi } from "../../apis/api";
 import toast from "react-hot-toast";
 
 const BookingSuccessPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const data = location.state;
-  const [downloading, setDownloading] = useState(false);
 
+
+  console.log("LOCATION STATE DATA:", data);
+  const [downloading, setDownloading] = useState(false);
 
   if (!data) {
     return (
@@ -25,11 +28,24 @@ const BookingSuccessPage = () => {
     );
   }
 
+const bookingReference = 
+    data.bookingReference || 
+    data.bookingRef || 
+    data.reference || 
+    data.booking?.bookingReference || 
+    data.booking?.reference ||
+    (data.bookingId ? `BOOKING-${data.bookingId}` : "N/A");
+
   const handleDownloadReceipt = async () => {
+    if (!bookingReference) {
+      toast.error("Booking reference not found.");
+      return;
+    }
+
     setDownloading(true);
     const toastId = toast.loading("Generating your PDF receipt...");
     try {
-      await downloadCheckInReceiptApi(data.bookingId);
+      await downloadPublicReceiptApi(bookingReference);
       toast.success("Receipt opened successfully!", { id: toastId });
     } catch {
       toast.error("Could not download receipt PDF.", { id: toastId });
@@ -61,7 +77,9 @@ const BookingSuccessPage = () => {
         <div className="mt-6 bg-slate-50 rounded-xl p-4 text-left border border-slate-200 space-y-2.5 text-xs text-slate-600">
           <div className="flex justify-between border-b border-slate-200/60 pb-2">
             <span className="text-slate-400">Booking Reference:</span>
-            <span className="font-bold text-slate-800">#{data.bookingId}</span>
+            <span className="font-bold font-mono text-slate-800">
+              {bookingReference}
+            </span>
           </div>
 
           <div className="flex justify-between border-b border-slate-200/60 pb-2">

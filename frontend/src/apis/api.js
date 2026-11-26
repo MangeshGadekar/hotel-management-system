@@ -874,33 +874,116 @@ export const verifyGuestPaymentApi = async (payload) => {
   return await apiClient.post("public/booking/verify-payment", { json: payload }).json();
 };
 
-export const sendManageBookingOtpApi = async (bookingId, email) => {
+export const sendManageBookingOtpApi = async (identifier, email) => {
   return await apiClient
     .post("public/booking/send-otp", {
-      json: { bookingId, email },
+      json: { 
+        bookingId: identifier,
+        email,
+      },
     })
     .json();
 };
 
-export const verifyManageBookingOtpApi = async (bookingId, email, otp) => {
+export const verifyManageBookingOtpApi = async (identifier, email, otp) => {
   return await apiClient
     .post("public/booking/verify-otp", {
-      json: { bookingId, email, otp },
+      json: { 
+        bookingId: identifier, 
+        email, 
+        otp,
+      },
     })
     .json();
 };
 
-export const cancelGuestBooking = async (bookingId, guestEmail) => {
+export const fetchManagedBookingApi = async (identifier, guestAccessToken) => {
   return await apiClient
-    .patch(`public/booking/cancel/${bookingId}`, {
+    .get(`public/booking/${identifier}`, {
+      headers: {
+        Authorization: `Bearer ${guestAccessToken}`,
+      },
+    })
+    .json();
+};
+
+export const cancelGuestBooking = async (identifier, guestEmail) => {
+  return await apiClient
+    .patch(`public/booking/cancel/${identifier}`, {
       searchParams: { email: guestEmail },
     })
     .json();
+
 };
+
+export const abandonGuestBookingApi = async (bookingId) => {
+  try {
+    return await apiClient.post(`public/booking/abandon/${bookingId}`).json();
+  } catch {
+    return null;
+  }
+};
+
+
+
+/* =================================================== */
+/* PUBLIC GUEST REVIEWS                                */
+/* =================================================== */
+
+export const fetchPublicReviewsApi = async () => {
+  return await apiClient.get("api/public/reviews").json();
+};
+
+export const submitPublicReviewApi = async (reviewData, guestAccessToken) => {
+  return await apiClient
+    .post("api/public/reviews", {
+      headers: {
+        ...(guestAccessToken
+          ? { Authorization: `Bearer ${guestAccessToken}` }
+          : {}),
+      },
+      json: reviewData,
+    })
+    .json();
+};
+
+export const likePublicReviewApi = async (reviewId) => {
+  return await apiClient.post(`api/public/reviews/${reviewId}/like`).json();
+};
+
+
+export const deletePublicReviewByBookingApi = async (
+  bookingReference,
+  guestAccessToken
+) => {
+  return await apiClient
+    .delete(`api/public/reviews/booking/${encodeURIComponent(bookingReference)}`, {
+      headers: {
+        ...(guestAccessToken
+          ? { Authorization: `Bearer ${guestAccessToken}` }
+          : {}),
+      },
+    })
+    .json();
+};
+
+/* =================================================== */
+/* PUBLIC CONTACT INQUIRY                              */
+/* =================================================== */
+
+export const sendContactInquiryApi = async (payload) => {
+  return await apiClient
+    .post("api/public/contact", {
+      json: payload,
+    })
+    .json();
+};
+
+
+
 /* =================================================== */
 /* REPORTS (admin + receptionist)                      */
 /* =================================================== */
-
 
 const reportBase = (role) =>
   String(role).toLowerCase() === "admin" ? "admin/reports" : "reception/reports";
@@ -920,7 +1003,6 @@ export const fetchReportApi = async (role, params, token = null) => {
     .json();
 };
 
-
 export const downloadReportApi = async (role, type, params, token = null) => {
   const blob = await apiClient
     .get(`${reportBase(role)}/${type}`, {
@@ -937,4 +1019,30 @@ export const downloadReportApi = async (role, type, params, token = null) => {
   link.click();
   link.remove();
   setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+};
+
+
+export const downloadPublicReceiptApi = async (bookingReference) => {
+  const blob = await apiClient
+    .get(`public/booking/${encodeURIComponent(bookingReference)}/booking-receipt-pdf`)
+    .blob();
+
+  triggerPdfViewOrDownload(blob, `Booking_${bookingReference}.pdf`);
+};
+
+
+
+
+export const downloadBookingReceiptApi = async (bookingId, token = null) => {
+  const authToken =
+    token || localStorage.getItem("token") || localStorage.getItem("authToken");
+
+  const blob = await apiClient
+    .get(`booking/${bookingId}/booking-receipt-pdf`, {
+      headers: getAuthHeaders(authToken),
+    })
+    .blob();
+
+  triggerPdfViewOrDownload(blob, `Booking_Receipt_${bookingId}.pdf`);
+>>>>>>> f8b24bc (Update booking receipt modal, API client, and frontend routes)
 };

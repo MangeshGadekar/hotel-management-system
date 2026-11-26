@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaCalendarAlt,
   FaUsers,
-  FaSearch,
   FaBed,
   FaCheckCircle,
   FaStar,
@@ -51,26 +50,35 @@ const normalizeImages = (room) => {
       if (Array.isArray(parsed)) {
         list = parsed
           .map((item) =>
-            typeof item === "string" ? item.trim() : item.url || item.imageUrl || null
+            typeof item === "string"
+              ? item.trim()
+              : item.url || item.imageUrl || null
           )
           .filter(Boolean);
       } else {
-        list = raw.split(",").map((s) => s.trim()).filter(Boolean);
+        list = raw
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
       }
     } catch {
-      list = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      list = raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
     }
   }
 
   return list;
 };
 
-
 const mapRoomFromApi = (room) => {
   const rawAmenities = room.amenities || room.amenityList || [];
 
   const parsedAmenities = Array.isArray(rawAmenities)
-    ? rawAmenities.map((a) => (typeof a === "string" ? a : a.name || a.title || ""))
+    ? rawAmenities.map((a) =>
+        typeof a === "string" ? a : a.name || a.title || ""
+      )
     : typeof rawAmenities === "string"
     ? rawAmenities.split(",").map((s) => s.trim())
     : [];
@@ -115,9 +123,6 @@ const GuestRoomCard = ({
 
   return (
     <div
-      // onClick={() => {
-      //   if (!isDisabled) onToggle(room);
-      // }}
       className={`bg-white rounded-2xl border transition-all flex flex-col justify-between overflow-hidden ${
         isDisabled
           ? "opacity-50 cursor-not-allowed border-slate-200"
@@ -220,13 +225,13 @@ const GuestRoomCard = ({
               </h3>
             </div>
             <span className="text-xs text-slate-600 font-semibold flex items-center gap-1 shrink-0 mt-1 bg-slate-100 px-2 py-0.5 rounded-md">
-              <FaUsers className="text-slate-500 text-xs" /> Max {room.capacity || 2} Guests
+              <FaUsers className="text-slate-500 text-xs" /> Max{" "}
+              {room.capacity || 2} Guests
             </span>
           </div>
 
           <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-            {room.description ||
-              "Spacious luxury accommodation."}
+            {room.description || "Spacious luxury accommodation."}
           </p>
 
           <div className="text-xs text-slate-600 pt-0.5">
@@ -249,7 +254,9 @@ const GuestRoomCard = ({
                     key={idx}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50/50 border border-amber-100/80 text-slate-700 text-[11px] rounded-lg font-medium shadow-2xs"
                   >
-                    <IconComponent className={`${colorClass} w-3.5 h-3.5 shrink-0`} />
+                    <IconComponent
+                      className={`${colorClass} w-3.5 h-3.5 shrink-0`}
+                    />
                     <span>{amenityName}</span>
                   </span>
                 );
@@ -278,7 +285,10 @@ const GuestRoomCard = ({
             <span className="text-xs text-slate-400">/ night</span>
           </div>
           <p className="text-[10px] text-slate-500">
-            Total {nights}N: <strong className="text-slate-700 font-semibold">₹{netTotal.toLocaleString("en-IN")}</strong>
+            Total {nights}N:{" "}
+            <strong className="text-slate-700 font-semibold">
+              ₹{netTotal.toLocaleString("en-IN")}
+            </strong>
           </p>
         </div>
 
@@ -311,7 +321,9 @@ const Rooms = () => {
   const roomListFromStore = useRoomStore((state) => state.roomList);
 
   const todayStr = new Date().toISOString().split("T")[0];
-  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  const tomorrowStr = new Date(Date.now() + 86400000)
+    .toISOString()
+    .split("T")[0];
 
   const [checkIn, setCheckIn] = useState(todayStr);
   const [checkOut, setCheckOut] = useState(tomorrowStr);
@@ -323,7 +335,9 @@ const Rooms = () => {
 
   const nights = Math.max(
     1,
-    Math.round((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1
+    Math.round(
+      (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
+    ) || 1
   );
 
   const combinedCapacity = selectedRooms.reduce(
@@ -341,68 +355,86 @@ const Rooms = () => {
     }
   }, [getRoomsList, roomListFromStore]);
 
-  const handleSearch = async (e) => {
-    if (e) e.preventDefault();
-
-    if (!checkIn || !checkOut || checkIn >= checkOut) {
-      toast.error("Check-out date must be after check-in date");
-      return;
-    }
-
-    setLoading(true);
-    setSelectedRooms([]);
-    try {
-      const availableData = await searchAvailableRoomsApi(
-        checkIn,
-        checkOut,
-        guests || 1
-      );
-      const searchResults = Array.isArray(availableData) ? availableData : [];
-
-      let storeCatalog = roomListFromStore;
-      if (!storeCatalog || storeCatalog.length === 0) {
-        try {
-          await getRoomsList();
-          storeCatalog = useRoomStore.getState().roomList || [];
-        } catch {
-          storeCatalog = [];
-        }
-      }
-
-      const mergedRooms = searchResults.map((availRoom) => {
-        const normalized = mapRoomFromApi(availRoom);
-
-        const storeMatch = storeCatalog.find(
-          (sr) => String(sr.roomNumber) === String(availRoom.roomNumber)
-        );
-
-        if (storeMatch) {
-          const storeImages = normalizeImages(storeMatch);
-          const currentImages = normalizeImages(normalized);
-
-          if (storeImages.length > currentImages.length) {
-            normalized.images = storeImages;
-          }
-
-          if (!normalized.amenities || normalized.amenities.length === 0) {
-            normalized.amenities = mapRoomFromApi(storeMatch).amenities;
-          }
-        }
-        return normalized;
-      });
-
-      setRooms(mergedRooms);
-    } catch {
-      toast.error("Failed to check room availability");
-      setRooms([]);
-    } finally {
-      setLoading(false);
+  const handleCheckInChange = (newCheckIn) => {
+    setCheckIn(newCheckIn);
+    if (newCheckIn && checkOut && newCheckIn >= checkOut) {
+      const nextDay = new Date(new Date(newCheckIn).getTime() + 86400000)
+        .toISOString()
+        .split("T")[0];
+      setCheckOut(nextDay);
     }
   };
 
+  const fetchAvailability = useCallback(
+    async (targetCheckIn, targetCheckOut, targetGuests) => {
+      if (!targetCheckIn || !targetCheckOut || targetCheckIn >= targetCheckOut) {
+        return;
+      }
+
+      setLoading(true);
+      setSelectedRooms([]);
+      try {
+        const availableData = await searchAvailableRoomsApi(
+          targetCheckIn,
+          targetCheckOut,
+          targetGuests || 1
+        );
+        const searchResults = Array.isArray(availableData) ? availableData : [];
+
+        let storeCatalog = useRoomStore.getState().roomList || [];
+        if (storeCatalog.length === 0) {
+          try {
+            await getRoomsList();
+            storeCatalog = useRoomStore.getState().roomList || [];
+          } catch {
+            storeCatalog = [];
+          }
+        }
+
+        const mergedRooms = searchResults.map((availRoom) => {
+          const normalized = mapRoomFromApi(availRoom);
+
+          const storeMatch = storeCatalog.find(
+            (sr) => String(sr.roomNumber) === String(availRoom.roomNumber)
+          );
+
+          if (storeMatch) {
+            const storeImages = normalizeImages(storeMatch);
+            const currentImages = normalizeImages(normalized);
+
+            if (storeImages.length > currentImages.length) {
+              normalized.images = storeImages;
+            }
+
+            if (!normalized.amenities || normalized.amenities.length === 0) {
+              normalized.amenities = mapRoomFromApi(storeMatch).amenities;
+            }
+          }
+          return normalized;
+        });
+
+        setRooms(mergedRooms);
+      } catch {
+        toast.error("Failed to check room availability");
+        setRooms([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getRoomsList]
+  );
+
+  // Automatically re-fetch rooms whenever checkIn, checkOut, or guests changes
   useEffect(() => {
-    handleSearch();
-  }, []);
+    if (!checkIn || !checkOut || checkIn >= checkOut) return;
+
+    const validGuests = Number(guests) >= 1 ? Number(guests) : 1;
+    const timer = setTimeout(() => {
+      fetchAvailability(checkIn, checkOut, validGuests);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [checkIn, checkOut, guests, fetchAvailability]);
 
   const handleToggleRoom = (room) => {
     const isAlreadySelected = selectedRooms.some((r) => r.id === room.id);
@@ -446,16 +478,19 @@ const Rooms = () => {
     );
   };
 
+  const minCheckOutStr = checkIn
+    ? new Date(new Date(checkIn).getTime() + 86400000)
+        .toISOString()
+        .split("T")[0]
+    : tomorrowStr;
+
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      {/* Top Search Strip */}
+      {/* Top Auto-Updating Search Strip */}
       <div className="bg-white border-b border-slate-200 shadow-xs py-4 px-4 sm:px-6">
-        <form
-          onSubmit={handleSearch}
-          className="max-w-7xl mx-auto flex flex-wrap md:flex-nowrap items-center gap-2.5 bg-slate-50 p-2 rounded-2xl border border-slate-200"
-        >
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50 p-2 rounded-2xl border border-slate-200">
           {/* Check-In */}
-          <div className="flex-1 min-w-[130px] bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+          <div className="bg-white px-3.5 py-2 rounded-xl border border-slate-200">
             <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
               Check-In
             </label>
@@ -466,14 +501,14 @@ const Rooms = () => {
                 required
                 min={todayStr}
                 value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
+                onChange={(e) => handleCheckInChange(e.target.value)}
                 className="bg-transparent text-xs font-bold text-slate-800 outline-none w-full cursor-pointer"
               />
             </div>
           </div>
 
           {/* Check-Out */}
-          <div className="flex-1 min-w-[130px] bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+          <div className="bg-white px-3.5 py-2 rounded-xl border border-slate-200">
             <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
               Check-Out
             </label>
@@ -482,7 +517,7 @@ const Rooms = () => {
               <input
                 type="date"
                 required
-                min={checkIn || todayStr}
+                min={minCheckOutStr}
                 value={checkOut}
                 onChange={(e) => setCheckOut(e.target.value)}
                 className="bg-transparent text-xs font-bold text-slate-800 outline-none w-full cursor-pointer"
@@ -490,8 +525,8 @@ const Rooms = () => {
             </div>
           </div>
 
-        
-          <div className="w-32 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+          {/* Total Guests */}
+          <div className="bg-white px-3.5 py-2 rounded-xl border border-slate-200">
             <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
               Total Guests
             </label>
@@ -513,24 +548,22 @@ const Rooms = () => {
               />
             </div>
           </div>
-
-          {/* Search Button */}
-          <button
-            type="submit"
-            className="px-6 py-3 bg-[#D96B43] hover:bg-[#c45a33] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition shrink-0 cursor-pointer"
-          >
-            <FaSearch className="text-xs" /> Update Search
-          </button>
-        </form>
+        </div>
       </div>
 
       {/* Main Results View */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-5">
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Available Accommodations</h2>
+            <h2 className="text-xl font-bold text-slate-800">
+              Available Accommodations
+            </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Showing rooms free for <strong>{nights} {nights === 1 ? "Night" : "Nights"}</strong> ({checkIn} to {checkOut})
+              Showing rooms free for{" "}
+              <strong>
+                {nights} {nights === 1 ? "Night" : "Nights"}
+              </strong>{" "}
+              ({checkIn} to {checkOut})
             </p>
           </div>
 
@@ -553,14 +586,19 @@ const Rooms = () => {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-500">
             <BiLoaderAlt className="animate-spin text-4xl text-[#D96B43]" />
-            <p className="text-xs">Checking real-time calendar availability...</p>
+            <p className="text-xs">
+              Checking real-time calendar availability...
+            </p>
           </div>
         ) : rooms.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-2xl border border-slate-200 p-8 shadow-xs">
             <FaBed className="text-4xl text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-slate-700">No rooms available for these dates</h3>
+            <h3 className="text-base font-bold text-slate-700">
+              No rooms available for these dates
+            </h3>
             <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              All rooms are booked between {checkIn} and {checkOut}. Try adjusting your check-in date or duration.
+              All rooms are booked between {checkIn} and {checkOut}. Try
+              adjusting your check-in date or duration.
             </p>
           </div>
         ) : (
@@ -584,20 +622,21 @@ const Rooms = () => {
           </div>
         )}
       </div>
-    
+
       {selectedRooms.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
               <p className="text-sm font-extrabold text-slate-900">
-                {selectedRooms.length} {selectedRooms.length === 1 ? "Room" : "Rooms"} Selected:{" "}
+                {selectedRooms.length}{" "}
+                {selectedRooms.length === 1 ? "Room" : "Rooms"} Selected:{" "}
                 <span className="text-[#D96B43]">
                   {selectedRooms.map((r) => `Room ${r.roomNumber}`).join(", ")}
                 </span>
               </p>
               <p className="text-xs text-slate-500">
-                Total Capacity: <strong>{combinedCapacity} Guests</strong> | Headcount:{" "}
-                <strong>{Number(guests) || 1} Guests</strong>
+                Total Capacity: <strong>{combinedCapacity} Guests</strong> |
+                Headcount: <strong>{Number(guests) || 1} Guests</strong>
               </p>
             </div>
 

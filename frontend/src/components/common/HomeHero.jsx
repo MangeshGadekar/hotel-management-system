@@ -64,12 +64,7 @@ const HomeHero = () => {
                   <BsArrowRight className="w-4 h-4" />
                 </button>
               </Link>
-              <Link to="/manage-booking">
-                <button className="bg-white hover:bg-slate-50 text-slate-700 px-7 py-3.5 rounded-full font-semibold text-sm border-2 border-slate-200 transition-all flex items-center gap-2 shadow-xs cursor-pointer">
-                  <BiCalendar className="w-4 h-4 text-amber-600" />
-                  Check Availability
-                </button>
-              </Link>
+        
             </div>
 
             {/* Features Row */}

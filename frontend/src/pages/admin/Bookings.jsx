@@ -8,6 +8,8 @@ import {
   FiAlertTriangle,
   FiX,
   FiInfo,
+  FiChevronLeft,
+  FiChevronRight,
 } from 'react-icons/fi';
 import BookingDetailsModal from '../../components/modals/BookingDetailsModal';
 
@@ -30,6 +32,10 @@ export default function Bookings() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [selectedBookingId, setSelectedBookingId] = useState(null);
   const [confirmCheckoutModal, setConfirmCheckoutModal] = useState({
@@ -61,6 +67,11 @@ export default function Bookings() {
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
+  // Reset to page 1 whenever filters or page size change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchQuery, itemsPerPage]);
 
   const handleCheckIn = async (b) => {
     try {
@@ -205,6 +216,30 @@ export default function Bookings() {
     })
     .sort((a, b) => Number(b.id) - Number(a.id));
 
+  // Pagination calculations
+  const totalItems = filteredBookings.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const paginatedBookings = filteredBookings.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (safeCurrentPage <= 3) {
+      pages.push(1, 2, 3, 4, '...', totalPages);
+    } else if (safeCurrentPage >= totalPages - 2) {
+      pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages);
+    }
+    return pages;
+  };
+
   const today = new Date().toISOString().split('T')[0];
   const cancelCheckIn = confirmCancelModal.booking?.checkInDate;
   const isPastArrival = cancelCheckIn && today > cancelCheckIn;
@@ -224,7 +259,7 @@ export default function Bookings() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setShowBookingForm(true)}
             className="px-4 py-2 bg-[#D96B43] text-white rounded-lg text-sm font-semibold hover:bg-[#c95a34] transition shadow-xs cursor-pointer"
@@ -279,7 +314,7 @@ export default function Bookings() {
                     Loading reservations…
                   </td>
                 </tr>
-              ) : filteredBookings.length === 0 ? (
+              ) : paginatedBookings.length === 0 ? (
                 <tr>
                   <td
                     colSpan="9"
@@ -289,7 +324,7 @@ export default function Bookings() {
                   </td>
                 </tr>
               ) : (
-                filteredBookings.map((b) => {
+                paginatedBookings.map((b) => {
                   const rawStatus = (b.bookingStatus || '').replace('-', '_');
                   const displayStatus = STATUS_MAP[rawStatus] || b.bookingStatus;
 
@@ -417,6 +452,80 @@ export default function Bookings() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {!loading && totalItems > 0 && (
+          <div className="px-6 py-3.5 bg-slate-50/70 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <span>
+                Showing{' '}
+                <strong className="text-slate-700">{startIndex + 1}</strong>–
+                <strong className="text-slate-700">
+                  {Math.min(startIndex + itemsPerPage, totalItems)}
+                </strong>{' '}
+                of <strong className="text-slate-700">{totalItems}</strong>{' '}
+                bookings
+              </span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="px-2 py-1 border border-slate-200 rounded-md bg-white text-slate-700 text-xs focus:outline-none focus:ring-1 focus:ring-[#D96B43] cursor-pointer"
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safeCurrentPage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
+                aria-label="Previous page"
+              >
+                <FiChevronLeft className="w-4 h-4" />
+              </button>
+
+              {getPageNumbers().map((page, idx) =>
+                page === '...' ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="px-2 py-1 text-xs text-slate-400 select-none"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`min-w-[30px] px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      safeCurrentPage === page
+                        ? 'bg-[#D96B43] text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={safeCurrentPage === totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
+                aria-label="Next page"
+              >
+                <FiChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showBookingForm && (
@@ -447,7 +556,7 @@ export default function Bookings() {
           onUpdated={() => fetchBookings()}
         />
       )}
-    
+
       {confirmCheckoutModal.open && confirmCheckoutModal.booking && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200 space-y-4">
@@ -593,7 +702,7 @@ export default function Bookings() {
                 </span>
               </div>
             </div>
-            
+
             <div className="px-6 py-3">
               {isPastArrival ? (
                 <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 flex gap-2 items-start text-[11px] text-amber-800 leading-tight">
